@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EN•joy（エン・ジョイ）｜農家と町工場の「あったらいいな」が形になる場所</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div id="global-toast" class="global-toast"></div>
+
+  <!-- モバイル専用ヘッダー -->
+  <header class="mobile-header">
+    <div class="logo-area">
+      <div class="logo">EN<span>•</span>joy</div>
+      <div class="tagline">農家と町工場の「あったらいいな」が形になる場所</div>
+    </div>
+    <div class="ui-switch" aria-label="文字サイズ切替">
+      <button type="button" class="mode-btn-normal active" onclick="setUiMode('normal')">標準</button>
+      <button type="button" class="mode-btn-large" onclick="setUiMode('large')">大文字</button>
+    </div>
+  </header>
+
+  <div class="app-shell">
+
+    <!-- PC専用・左サイドバー（1列目） -->
+    <aside class="pc-sidebar" aria-label="PCナビゲーション">
+      <div>
+        <div class="logo-area" style="cursor:pointer;" onclick="switchTab('home')">
+          <div class="logo">EN<span>•</span>joy</div>
+          <div class="tagline">農家と町工場の「あったらいいな」が<br>形になる場所</div>
+        </div>
+
+        <nav class="pc-nav-list">
+          <button type="button" class="pc-nav-btn nav-sync-home active" onclick="switchTab('home')">
+            <span>🏠</span><span>ホーム</span>
+          </button>
+          <button type="button" class="pc-nav-btn nav-sync-tweet" onclick="switchTab('tweet')">
+            <span>💬</span><span>つぶやき・仲間さがし</span>
+          </button>
+
+          <button type="button" class="pc-en-cta nav-sync-en" onclick="switchTab('en')">
+            <div class="pc-en-cta-left">
+              <span class="pc-en-circle">EN</span>
+              <div style="text-align:left; line-height:1.25;">
+                <div style="font-size:0.92em; font-weight:800;">ご縁・開発室</div>
+                <div style="font-size:0.7em; opacity:0.86;">相談・原価・PDF</div>
+              </div>
+            </div>
+            <span class="pc-en-badge en-badge-count-sync">1</span>
+          </button>
+
+          <button type="button" class="pc-nav-btn nav-sync-marche" onclick="switchTab('marche')">
+            <span>🎪</span><span>マルシェ・古民家EC</span>
+          </button>
+          <button type="button" class="pc-nav-btn nav-sync-roadmap" onclick="switchTab('roadmap')">
+            <span>🪪</span><span>マイ・診断・構想</span>
+          </button>
+        </nav>
+      </div>
+
+      <div class="pc-sidebar-footer">
+        <div>
+          <div style="font-size:0.72em; font-weight:bold; color:var(--text-muted); margin-bottom:5px;">文字サイズ・視認性切替</div>
+          <div class="ui-switch">
+            <button type="button" class="mode-btn-normal active" onclick="setUiMode('normal')">標準</button>
+            <button type="button" class="mode-btn-large" onclick="setUiMode('large')">大文字</button>
+          </div>
+        </div>
+        <div class="local-pill">
+          🔒 端末ローカル完結モード<br>
+          <span style="font-weight:normal; color:var(--text-muted);">個人情報はサーバーへ送信されません</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- メインステージ -->
+    <main class="main-stage">
+      <div class="main-inner">
+
+        <!-- PC専用・現在の画面見出しバー -->
+        <div class="pc-page-header">
+          <div>
+            <h1 id="pc-header-title" class="pc-page-title">ホーム</h1>
+            <p id="pc-header-sub" class="pc-page-sub">商品企画の推進ゲージ・マルシェ・神道具・現場ニュース・つぶやきを一望</p>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn-outline" onclick="exportBackupJson()">💾 バックアップ保存</button>
+            <button type="button" class="btn-outline" onclick="switchTab('tweet'); switchTweetSubtab('directory');">🧭 相性順で仲間をさがす</button>
+            <button type="button" class="btn-olive" onclick="switchTab('tweet'); switchTweetSubtab('feed'); setTimeout(() => { const el = document.getElementById('tweet-input'); if (el) el.focus(); }, 120);">✍️ 現場をつぶやく</button>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             ① ホーム画面（1行1テーマ・全インデックス搭載）
+             ========================================== -->
+        <div id="view-home" class="tab-view active">
+
+          <!-- かっこいいホーム目次（インデックス）バー -->
+          <nav class="home-index-dock" aria-label="ホーム目次">
+            <div class="home-index-head">
+              <span class="home-index-kicker">HOME INDEX</span>
+              <span class="home-index-hint">見たい項目へワンクリックで移動</span>
+            </div>
+            <div id="home-index-bar" class="home-index-pills"></div>
+          </nav>
+
+          <!-- 行1：マイ職人カード・性格診断 -->
+          <div id="home-sec-profile" class="home-anchor-block">
+            <div id="home-profile-slot"></div>
+          </div>
+
+          <!-- 行2：商品企画の推進ボード（進捗ゲージ＆ステップ表示） -->
+          <section id="home-sec-projects" class="card terracotta-accent home-anchor-block">
+            <div class="home-sec-header">
+              <div>
+                <div class="section-kicker" style="color:var(--terracotta);">PRODUCT DEVELOPMENT TRACKER</div>
+                <h2 class="section-title" style="padding-right:0; margin-bottom:2px;">🔥 商品企画の推進ボード（リアルタイム進捗ゲージ）</h2>
+              </div>
+              <button type="button" class="btn-outline" onclick="switchTab('en')">開発スタジオを開く →</button>
+            </div>
+            <p style="font-size:0.85em; color:var(--text-muted); margin-bottom:14px;">
+              進行中のコラボ案件が「相談 → 原価合意 → 試作日記 → 完成」のどの段階にあるか一目で分かります。
+            </p>
+            <div id="home-active-en-slot" class="home-project-list"></div>
+          </section>
+
+          <!-- 行3：マルシェ開催カウントダウン ＆ 誕生コラボ商品 -->
+          <section id="home-sec-marche" class="card home-anchor-block">
+            <div class="home-sec-header">
+              <div>
+                <div class="section-kicker">EVENT COUNTDOWN &amp; MARCHE</div>
+                <h2 class="section-title" style="padding-right:0; margin-bottom:2px;">🎪 第1回 EN•joy 誕生コラボ試食マルシェ</h2>
+              </div>
+              <button type="button" class="btn-outline" onclick="switchMarcheSubtab('marche'); switchTab('marche');">マルシェ・古民家EC棚へ →</button>
+            </div>
+            <p style="font-size:0.86em; color:var(--text-muted);">
+              マッチング＆商品化ペアは<strong>出店料無料</strong>！開発商品が<strong>10商品</strong>に到達した瞬間に開催が正式決定します。
+            </p>
+            <div id="home-marche-meter" class="progress-box"></div>
+            <div id="home-marche-preview" class="product-grid" style="margin-top:14px;"></div>
+          </section>
+
+          <!-- 行4：現場の「神道具」アフィリエイト（50:50軍資金シェア） -->
+          <section id="home-sec-tools" class="card gold-accent home-anchor-block">
+            <div class="home-sec-header">
+              <div>
+                <div class="section-kicker" style="color:var(--gold);">FIELD TOOLS AFFILIATE（50:50 山分けエンジン）</div>
+                <h2 class="section-title" style="padding-right:0; margin-bottom:2px;">🛠️ 現場の「神道具」おすすめアフィリエイト ＆ マルシェ軍資金</h2>
+              </div>
+              <button type="button" class="btn-outline" onclick="switchMarcheSubtab('tools'); switchTab('marche');">すべて見る・道具を登録 →</button>
+            </div>
+            <p style="font-size:0.85em; color:var(--text-muted); margin-bottom:12px;">
+              現場の推し道具リンクを押すたびに<strong>「奇数回＝投稿した作り手本人」「偶数回＝マルシェ開催軍資金」</strong>へ自動で50:50還元されます。
+            </p>
+            <div id="home-tools-slot"></div>
+          </section>
+
+          <!-- 行5：今日の現場ニュース＆加工ヒント -->
+          <section id="home-sec-news" class="card home-anchor-block">
+            <div class="stamp-badge">現場<br>知見</div>
+            <div class="section-kicker">TODAY'S FIELD INSIGHT（カテゴリー連動）</div>
+            <h2 class="section-title">📰 今日の現場ニュース＆加工ヒント</h2>
+            <div id="insight-category-pills" class="choice-pills"></div>
+            <div id="insight-content-box" class="progress-box" style="margin-top:4px;"></div>
+          </section>
+
+          <!-- 行6：最新の現場つぶやき -->
+          <section id="home-sec-tweets" class="card home-anchor-block">
+            <div class="home-sec-header" style="margin-bottom:12px;">
+              <div>
+                <div class="section-kicker">LATEST FIELD TWEETS</div>
+                <h2 class="section-title" style="padding-right:0; margin-bottom:0;">💬 最新の現場つぶやき</h2>
+              </div>
+              <button type="button" class="btn-olive" onclick="switchTab('tweet'); switchTweetSubtab('feed');">地域検索・つぶやき広場へ →</button>
+            </div>
+            <div id="home-tweet-preview" class="pc-two-col"></div>
+          </section>
+
+        </div>
+
+        <!-- ==========================================
+             ② つぶやき広場（PC 3列：左ナビ＋中央フィード＋右常設投稿＆おすすめ）
+                ＆ 相性％順・仲間さがし図鑑
+             ========================================== -->
+        <div id="view-tweet" class="tab-view">
+          <div class="subtab-bar two-cols">
+            <button type="button" id="sub-btn-tweet-feed" class="subtab-btn active" onclick="switchTweetSubtab('feed')">💬 現場つぶやき広場</button>
+            <button type="button" id="sub-btn-tweet-dir" class="subtab-btn" onclick="switchTweetSubtab('directory')">🧭 相性％順・仲間さがし図鑑</button>
+          </div>
+
+          <!-- サブA：つぶやき投稿＆地域検索フィード -->
+          <div id="tweet-sub-feed" class="tweet-board-layout">
+
+            <!-- 中央列（2列目）：強化版地域検索 ＋ つぶやき一覧 -->
+            <div class="tweet-main-col">
+              <div class="filter-toolbar">
+                <div style="font-size:0.78em; font-weight:800; color:var(--olive);">📍 地域・キーワード・タグでしっかり絞り込み</div>
+                <div id="tweet-region-pills" class="choice-pills" style="margin-bottom:0;"></div>
+                <div class="search-row">
+                  <select id="tweet-pref-filter" class="form-select pref-filter-sync" style="width:auto; min-width:165px;" onchange="onTweetPrefChange(this.value)"></select>
+                  <input type="text" id="tweet-search-input" class="form-input" style="flex:1; min-width:190px;" placeholder="🔍 市町村・素材・屋号で検索（例：長野、高槻、りんご…）" oninput="onTweetSearchInput(this.value)">
+                  <label style="font-size:0.82em; font-weight:bold; color:var(--text-muted); display:flex; align-items:center; gap:6px; cursor:pointer; white-space:nowrap;">
+                    <input type="checkbox" id="hide-solved-check" onchange="toggleHideSolved(this.checked)"> ✅ 解決済みを隠す
+                  </label>
+                </div>
+                <div id="tweet-filter-pills" class="choice-pills" style="margin-bottom:0;"></div>
+              </div>
+
+              <div id="tweet-list" class="tweet-feed-stack"></div>
+            </div>
+
+            <!-- 右列（3列目・PC常設／スマホでは先頭表示）：つぶやき投稿 ＋ おすすめ神道具＆ミニニュース -->
+            <aside class="tweet-aside-col">
+              <section class="card tweet-composer-card">
+                <div class="section-kicker">QUICK POST（かんたん ＋ 詳細任意）</div>
+                <h2 class="section-title" style="padding-right:0; font-size:1.08em;">✍️ 現場をつぶやく</h2>
+                <p id="tweet-posting-as" style="font-size:0.78em; color:var(--text-muted); margin-bottom:10px;"></p>
+
+                <div class="tag-select" id="tag-selector">
+                  <button type="button" class="tag-btn selected" onclick="selectTag(this)">🆘 ちょっと助けて</button>
+                  <button type="button" class="tag-btn" onclick="selectTag(this)">💡 余ってます・試作相談</button>
+                  <button type="button" class="tag-btn" onclick="selectTag(this)">🚚 軽トラ空きあり</button>
+                  <button type="button" class="tag-btn" onclick="selectTag(this)">🌱 今日のひとこと</button>
+                </div>
+                <textarea id="tweet-input" maxlength="180" style="min-height:84px;" placeholder="例：来週、少し傷がついたりんごが100kg出そう…ジャムにできる工房さんいませんか？"></textarea>
+
+                <details class="detail-accordion">
+                  <summary>＋ 詳細条件を追加（任意：地域・数量・時期）</summary>
+                  <div class="detail-accordion-body">
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                      <select id="tweet-pref" class="form-select pref-select-sync"></select>
+                      <input type="text" id="tweet-city" class="form-input" placeholder="市町村・エリア（例：安曇野市・高槻市）">
+                      <input type="text" id="tweet-qty" class="form-input" placeholder="数量・規模感（例：約50kg / 50個〜）">
+                      <input type="text" id="tweet-deadline" class="form-input" placeholder="希望時期（例：今月中 / 来週金曜）">
+                    </div>
+                  </div>
+                </details>
+
+                <div class="photo-picker-row" style="margin-top:10px;">
+                  <label class="file-label" style="font-size:0.78em; padding:6px 11px;">
+                    📷 写真
+                    <input type="file" id="tweet-photo-file" accept="image/*" onchange="handlePhotoSelect(event, 'tweet')">
+                  </label>
+                  <img id="tweet-photo-preview" class="upload-preview" alt="プレビュー">
+                  <button type="button" id="tweet-photo-clear" class="btn-outline" style="display:none; padding:5px 9px;" onclick="clearPendingPhoto('tweet')">✕</button>
+                  <label style="font-size:0.76em; color:var(--text-muted); display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="checkbox" id="tweet-attach-sample-photo"> 🍎 サンプル写真
+                  </label>
+                </div>
+
+                <button type="button" class="btn-olive" style="width:100%;" onclick="postTweet()">つぶやく（180字）</button>
+              </section>
+
+              <!-- PC 3列目専用：おすすめ神道具アフィリエイト ＆ 今日の現場ミニニュース -->
+              <div class="pc-aside-extras">
+                <section class="card gold-accent" style="padding:18px;">
+                  <div class="section-kicker" style="color:var(--gold);">PICKUP AFFILIATE（50:50還元）</div>
+                  <h3 style="font-size:1em; font-weight:bold; margin-bottom:10px;">🛠️ おすすめ神道具</h3>
+                  <div id="tweet-aside-tools-slot"></div>
+                </section>
+
+                <section class="card" style="padding:18px;">
+                  <div class="section-kicker">TODAY'S PICKUP NEWS</div>
+                  <h3 style="font-size:1em; font-weight:bold; margin-bottom:8px;">📰 現場の加工ヒント</h3>
+                  <div id="tweet-aside-news-slot"></div>
+                </section>
+              </div>
+            </aside>
+          </div>
+
+          <!-- サブB：相性％順・仲間さがし図鑑 -->
+          <div id="tweet-sub-directory" style="display:none; flex-direction:column; gap:20px;">
+            <section class="card">
+              <div class="section-kicker">COMPATIBILITY MATCHING DIRECTORY</div>
+              <h2 class="section-title">🧭 相性％順・仲間さがし図鑑</h2>
+              <p id="dir-my-status" style="font-size:0.85em; color:var(--text-muted); margin-bottom:12px;"></p>
+
+              <div id="dir-region-pills" class="choice-pills"></div>
+              <div class="search-row" style="margin-bottom:10px;">
+                <select id="dir-pref-filter" class="form-select pref-filter-sync" style="width:auto; min-width:170px;" onchange="onDirPrefChange(this.value)"></select>
+                <select id="dir-role-filter" class="form-select" style="width:auto; min-width:180px;" onchange="onDirRoleChange(this.value)">
+                  <option value="ALL">すべての立場</option>
+                  <option value="農家・生産者">🌱 農家・生産者</option>
+                  <option value="加工業者・町工場">🏭 加工業者・町工場</option>
+                  <option value="軽トラ・地域サポーター">🚚 軽トラ・地域サポーター</option>
+                  <option value="企画・アイデア応援">💡 企画・アイデア応援</option>
+                </select>
+                <input type="text" id="dir-search-input" class="form-input" style="flex:1; min-width:200px;" placeholder="🔍 市町村・得意素材・設備・ロットで検索（例：小ロット、京都、ジャム…）" oninput="onDirSearchInput(this.value)">
+              </div>
+              <div id="dir-hit-count" style="font-size:0.8em; font-weight:bold; color:var(--olive);"></div>
+            </section>
+
+            <div id="member-directory-list" class="pc-two-col"></div>
+          </div>
+        </div>
+
+        <!-- ③ EN（ご縁・開発スタジオ） -->
+        <div id="view-en" class="tab-view">
+          <div id="en-my-type-banner"></div>
+
+          <div>
+            <div style="font-size:0.84em; font-weight:bold; color:var(--text-muted); margin-bottom:8px;">
+              📂 進行中のコラボ案件（つぶやき・仲間さがしから「🤝 ご縁を繋ぐ」で増えます！）
+            </div>
+            <div id="en-project-tabs" class="project-tabs"></div>
+          </div>
+
+          <div id="en-active-project-detail"></div>
+        </div>
+
+        <!-- ④ マルシェ ／ 京都・古民家EC棚 ／ 神道具50:50シェア -->
+        <div id="view-marche" class="tab-view">
+          <div class="subtab-bar">
+            <button type="button" id="sub-btn-marche" class="subtab-btn active" onclick="switchMarcheSubtab('marche')">🎪 マルシェ出品枠</button>
+            <button type="button" id="sub-btn-shop" class="subtab-btn" onclick="switchMarcheSubtab('shop')">🏮 京都・古民家EC棚</button>
+            <button type="button" id="sub-btn-tools" class="subtab-btn" onclick="switchMarcheSubtab('tools')">🛠️ 神道具50:50シェア</button>
+          </div>
+
+          <div id="marche-sub-marche" style="display:flex; flex-direction:column; gap:18px;">
+            <section class="card">
+              <div class="section-kicker">EN•joy MARCHE &amp; PRINTABLE POP / STORY CARDS</div>
+              <h2 class="section-title">🎪 誕生コラボ商品 ＆ 店頭POP・ストーリー名刺印刷</h2>
+              <p style="font-size:0.88em; color:var(--text-muted); margin-bottom:10px;">
+                3〜5商品でポップアップ試食会、10商品で第1回単独マルシェ開催！各商品から<strong>A4店頭POP</strong>と<strong>A4・8枚面付けストーリー名刺</strong>を印刷できます。
+              </p>
+              <div id="marche-tab-meter" class="progress-box" style="margin-bottom:18px;"></div>
+              <div id="marche-product-list" class="product-grid"></div>
+            </section>
+          </div>
+
+          <div id="marche-sub-shop" style="display:none; flex-direction:column; gap:18px;">
+            <section class="kyoto-banner">
+              <div style="font-size:0.74em; letter-spacing:0.12em; color:#D8BE86; font-weight:bold; margin-bottom:6px;">
+                PHASE 3 PREVIEW ｜ KYOTO SELECT SHOP &amp; STORY EC
+              </div>
+              <h2 style="font-family:'Hiragino Mincho ProN',serif; font-size:1.4em; margin-bottom:8px; line-height:1.4;">
+                🏮 EN•joy 京都・古民家セレクトショップ棚
+              </h2>
+              <p style="font-size:0.85em; color:#CFC6BA; margin-bottom:14px;">
+                マルシェで愛された商品と「写メ日記から生まれた開発秘話」が並ぶ公式セレクト棚。店頭POPや持ち帰り名刺もワンクリックで出力できます。
+              </p>
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:rgba(255,255,255,0.08); padding:11px 16px; border-radius:12px; font-size:0.86em;">
+                <span>🛍️ テストお買い物かご：<strong id="ec-cart-count" style="color:#E6C98B;">0 点（¥0）</strong></span>
+                <button type="button" class="btn-gold" style="padding:7px 14px; font-size:0.84em;" onclick="checkoutTestCart()">テスト注文を体験する</button>
+              </div>
+            </section>
+
+            <div id="ec-shelf-list" class="product-grid"></div>
+          </div>
+
+          <div id="marche-sub-tools" style="display:none; flex-direction:column; gap:18px;">
+            <section class="card gold-accent">
+              <div class="stamp-badge gold">50:50<br>山分け</div>
+              <div class="section-kicker" style="color:var(--gold);">FIELD TOOLS SHARE（軍資金エンジン稼働中）</div>
+              <h2 class="section-title">🛠️ 現場の「神道具」シェア図鑑</h2>
+              <p style="font-size:0.86em; color:var(--text-muted); margin-bottom:12px;">
+                リンクを押すたびに<strong>「奇数回＝投稿した農家さん本人のURL」「偶数回＝運営（マルシェ開催軍資金）のURL」</strong>へ自動で切り替わります！
+              </p>
+
+              <div class="progress-box" style="margin-top:0; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <div>
+                  <div style="font-size:0.78em; color:var(--text-muted); font-weight:bold;">シミュレーション蓄積軍資金</div>
+                  <div id="marche-fund-display" style="font-size:1.35em; font-weight:800; color:var(--terracotta);">¥12,400 / 目標 ¥30,000</div>
+                </div>
+                <small style="color:var(--olive); font-weight:bold;">※マルシェ会場費・試食費に全額還元</small>
+              </div>
+
+              <div id="tool-list" class="product-grid" style="margin-bottom:20px;"></div>
+
+              <div style="border-top:1px dashed var(--border-shoji); padding-top:16px;">
+                <strong style="font-size:0.92em; display:block; margin-bottom:10px;">➕ あなたのおすすめ道具を追加する</strong>
+                <div class="pc-two-col" style="gap:10px;">
+                  <div class="form-group" style="margin-bottom:0;">
+                    <input type="text" id="tool-name-input" class="form-input" placeholder="道具名（例：疲れにくい剪定ばさみ）">
+                  </div>
+                  <div class="form-group" style="margin-bottom:0;">
+                    <input type="text" id="tool-url-input" class="form-input" placeholder="楽天 / Amazon アフィリエイトURL（空欄OK）">
+                  </div>
+                </div>
+                <div class="form-group" style="margin-top:10px;">
+                  <input type="text" id="tool-comment-input" class="form-input" placeholder="推しポイント（例：3年使っても切れ味抜群！収穫に必須）">
+                </div>
+                <button type="button" class="btn-olive" onclick="addRecommendedTool()">おすすめ道具をシェアする</button>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- ⑤ マイ・構想 -->
+        <div id="view-roadmap" class="tab-view">
+          <div class="pc-two-col">
+            <div style="display:flex; flex-direction:column; gap:20px;">
+              <section class="card" id="diagnosis-card">
+                <div class="section-kicker">30 SEC PERSONALITY CHECK</div>
+                <h2 class="section-title">🧭 ものづくり性格診断</h2>
+                <div id="diagnosis-content"></div>
+              </section>
+
+              <section class="card gold-accent">
+                <div class="section-kicker" style="color:var(--gold);">GRATITUDE STAMPS &amp; CERTIFIED MENTOR</div>
+                <h2 class="section-title">🏅 感謝スタンプ ＆ 認定コンサル資格</h2>
+                <p style="font-size:0.84em; color:var(--text-muted);">
+                  減点・悪口レビューは完全廃止。コラボ成立・同意書作成・感謝スタンプ獲得で称号が育ちます。
+                </p>
+                <div id="earned-badges-shelf" class="badge-shelf"></div>
+                <div id="mentor-status-box" class="mentor-box"></div>
+              </section>
+            </div>
+
+            <section class="card" id="profile-card">
+              <div class="section-kicker">MY PROFILE（かんたん登録 ＋ 任意の詳細プロフィール）</div>
+              <h2 class="section-title">🪪 マイ職人プロフィール</h2>
+              <p style="font-size:0.83em; color:var(--text-muted); margin-bottom:14px;">
+                ※まずは屋号・立場・都道府県だけでOK！詳しい設備やロットは下の「詳細を入力」からいつでも追加できます。
+              </p>
+
+              <div class="form-group">
+                <label class="form-label" for="prof-name">屋号・ニックネーム</label>
+                <input type="text" id="prof-name" class="form-input" placeholder="例：〇〇農園 / たなか">
+              </div>
+
+              <div class="pc-two-col" style="gap:10px; margin-bottom:14px;">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label class="form-label" for="prof-role">あなたの立場</label>
+                  <select id="prof-role" class="form-select">
+                    <option value="農家・生産者">🌱 農家・生産者</option>
+                    <option value="加工業者・町工場">🏭 加工業者・町工場</option>
+                    <option value="軽トラ・地域サポーター">🚚 軽トラ・地域サポーター</option>
+                    <option value="企画・アイデア応援">💡 企画・アイデア応援</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                  <label class="form-label" for="prof-pref">都道府県（地域検索に連動）</label>
+                  <select id="prof-pref" class="form-select pref-select-sync"></select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="prof-area">市町村・活動エリア（例：安曇野市 / 高槻・京都エリア）</label>
+                <input type="text" id="prof-area" class="form-input" placeholder="例：長野県・安曇野エリア / 大阪府高槻市">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="prof-bio">ひとことPR（お見本ワンタップ入力あり）</label>
+                <div class="template-chips">
+                  <button type="button" class="chip-btn" onclick="applyBioTemplate('farmer')">📝 農家のお見本</button>
+                  <button type="button" class="chip-btn" onclick="applyBioTemplate('maker')">📝 工房のお見本</button>
+                  <button type="button" class="chip-btn" onclick="applyBioTemplate('supporter')">📝 軽トラのお見本</button>
+                </div>
+                <textarea id="prof-bio" maxlength="200" placeholder="得意なこと・余っている素材・作ってみたいものを一言で！"></textarea>
+              </div>
+
+              <details class="detail-accordion" style="margin-bottom:14px;">
+                <summary>＋ 詳細プロフィールを入力する（任意：設備・対応ロット・配送範囲・SNS）</summary>
+                <div class="detail-accordion-body">
+                  <div class="form-group">
+                    <label class="form-label" for="prof-specialty">得意な素材・保有設備・加工技術</label>
+                    <input type="text" id="prof-specialty" class="form-input" placeholder="例：ふじりんご、真空パック機、低温乾燥機、菓子製造許可あり">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="prof-lot">対応できる最小ロット・数量感</label>
+                    <input type="text" id="prof-lot" class="form-input" placeholder="例：試作10個〜 / 原材料5kgから相談OK">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="prof-delivery">配送・受け渡し対応エリア</label>
+                    <input type="text" id="prof-delivery" class="form-input" placeholder="例：関西圏なら軽トラ持ち込みOK / 全国クール便対応">
+                  </div>
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label" for="prof-link">SNS・ホームページURL（任意）</label>
+                    <input type="text" id="prof-link" class="form-input" placeholder="例：https://instagram.com/...">
+                  </div>
+                </div>
+              </details>
+
+              <button type="button" class="btn-olive" style="width:100%;" onclick="saveProfileForm()">この内容で保存する（端末ローカル）</button>
+            </section>
+          </div>
+
+          <section class="card">
+            <div class="stamp-badge">v4.5<br>最適UI</div>
+            <div class="section-kicker">GRAND VISION &amp; DATA MANAGEMENT</div>
+            <h2 class="section-title">🗺️ EN•joy 拡大ロードマップ ＆ データ管理</h2>
+            <div class="roadmap-step active">
+              <strong>🟢 Phase 1（フル稼働）：ホーム全目次・推進ゲージ・地域強化検索・相性順図鑑・PC3列つぶやき＆スマホポップアップ</strong>
+            </div>
+            <div class="roadmap-step active">
+              <strong>🟡 Phase 2（フル稼働）：原価＆山分け電卓・写メ日記自動伏せ字・神道具50:50・A4店頭POP＆8枚ストーリー名刺</strong>
+            </div>
+            <div class="roadmap-step active">
+              <strong>🔵 Phase 3（プレビュー稼働）：京都・古民家セレクトショップ（ストーリーEC棚）・認定コンサル</strong>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; align-items:center;">
+              <button type="button" class="btn-outline" onclick="copyBuildInPublicPost()">📣 「100日後エンジニア」告知文をコピー</button>
+              <button type="button" class="btn-outline" onclick="exportBackupJson()">💾 全データをJSON書き出し</button>
+              <label class="btn-outline" style="cursor:pointer;">
+                📂 バックアップから復元
+                <input type="file" accept=".json" style="display:none;" onchange="importBackupJson(event)">
+              </label>
+              <button type="button" class="btn-outline" onclick="resetDemoData()">🔄 初期状態に戻す</button>
+            </div>
+          </section>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- 共通印刷モーダル（簡易同意書PDF ／ A4店頭POP ／ A4・8枚ストーリー名刺） -->
+  <div id="doc-modal" class="modal-backdrop" onclick="if(event.target === this) closeDocModal()">
+    <div id="doc-modal-content" class="modal-shell"></div>
+  </div>
+
+  <!-- スマホ・スクロール途中用：クイックつぶやきポップアップモーダル -->
+  <div id="quick-tweet-modal" class="modal-backdrop" onclick="if(event.target === this) closeQuickTweetModal()">
+    <div class="quick-tweet-sheet">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div>
+          <div class="section-kicker" style="margin-bottom:0;">QUICK TWEET POPUP</div>
+          <h3 style="font-size:1.1em; font-weight:bold;">✍️ その場でつぶやく</h3>
+        </div>
+        <button type="button" class="btn-outline" onclick="closeQuickTweetModal()">✕ 閉じる</button>
+      </div>
+
+      <div class="tag-select" id="qt-tag-selector">
+        <button type="button" class="tag-btn selected" onclick="selectQuickTag(this)">🆘 ちょっと助けて</button>
+        <button type="button" class="tag-btn" onclick="selectQuickTag(this)">💡 余ってます・試作相談</button>
+        <button type="button" class="tag-btn" onclick="selectQuickTag(this)">🚚 軽トラ空きあり</button>
+        <button type="button" class="tag-btn" onclick="selectQuickTag(this)">🌱 今日のひとこと</button>
+      </div>
+
+      <textarea id="qt-input" maxlength="180" style="min-height:92px;" placeholder="スクロール中でも思いついたらすぐ投稿！"></textarea>
+
+      <details class="detail-accordion" style="margin-bottom:10px;">
+        <summary>＋ 詳細条件を追加（任意：地域・数量・時期）</summary>
+        <div class="detail-accordion-body">
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <select id="qt-pref" class="form-select pref-select-sync"></select>
+            <input type="text" id="qt-city" class="form-input" placeholder="市町村・エリア（例：安曇野市・高槻市）">
+            <input type="text" id="qt-qty" class="form-input" placeholder="数量・規模感（例：約50kg / 50個〜）">
+            <input type="text" id="qt-deadline" class="form-input" placeholder="希望時期（例：今月中 / 来週金曜）">
+          </div>
+        </div>
+      </details>
+
+      <div class="photo-picker-row">
+        <label class="file-label" style="font-size:0.78em; padding:6px 11px;">
+          📷 写真を選ぶ
+          <input type="file" id="qt-photo-file" accept="image/*" onchange="handlePhotoSelect(event, 'qt')">
+        </label>
+        <img id="qt-photo-preview" class="upload-preview" alt="プレビュー">
+        <button type="button" id="qt-photo-clear" class="btn-outline" style="display:none; padding:5px 9px;" onclick="clearPendingPhoto('qt')">✕</button>
+        <label style="font-size:0.76em; color:var(--text-muted); display:flex; align-items:center; gap:4px; cursor:pointer;">
+          <input type="checkbox" id="qt-attach-sample-photo"> 🍎 サンプル写真
+        </label>
+      </div>
+
+      <button type="button" class="btn-olive" style="width:100%;" onclick="postQuickTweet()">つぶやきを投稿する</button>
+    </div>
+  </div>
+
+  <!-- スマホ専用：スクロール途中でもすぐつぶやけるフローティングボタン -->
+  <button type="button" id="mobile-tweet-fab" class="mobile-tweet-fab" onclick="openQuickTweetModal()" aria-label="今すぐつぶやく">
+    <span>✍️</span><span>つぶやく</span>
+  </button>
+
+  <!-- モバイル専用・下部固定グラスドック -->
+  <div class="bottom-dock">
+    <nav class="nav-bar" aria-label="メニュー一覧">
+      <button type="button" class="nav-item nav-sync-home active" onclick="switchTab('home')">
+        <span class="nav-icon">🏠</span><span>ホーム</span>
+      </button>
+      <button type="button" class="nav-item nav-sync-tweet" onclick="switchTab('tweet')">
+        <span class="nav-icon">💬</span><span>つぶやき</span>
+      </button>
+
+      <div class="nav-en-wrapper">
+        <button type="button" class="nav-en-btn nav-sync-en" onclick="switchTab('en')" aria-label="ご縁">
+          EN
+          <span class="en-badge-count en-badge-count-sync">1</span>
+        </button>
+        <span class="nav-en-label">ご縁</span>
+      </div>
+
+      <button type="button" class="nav-item nav-sync-marche" onclick="switchTab('marche')">
+        <span class="nav-icon">🎪</span><span>マルシェ</span>
+      </button>
+      <button type="button" class="nav-item nav-sync-roadmap" onclick="switchTab('roadmap')">
+        <span class="nav-icon">🪪</span><span>マイ・構想</span>
+      </button>
+    </nav>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
