@@ -1127,8 +1127,32 @@
     };
   }
 
+  /* ---------- スクロール連動：下スクロールで常設タブを隠す / 上で再表示 ---------- */
+  function bindScrollHideDock() {
+    let lastY = window.scrollY;
+    window.addEventListener('scroll', () => {
+      const y = window.scrollY;
+      // 画面最上部付近は常に表示
+      if (y <= 40) {
+        document.body.classList.remove('dock-hidden');
+        lastY = y;
+        return;
+      }
+      // 12px以上下にスクロール → 隠す（サブタブも閉じる）
+      if (y > lastY + 12) {
+        document.body.classList.add('dock-hidden');
+        document.body.classList.remove('subnav-open');
+      }
+      // 8px以上上にスクロール → 再表示
+      else if (y < lastY - 8) {
+        document.body.classList.remove('dock-hidden');
+      }
+      lastY = y;
+    }, { passive: true });
+  }
   /* ---------- 起動 ---------- */
-  bindEvents();
+bindEvents();
+  bindScrollHideDock();
   renderAll();
   if (!state.uiMode) openModal('modal-ui-select');
 })();

@@ -675,15 +675,53 @@ body.ui-simple .dock-label {
    親指ゾーン完結パッチ（操作を画面下部に集約・視線移動を最小化）
    ============================================================ */
 /* ============================================================
-   スマホ用：常設タブからスッと出て、選ぶと消えるサブタブ設計
+   スマホ用：下部ドック確実表示 ＋ スクロール連動出し入れ ＋ サブタブ開閉
    ============================================================ */
-@media (max-width: 860px) {
-  /* 普段はサブタブが消えているので余白も最小限で画面が広い */
+@media (max-width: 1024px) {
+  /* 左サイドバーを確実に非表示、下部ドックを確実に表示 */
+  .sidebar {
+    display: none !important;
+  }
+  .mobile-only {
+    display: inline-flex !important;
+  }
   .main-wrap {
+    margin-left: 0 !important;
     padding-bottom: calc(var(--dock-h) + 12px);
   }
+  .app-main {
+    padding: 10px 8px 20px;
+  }
+  .card-grid-2, .card-grid-3, .feed-grid, .form-row-2 {
+    grid-template-columns: 1fr;
+  }
+  .cost-row-4, .photo-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 
-  /* サブタブ・開発4ミニタブをドックのすぐ上に配置（初期状態は非表示） */
+  /* 下部常設ドック（スクロールで出し入れ） */
+  .mobile-dock {
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: var(--dock-h);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 90;
+    padding-bottom: env(safe-area-inset-bottom);
+    transform: translateY(0);
+    transition: transform 0.22s ease;
+  }
+
+  /* 下スクロール時：常設タブを下に隠す */
+  body.dock-hidden .mobile-dock {
+    transform: translateY(100%);
+  }
+
+  /* サブタブ・開発4ミニタブ（常設タブを押したときだけ出現） */
   #tab-useful > .seg-bar,
   #tab-plaza > .seg-bar,
   #tab-en > .seg-bar,
@@ -704,18 +742,16 @@ body.ui-simple .dock-label {
     transition: transform 0.16s ease, opacity 0.16s ease;
   }
 
-  /* 常設タブを押したときだけスッと表示 */
-  body.subnav-open #tab-useful > .seg-bar,
-  body.subnav-open #tab-plaza > .seg-bar,
-  body.subnav-open #tab-en > .seg-bar,
-  body.subnav-open #tab-shop > .seg-bar,
-  body.subnav-open #tab-home .mini-tab-bar {
+  body.subnav-open:not(.dock-hidden) #tab-useful > .seg-bar,
+  body.subnav-open:not(.dock-hidden) #tab-plaza > .seg-bar,
+  body.subnav-open:not(.dock-hidden) #tab-en > .seg-bar,
+  body.subnav-open:not(.dock-hidden) #tab-shop > .seg-bar,
+  body.subnav-open:not(.dock-hidden) #tab-home .mini-tab-bar {
     transform: translateY(0);
     opacity: 1;
     pointer-events: auto;
   }
 
-  /* 選択中タブの目印 */
   #tab-useful > .seg-bar .seg-btn.active,
   #tab-plaza > .seg-bar .seg-btn.active,
   #tab-en > .seg-bar .seg-btn.active,
