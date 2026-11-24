@@ -3,902 +3,346 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#C65D3B" />
-  <title>EN•joy v5.0 — ご縁を育て、仕立てる共創プラットフォーム</title>
+  <meta name="theme-color" content="#1A1A1A" />
+  <title>EN•joy v6.0 — 縁を仕立て、続ける</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- ========== 最上部：運営・メンテナンスお知らせバー (#19) ========== -->
-  <div id="admin-banner" class="admin-banner hidden" role="status" aria-live="polite">
-    <div class="admin-banner-inner">
-      <span id="admin-banner-badge" class="admin-banner-badge">📢 お知らせ</span>
-      <p id="admin-banner-text" class="admin-banner-text"></p>
-      <button type="button" id="btn-close-banner" class="admin-banner-close" aria-label="お知らせを閉じる">✕</button>
+
+  <!-- ========== 初回UIモード選択モーダル（モダン / かんたん） ========== -->
+  <div id="modal-ui-select" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-sheet modal-sm">
+      <div class="modal-head">
+        <h2>EN•joy へようこそ</h2>
+      </div>
+      <div class="modal-body">
+        <p class="lead-text">使いやすい画面スタイルを選んでください（あとからいつでも切替できます）</p>
+        <div class="mode-pick-grid">
+          <button type="button" class="mode-card" data-pick-ui="modern">
+            <span class="mode-ico">⚡</span>
+            <strong>モダン（標準）</strong>
+            <span>写真中心・スッキリ高密度</span>
+          </button>
+          <button type="button" class="mode-card" data-pick-ui="simple">
+            <span class="mode-ico">🔰</span>
+            <strong>かんたん（大文字）</strong>
+            <span>大きな文字・1列・迷わない</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- ========== アプリ全体シェル (PC左サイドバー + メイン) ========== -->
+  <!-- ========== アプリ全体シェル ========== -->
   <div class="app-shell">
 
-    <!-- PC用 左サイドバー (5タブ固定) -->
+    <!-- PC用 左サイドバー（新・5タブ固定） -->
     <aside class="sidebar" aria-label="メインナビゲーション">
       <div class="sidebar-brand">
-        <button type="button" class="brand-btn" data-go-home="true" aria-label="ホームへ戻る">
-          <svg class="brand-mark" viewBox="0 0 64 64" width="38" height="38" aria-hidden="true">
-            <circle cx="30" cy="34" r="24" fill="#C65D3B" />
-            <circle cx="30" cy="34" r="21" fill="none" stroke="#F8F3EA" stroke-width="2.5" stroke-dasharray="4 3" />
-            <line x1="23" y1="24" x2="23" y2="29" stroke="#F8F3EA" stroke-width="3.2" stroke-linecap="round" />
-            <line x1="37" y1="24" x2="37" y2="29" stroke="#F8F3EA" stroke-width="3.2" stroke-linecap="round" />
-            <path d="M23 44 V35 C23 31 37 31 37 35 V44" fill="none" stroke="#F8F3EA" stroke-width="3.4" stroke-linecap="round" />
-            <text x="50" y="20" fill="#C65D3B" font-size="18" font-weight="900" font-family="sans-serif">?</text>
+        <button type="button" class="brand-btn" data-tab="home">
+          <svg class="brand-mark" viewBox="0 0 64 64" width="30" height="30" aria-hidden="true">
+            <rect x="4" y="4" width="56" height="56" rx="4" fill="#1A1A1A" />
+            <line x1="23" y1="22" x2="23" y2="27" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="square" />
+            <line x1="41" y1="22" x2="41" y2="27" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="square" />
+            <path d="M23 44 V35 C23 30 41 30 41 35 V44" fill="none" stroke="#C65D3B" stroke-width="4" stroke-linecap="square" />
           </svg>
-          <div class="brand-text-wrap">
-            <span class="brand-title">EN•joy</span>
-            <span class="brand-sub">to EN•dress</span>
-          </div>
+          <span class="brand-title">EN•joy</span>
         </button>
-        <button type="button" id="btn-version-pc" class="version-pill" title="更新履歴を見る">v5.0</button>
+        <span class="ver-tag">v6.0</span>
       </div>
 
       <nav class="sidebar-nav">
-        <button type="button" class="nav-item active" data-tab="home">
-          <span class="nav-ico">🏠</span>
-          <span class="nav-label">ホーム</span>
+        <button type="button" class="nav-item" data-tab="useful">
+          <span class="nav-ico">🥬</span><span class="nav-label">役立ち</span>
         </button>
         <button type="button" class="nav-item" data-tab="plaza">
-          <span class="nav-ico">💬</span>
-          <span class="nav-label">広場・めぐり</span>
+          <span class="nav-ico">💬</span><span class="nav-label">広場</span>
         </button>
-        <button type="button" class="nav-item nav-item-accent" data-tab="en">
-          <span class="nav-ico">🤝</span>
-          <span class="nav-label">EN ご縁・開発室</span>
-          <span id="badge-en-pc" class="nav-badge hidden">0</span>
+        <button type="button" class="nav-item nav-item-en" data-tab="en">
+          <span class="nav-ico">🤝</span><span class="nav-label">EN 出会い</span>
         </button>
-        <button type="button" class="nav-item" data-tab="marche">
-          <span class="nav-ico">🎪</span>
-          <span class="nav-label">マルシェ・旬</span>
+        <button type="button" class="nav-item" data-tab="shop">
+          <span class="nav-ico">🛍️</span><span class="nav-label">通販</span>
         </button>
-        <button type="button" class="nav-item" data-tab="my">
-          <span class="nav-ico">🏆</span>
-          <span class="nav-label">マイ・輪</span>
+        <button type="button" class="nav-item active" data-tab="home">
+          <span class="nav-ico">🏠</span><span class="nav-label">ホーム</span>
+          <span id="badge-home-pc" class="nav-dot hidden"></span>
         </button>
       </nav>
 
       <div class="sidebar-footer">
-        <button type="button" id="btn-focus-sidebar" class="focus-mini-btn">
-          <span>🚜 本業集中：</span>
-          <strong id="focus-state-sidebar">OFF</strong>
-        </button>
-        <button type="button" class="sidebar-link-btn" data-open-modal="modal-inquiry">
-          ✉️ お問い合わせ・要望
-        </button>
+        <button type="button" id="btn-ui-mode-pc" class="side-util-btn">⚡ モダン / 🔰 かんたん</button>
+        <button type="button" id="btn-focus-pc" class="side-util-btn">🚜 集中モード：OFF</button>
       </div>
     </aside>
 
     <!-- メインカラム -->
     <div class="main-wrap">
 
-      <!-- 共通トップヘッダー -->
+      <!-- トップヘッダー（3色ミニマル） -->
       <header class="top-header">
-        <div class="top-header-left">
-          <button type="button" class="brand-btn mobile-only" data-go-home="true" aria-label="ホームへ戻る">
-            <svg class="brand-mark" viewBox="0 0 64 64" width="32" height="32" aria-hidden="true">
-              <circle cx="30" cy="34" r="24" fill="#C65D3B" />
-              <circle cx="30" cy="34" r="21" fill="none" stroke="#F8F3EA" stroke-width="2.5" stroke-dasharray="4 3" />
-              <line x1="23" y1="24" x2="23" y2="29" stroke="#F8F3EA" stroke-width="3.2" stroke-linecap="round" />
-              <line x1="37" y1="24" x2="37" y2="29" stroke="#F8F3EA" stroke-width="3.2" stroke-linecap="round" />
-              <path d="M23 44 V35 C23 31 37 31 37 35 V44" fill="none" stroke="#F8F3EA" stroke-width="3.4" stroke-linecap="round" />
-              <text x="50" y="20" fill="#C65D3B" font-size="18" font-weight="900" font-family="sans-serif">?</text>
-            </svg>
-            <span class="brand-title">EN•joy</span>
-          </button>
-          <button type="button" id="btn-version-mobile" class="version-pill mobile-only">v5.0</button>
-          <h1 id="page-title" class="page-title pc-only">🏠 ホーム</h1>
+        <div class="header-left">
+          <span class="brand-title mobile-only">EN•joy</span>
+          <h1 id="page-title" class="page-title">🏠 ホーム</h1>
         </div>
-
-        <div class="top-header-right">
-          <button type="button" id="btn-open-inbox" class="header-icon-btn" title="一括メッセージ箱 (#11)">
-            <span>📬</span>
-            <span class="pc-only">受信箱</span>
-            <span id="badge-inbox" class="count-badge">0</span>
-          </button>
-          <button type="button" id="btn-font-toggle" class="header-text-btn" title="文字サイズ切替">
-            標準 / 大
+        <div class="header-right">
+          <button type="button" id="btn-ui-mode-mobile" class="icon-pill-btn mobile-only" title="UI切替">⚡/🔰</button>
+          <button type="button" id="btn-open-chat" class="icon-pill-btn" title="チャット・受信箱">
+            <span>💬</span><span id="badge-chat" class="pill-count">0</span>
           </button>
         </div>
       </header>
 
-      <!-- メインコンテンツ領域 -->
-      <main id="app-main" class="app-main">
+      <!-- メインコンテンツ -->
+      <main class="app-main">
 
         <!-- ========================================================== -->
-        <!-- TAB 1: 🏠 ホーム（今日の起点 & 裏方番頭）                   -->
+        <!-- 1. 左端：🥬 役立ち（旬レシピ・AI栄養 ／ 資材・神道具・協賛） -->
+        <!-- ========================================================== -->
+        <section id="tab-useful" class="tab-panel" aria-label="役立ち">
+          <div class="seg-bar">
+            <button type="button" class="seg-btn active" data-seg-group="useful" data-seg="shun">🥬 旬・レシピ</button>
+            <button type="button" class="seg-btn" data-seg-group="useful" data-seg="plan">📅 1週間献立</button>
+            <button type="button" class="seg-btn" data-seg-group="useful" data-seg="tools">🛠️ 資材・協賛</button>
+          </div>
+
+          <div id="useful-shun" class="seg-panel active"></div>
+          <div id="useful-plan" class="seg-panel"></div>
+          <div id="useful-tools" class="seg-panel"></div>
+        </section>
+
+        <!-- ========================================================== -->
+        <!-- 2. 左2：💬 広場（SNS・小さい案件：画像付つぶやき ／ 動画）   -->
+        <!-- ========================================================== -->
+        <section id="tab-plaza" class="tab-panel" aria-label="広場">
+          <div class="seg-bar">
+            <button type="button" class="seg-btn active" data-seg-group="plaza" data-seg="feed">📝 つぶやき</button>
+            <button type="button" class="seg-btn" data-seg-group="plaza" data-seg="shorts">🎬 15秒動画</button>
+          </div>
+
+          <!-- つぶやき（画像添付対応） -->
+          <div id="plaza-feed" class="seg-panel active">
+            <form id="form-feed" class="composer-box">
+              <div class="composer-top">
+                <select id="feed-tag" class="input input-compact">
+                  <option value="余ってます">💡 余ってます</option>
+                  <option value="困りごと">🆘 困りごと</option>
+                  <option value="軽トラ便">🚚 軽トラ便</option>
+                  <option value="現場メモ">📸 現場メモ</option>
+                </select>
+                <input type="text" id="feed-area" class="input input-compact" placeholder="地域（例：高槻）" />
+              </div>
+              <textarea id="feed-text" class="input textarea" rows="2" placeholder="いまの現場や、ちょっとした困りごとを投稿"></textarea>
+              <div id="feed-img-preview" class="img-preview-wrap hidden"></div>
+              <div class="composer-actions">
+                <label class="btn btn-ghost btn-sm file-label">
+                  📷 写真を追加
+                  <input type="file" id="feed-img-input" accept="image/*" hidden />
+                </label>
+                <button type="submit" class="btn btn-accent btn-sm">投稿する</button>
+              </div>
+            </form>
+
+            <div class="search-strip">
+              <input type="search" id="feed-search" class="input" placeholder="🔍 キーワード・地域で検索" />
+            </div>
+            <div id="feed-list" class="feed-grid"></div>
+          </div>
+
+          <!-- 15秒動画 -->
+          <div id="plaza-shorts" class="seg-panel"></div>
+        </section>
+
+        <!-- ========================================================== -->
+        <!-- 3. 真ん中：🤝 EN（出会い・大きい案件：やりたいこと ／ 人・地図）-->
+        <!-- ========================================================== -->
+        <section id="tab-en" class="tab-panel" aria-label="EN 出会い">
+          <div class="seg-bar">
+            <button type="button" class="seg-btn active" data-seg-group="en" data-seg="ideas">🚀 やりたいこと募集</button>
+            <button type="button" class="seg-btn" data-seg-group="en" data-seg="people">🤝 おすすめの人</button>
+            <button type="button" class="seg-btn" data-seg-group="en" data-seg="map">🗺️ ご縁マップ</button>
+          </div>
+
+          <!-- やりたいこと・活用模索カード（大きい案件の起点） -->
+          <div id="en-ideas" class="seg-panel active">
+            <div class="action-bar">
+              <button type="button" id="btn-open-new-idea" class="btn btn-accent">＋ やりたいこと・活用相談を募集する</button>
+            </div>
+            <div id="en-ideas-list" class="card-grid-2"></div>
+          </div>
+
+          <!-- おすすめの人・マッチング -->
+          <div id="en-people" class="seg-panel"></div>
+
+          <!-- ご縁めぐりマップ -->
+          <div id="en-map" class="seg-panel"></div>
+        </section>
+
+        <!-- ========================================================== -->
+        <!-- 4. 右2：🛍️ 通販（開発中・予約 ／ 完成品EC ／ 買い物帳）      -->
+        <!-- ========================================================== -->
+        <section id="tab-shop" class="tab-panel" aria-label="通販">
+          <div class="seg-bar">
+            <button type="button" class="seg-btn active" data-seg-group="shop" data-seg="wip">🧪 開発中・早割</button>
+            <button type="button" class="seg-btn" data-seg-group="shop" data-seg="ec">🏮 EN•dress EC</button>
+            <button type="button" class="seg-btn" data-seg-group="shop" data-seg="book">❤️ 買い物帳</button>
+          </div>
+
+          <div id="shop-wip" class="seg-panel active"></div>
+          <div id="shop-ec" class="seg-panel"></div>
+          <div id="shop-book" class="seg-panel"></div>
+        </section>
+
+        <!-- ========================================================== -->
+        <!-- 5. 右端：🏠 ホーム（最上段に開発ルーム＆チャット ／ 個人設定） -->
         <!-- ========================================================== -->
         <section id="tab-home" class="tab-panel active" aria-label="ホーム">
 
-          <!-- 1タップ目次インデックス -->
-          <div class="quick-jump-bar">
-            <a href="#home-banto" class="jump-chip">☕ 裏方番頭</a>
-            <a href="#home-status" class="jump-chip">🔥 マイ熱量</a>
-            <a href="#home-progress" class="jump-chip">🛠️ 開発進捗</a>
-            <a href="#home-pickup" class="jump-chip">🎪 マルシェ＆資材</a>
-          </div>
-
-          <!-- 裏方番頭システム -->
-          <article id="home-banto" class="card banto-card">
-            <div class="card-head">
-              <div>
-                <span class="eyebrow">裏方番頭システム</span>
-                <h2>☕ 現場に集中してください。下準備は裏で進めます</h2>
-              </div>
-              <button type="button" id="btn-focus-toggle" class="btn btn-focus">
-                🚜 本業集中モード：<span id="focus-state-label">OFF</span>
-              </button>
-            </div>
-
-            <div id="focus-banner" class="focus-active-strip hidden">
-              <strong>🚜 本業集中モード稼働中：</strong> 通知をすべて保留し、届いた連絡やご縁候補を「おかえりブリーフィング」に自動仕分けしています。
-            </div>
-
-            <!-- 声ひとこと丸投げ仕込み -->
-            <div class="banto-voice-box">
-              <label for="banto-memo-input" class="field-label">🎙️ 現場のひとこと丸投げ（音声入力・メモ）</label>
-              <div class="voice-input-row">
-                <input
-                  type="text"
-                  id="banto-memo-input"
-                  class="input"
-                  placeholder="例：来週土曜の午前、りんご規格外50kg出そう。試作したい町工場ある？"
-                />
-                <button type="button" id="btn-voice-rec" class="btn btn-outline" title="音声で入力">🎙️ 音声</button>
-                <button type="button" id="btn-banto-submit" class="btn btn-primary">番頭に投げる</button>
-              </div>
-              <p class="hint-text">※投げた内容は番頭が「つぶやき下書き」「カレンダー予定」「相性ご縁候補」へ自動仕分けします。</p>
-            </div>
-
-            <!-- 1分おかえりブリーフィング & 勝手にご縁提案 -->
-            <div class="banto-grid">
-              <div class="sub-box">
-                <div class="sub-box-head">
-                  <h3>📋 1分おかえりブリーフィング</h3>
-                  <span id="banto-brief-count" class="mini-pill">0件</span>
-                </div>
-                <ul id="banto-brief-list" class="brief-list"></ul>
-              </div>
-
-              <div class="sub-box">
-                <div class="sub-box-head">
-                  <h3>✨ 番頭の勝手にご縁＆仮収支提案</h3>
-                  <button type="button" id="btn-refresh-proposal" class="text-btn">別案を見る</button>
-                </div>
-                <div id="banto-proposal-box" class="proposal-box"></div>
+          <!-- 最上段（一番目立つ場所）：進行中の開発ルーム -->
+          <section class="home-hero-dev">
+            <div class="section-head">
+              <h2>🛠️ 進行中の開発ルーム</h2>
+              <div class="btn-row">
+                <button type="button" id="btn-new-room" class="btn btn-outline btn-sm">＋ 新規ルーム</button>
+                <button type="button" id="btn-new-product" class="btn btn-outline btn-sm">＋ 商品追加</button>
               </div>
             </div>
-          </article>
 
-          <!-- マイ簡易ステータス -->
-          <article id="home-status" class="card">
-            <div class="card-head">
-              <div>
-                <span class="eyebrow">あなたの現在地</span>
-                <h2>🔥 熱量メーター ＆ 個人4軸レベル</h2>
-              </div>
-              <button type="button" class="text-btn" data-jump-tab="my">詳細を見る →</button>
-            </div>
-            <div id="home-status-body" class="status-summary-grid"></div>
-          </article>
+            <!-- ルーム＆商品スイッチャー -->
+            <div id="dev-room-tabs" class="chip-scroll"></div>
+            <div id="dev-prod-tabs" class="chip-scroll"></div>
 
-          <!-- 進行中の開発ボード & 直近カレンダー -->
-          <article id="home-progress" class="card">
-            <div class="card-head">
-              <div>
-                <span class="eyebrow">進行中の共創プロジェクト</span>
-                <h2>🛠️ 開発ボード ＆ 直近スケジュール</h2>
-              </div>
-              <button type="button" class="text-btn" data-jump-tab="en">開発室を開く →</button>
-            </div>
-            <div id="home-projects-list" class="mini-project-grid"></div>
-            <div class="divider"></div>
-            <h3 class="sub-heading">📅 直近のメンバー共有カレンダー (#10)</h3>
-            <ul id="home-calendar-list" class="compact-cal-list"></ul>
-          </article>
-
-          <!-- 今日のピックアップ（マルシェ軍資金 & 資材） -->
-          <article id="home-pickup" class="card">
-            <div class="card-head">
-              <div>
-                <span class="eyebrow">EN•dress へ向けて</span>
-                <h2>🎪 マルシェ軍資金アンロック ＆ おすすめ資材</h2>
-              </div>
-              <button type="button" class="text-btn" data-jump-tab="marche">マルシェへ →</button>
-            </div>
-            <div id="home-fund-box" class="fund-banner"></div>
-            <div id="home-pickup-materials" class="pickup-grid"></div>
-          </article>
-
-          <!-- フッター入口 -->
-          <footer class="home-footer-card">
-            <div class="footer-actions">
-              <button type="button" class="btn btn-outline" data-open-modal="modal-inquiry">
-                ✉️ カテゴリー別お問い合わせ・協賛相談
-              </button>
-              <button type="button" class="btn btn-outline" data-open-modal="modal-version">
-                📋 更新履歴・ロードマップ (v5.0 → v5.2)
-              </button>
-            </div>
-            <p class="footer-note">EN•joy v5.0 — 維持費0円・GitHub Pages稼働 ／ 次の進化：v5.1 円形「ご縁の年輪ボード」＆行動分析</p>
-          </footer>
-        </section>
-
-        <!-- ========================================================== -->
-        <!-- TAB 2: 💬 広場・めぐり（人・企画・場所と出会う）            -->
-        <!-- ========================================================== -->
-        <section id="tab-plaza" class="tab-panel" aria-label="広場・めぐり">
-          <div class="subtab-bar" role="tablist">
-            <button type="button" class="subtab-btn active" data-subtab-group="plaza" data-subtab="feed">💬 現場つぶやき</button>
-            <button type="button" class="subtab-btn" data-subtab-group="plaza" data-subtab="members">🤝 仲間図鑑</button>
-            <button type="button" class="subtab-btn" data-subtab-group="plaza" data-subtab="projects">🚀 進行中企画</button>
-            <button type="button" class="subtab-btn" data-subtab-group="plaza" data-subtab="map">🗺️ ご縁めぐり</button>
-          </div>
-
-          <!-- 2-1: 現場つぶやき -->
-          <div id="plaza-feed" class="subtab-panel active">
-            <div class="card">
-              <h2 class="card-title-sm">📝 現場の今をつぶやく（余ってます・軽トラ・助っ人募集）</h2>
-              <form id="form-post-feed" class="stack-form">
-                <div class="form-row-2">
-                  <select id="feed-tag" class="input">
-                    <option value="💡 余ってます">💡 余ってます（規格外・端材）</option>
-                    <option value="🚚 軽トラ便">🚚 軽トラ・相乗り便</option>
-                    <option value="🛠️ 加工・試作募集">🛠️ 加工・試作パートナー募集</option>
-                    <option value="🎪 マルシェ速報">🎪 マルシェ・現場速報</option>
-                  </select>
-                  <input type="text" id="feed-area" class="input" placeholder="地域（例：長野県・大阪府高槻市）" />
-                </div>
-                <textarea id="feed-body" class="input textarea" rows="2" placeholder="いま現場で起きていること、誰かと組んでみたいことを気軽にどうぞ"></textarea>
-                <div class="form-actions-right">
-                  <button type="submit" class="btn btn-primary">広場につぶやく (+EXP)</button>
-                </div>
-              </form>
-            </div>
-
-            <div class="filter-bar">
-              <input type="search" id="feed-search" class="input" placeholder="🔍 キーワード・地域で絞り込み..." />
-              <select id="feed-filter-tag" class="input input-sm">
-                <option value="">すべてのタグ</option>
-                <option value="💡 余ってます">💡 余ってます</option>
-                <option value="🚚 軽トラ便">🚚 軽トラ便</option>
-                <option value="🛠️ 加工・試作募集">🛠️ 加工・試作募集</option>
-                <option value="🎪 マルシェ速報">🎪 マルシェ速報</option>
-              </select>
-            </div>
-            <div id="feed-list" class="card-stack"></div>
-          </div>
-
-          <!-- 2-2: 仲間図鑑 (#5 熱量ブースト順) -->
-          <div id="plaza-members" class="subtab-panel">
-            <div class="info-strip">
-              🔥 <strong>熱量ブースト順表示 (#5)：</strong> 詳細プロフィールや開発への想いをしっかり書いている仲間ほど上位に表示され、相性％も精度が上がります。
-            </div>
-            <div class="filter-bar">
-              <input type="search" id="member-search" class="input" placeholder="🔍 業種・得意なこと・地域で検索..." />
-              <select id="member-filter-role" class="input input-sm">
-                <option value="">すべての業種</option>
-                <option value="農家・生産者">農家・生産者</option>
-                <option value="町工場・加工">町工場・加工</option>
-                <option value="デザイン・企画">デザイン・企画</option>
-                <option value="一般サポーター">一般サポーター</option>
-              </select>
-            </div>
-            <div id="members-grid" class="member-grid"></div>
-          </div>
-
-          <!-- 2-3: 進行中企画公開一覧 (#6・#7) -->
-          <div id="plaza-projects" class="subtab-panel">
-            <div class="info-strip">
-              🚀 <strong>開発中の裏側を応援しよう (#6・#7)：</strong> 「食べてみたい」「行ってみたい」のリアクションや温かいコメントが作り手の力になります。参加オファーはメンバー全員の同意で正式合流！
-            </div>
-            <div id="public-projects-list" class="card-stack"></div>
-          </div>
-
-          <!-- 2-4: ご縁めぐりマップ (v5.2予告受け皿) -->
-          <div id="plaza-map" class="subtab-panel">
-            <div class="card roadmap-placeholder">
-              <span class="eyebrow">Step 3（v5.2）実装予定</span>
-              <h2>🗺️ ポケフタ風「EN•joy ご縁めぐりマップ」</h2>
-              <p>「マップに場所を公開する」をONにした作り手・直売所・テストキッチン・マルシェ会場だけを地図上にカスタムピン表示。訪問スタンプと、車・電車・徒歩の経路ナビを搭載予定です。</p>
-              <div id="map-preview-list" class="mini-tag-list"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- ========================================================== -->
-        <!-- TAB 3: 🤝 EN（ご縁・開発室）(#1〜#10)                       -->
-        <!-- ========================================================== -->
-        <section id="tab-en" class="tab-panel" aria-label="ご縁・開発室">
-
-          <!-- 親：ご縁ルーム切替 (#1) -->
-          <div class="card room-selector-card">
-            <div class="card-head">
-              <div>
-                <span class="eyebrow">1ご縁（親）→ 複数商品（子） (#1)</span>
-                <h2>🤝 ご縁ルーム切替</h2>
-              </div>
-              <button type="button" id="btn-new-room" class="btn btn-outline btn-sm">＋ 新しいご縁ルーム</button>
-            </div>
-            <div id="en-room-pills" class="pill-scroll"></div>
-
-            <!-- 子：商品タブ切替 -->
-            <div class="divider-sm"></div>
-            <div class="product-tab-row">
-              <div id="en-product-pills" class="pill-scroll"></div>
-              <button type="button" id="btn-new-product" class="btn btn-primary btn-sm">＋ 第2弾・新商品を追加</button>
-            </div>
-          </div>
-
-          <!-- 選択中商品のワークスペース -->
-          <div id="en-workspace" class="workspace-stack">
-
-            <!-- 商品ヘッダー・フェーズ・公開設定 (#3, #8, #15) -->
-            <article class="card">
-              <div class="workspace-head">
+            <!-- 開発ルーム本体（4ミニタブでスッキリ整理） -->
+            <div id="dev-workspace-box" class="dev-box">
+              <div class="dev-box-head">
                 <div>
-                  <div class="badge-row">
-                    <span id="ws-phase-badge" class="phase-badge">企画中</span>
-                    <span id="ws-visibility-badge" class="vis-badge">🌐 公開中</span>
-                  </div>
-                  <h2 id="ws-product-title" class="ws-title">商品名</h2>
-                  <p id="ws-members-line" class="ws-meta"></p>
+                  <span id="dev-phase-tag" class="tag-accent">試作中</span>
+                  <h3 id="dev-prod-title" class="dev-title">商品名</h3>
                 </div>
-                <div class="ws-controls">
-                  <select id="ws-phase-select" class="input input-sm" title="開発フェーズ変更">
-                    <option value="企画中">1. 企画中</option>
-                    <option value="試作中">2. 試作中</option>
-                    <option value="準備OK">3. 準備OK（マルシェ待ち）</option>
-                    <option value="出店中">4. 出店・販売中</option>
-                  </select>
-                  <select id="ws-visibility-select" class="input input-sm" title="公開範囲 (#8)">
-                    <option value="public">🌐 広場に公開</option>
-                    <option value="supporters">🧡 サポーター限定</option>
-                    <option value="private">🔒 メンバーのみ非公開</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- 商品4軸レベル (#15) -->
-              <div class="product-lv-box">
-                <div class="sub-box-head">
-                  <h3>⭐ この商品の育ち具合（商品4軸Lv）</h3>
-                  <span id="ws-product-total-lv" class="mini-pill">総合 Lv.1</span>
-                </div>
-                <div id="ws-product-lv-grid" class="lv-4-grid"></div>
-              </div>
-            </article>
-
-            <!-- 複数画像＆横スクロールギャラリー (#2) -->
-            <article class="card">
-              <div class="card-head">
-                <div>
-                  <span class="eyebrow">写真ギャラリー (#2)</span>
-                  <h3>📸 試作・素材スワイプ写真（自動軽量リサイズ対応）</h3>
-                </div>
-                <label class="btn btn-outline btn-sm file-btn">
-                  ＋ 写真を追加
-                  <input type="file" id="ws-image-input" accept="image/*" hidden />
-                </label>
-              </div>
-              <div id="ws-gallery" class="h-gallery"></div>
-              <p class="hint-text">※端末容量パンク防止のため、追加した写真は自動で軽量リサイズして保存します（1商品あたり最大6枚）。</p>
-            </article>
-
-            <!-- 参加オファー承認箱 (#7 全員同意) -->
-            <article id="ws-offers-card" class="card offer-alert-card hidden">
-              <div class="card-head">
-                <div>
-                  <span class="eyebrow">全員同意で正式合流 (#7)</span>
-                  <h3>🙋 届いている参加オファー</h3>
-                </div>
-              </div>
-              <div id="ws-offers-list" class="offer-list"></div>
-            </article>
-
-            <!-- 原価電卓 ＆ 採用資材自動加算 (#9) -->
-            <article class="card">
-              <div class="card-head">
-                <div>
-                  <span class="eyebrow">原価＆採用資材連動 (#9)</span>
-                  <h3>🧮 1個あたり原価・粗利シミュレーション</h3>
-                </div>
-                <button type="button" class="text-btn" data-jump-tab="marche" data-jump-subtab="materials">資材を選ぶ →</button>
-              </div>
-              <div class="cost-grid">
-                <label class="field-box">
-                  <span>素材費（円）</span>
-                  <input type="number" id="ws-cost-raw" class="input" min="0" step="10" />
-                </label>
-                <label class="field-box">
-                  <span>加工・人件費（円）</span>
-                  <input type="number" id="ws-cost-labor" class="input" min="0" step="10" />
-                </label>
-                <label class="field-box">
-                  <span>採用資材費（自動加算）</span>
-                  <input type="number" id="ws-cost-mat" class="input" readonly />
-                </label>
-                <label class="field-box">
-                  <span>予定販売価格（円）</span>
-                  <input type="number" id="ws-price-sell" class="input" min="0" step="10" />
-                </label>
-              </div>
-              <div id="ws-cost-summary" class="cost-summary-bar"></div>
-              <div class="adopted-mat-wrap">
-                <span class="field-label">📦 この商品に採用中の資材（採用すると資材ページに無料PR掲載！）</span>
-                <div id="ws-adopted-materials" class="chip-list"></div>
-              </div>
-            </article>
-
-            <!-- 開発ストーリー & 個別「非公開」切替 (#8) + 会話からカレンダー自動記入 (#10) -->
-            <article class="card">
-              <div class="card-head">
-                <div>
-                  <span class="eyebrow">開発メモ＆ストーリー (#8・#10)</span>
-                  <h3>💬 開発ログ（個別非公開 ＆ 日程自動抽出つき）</h3>
-                </div>
-              </div>
-              <form id="form-story-post" class="stack-form">
-                <textarea id="ws-story-input" class="input textarea" rows="2" placeholder="例：12/6 10:00 テストキッチンで試作2回目やります！砂糖は控えめが良さそう"></textarea>
-                <div class="story-form-bottom">
-                  <label class="checkbox-label">
-                    <input type="checkbox" id="ws-story-private" />
-                    <span>🔒 この投稿だけ「メンバー限定（非公開）」にする</span>
-                  </label>
-                  <button type="submit" class="btn btn-primary">ログを追記</button>
-                </div>
-              </form>
-              <div id="ws-story-list" class="story-list"></div>
-            </article>
-
-            <!-- 参加型カレンダー & Google共有 (#10) -->
-            <article class="card">
-              <div class="card-head">
-                <div>
-                  <span class="eyebrow">メンバー共有カレンダー (#10)</span>
-                  <h3>📅 試作・軽トラ・マルシェ日程</h3>
-                </div>
-              </div>
-              <form id="form-add-cal" class="cal-form-row">
-                <input type="date" id="cal-date" class="input" required />
-                <input type="text" id="cal-title" class="input" placeholder="予定（例：瓶詰めテスト・軽トラ集荷）" required />
-                <button type="submit" class="btn btn-outline">予定を追加</button>
-              </form>
-              <ul id="ws-calendar-list" class="cal-list"></ul>
-            </article>
-
-            <!-- 印刷・出力（同意書 / A4店頭POP / 8枚名刺） -->
-            <article class="card">
-              <div class="card-head">
-                <div>
-                  <span class="eyebrow">現場でそのまま使える出力</span>
-                  <h3>🖨️ 簡易同意書・応援引用A4 POP・8枚名刺</h3>
-                </div>
-              </div>
-              <div class="print-btn-grid">
-                <button type="button" id="btn-print-agreement" class="btn btn-outline">📄 簡易コラボ同意書</button>
-                <button type="button" id="btn-print-pop" class="btn btn-outline">🪧 応援の声つき A4店頭POP</button>
-                <button type="button" id="btn-print-cards" class="btn btn-outline">🪪 8枚まとめ名刺シート</button>
-              </div>
-            </article>
-
-          </div>
-        </section>
-
-        <!-- ========================================================== -->
-        <!-- TAB 4: 🎪 マルシェ・旬（買う・見る・資材）                  -->
-        <!-- ========================================================== -->
-        <section id="tab-marche" class="tab-panel" aria-label="マルシェ・旬">
-          <div class="subtab-bar" role="tablist">
-            <button type="button" class="subtab-btn active" data-subtab-group="marche" data-subtab="shelf">🎪 みんなの棚＆EC</button>
-            <button type="button" class="subtab-btn" data-subtab-group="marche" data-subtab="catalog">📦 マイ商品カタログ</button>
-            <button type="button" class="subtab-btn" data-subtab-group="marche" data-subtab="materials">🛠️ 資材＆神道具</button>
-            <button type="button" class="subtab-btn" data-subtab-group="marche" data-subtab="shun">🥬 動画＆旬レシピ</button>
-          </div>
-
-          <!-- 4-1: みんなの棚＆古民家EC (#3 自動フェーズ仕分け) -->
-          <div id="marche-shelf" class="subtab-panel active">
-            <div class="kominka-banner">
-              <span class="kominka-tag">EN•dress — 京都・古民家セレクト棚</span>
-              <h2>ご縁から生まれた逸品を、試作から出店まで見守る</h2>
-              <p>開発室のフェーズを更新すると、自動で「出店中」「準備OK」「試作中」の棚へ仕分けされます。</p>
-            </div>
-            <div class="filter-bar">
-              <button type="button" class="chip-filter active" data-shelf-filter="all">すべて</button>
-              <button type="button" class="chip-filter" data-shelf-filter="出店中">🏮 出店・販売中</button>
-              <button type="button" class="chip-filter" data-shelf-filter="準備OK">✅ 準備OK</button>
-              <button type="button" class="chip-filter" data-shelf-filter="試作中">🧪 試作中</button>
-              <button type="button" class="chip-filter" data-shelf-filter="企画中">💡 企画中</button>
-            </div>
-            <div id="marche-shelf-grid" class="product-card-grid"></div>
-          </div>
-
-          <!-- 4-2: マイ商品カタログ (#4 種類別・相手別) -->
-          <div id="marche-catalog" class="subtab-panel">
-            <div class="card">
-              <div class="card-head">
-                <h2>📦 マイ商品カタログ（種類別・相手別一覧）</h2>
-                <select id="catalog-group-by" class="input input-sm">
-                  <option value="room">🤝 コラボ相手（ご縁）別</option>
-                  <option value="category">🏷️ 商品ジャンル別</option>
-                  <option value="phase">🚩 進行フェーズ別</option>
+                <select id="dev-phase-select" class="input input-compact">
+                  <option value="企画中">企画中</option>
+                  <option value="試作中">試作中</option>
+                  <option value="準備OK">準備OK</option>
+                  <option value="販売中">販売中</option>
                 </select>
               </div>
-              <div id="my-catalog-body" class="catalog-groups"></div>
+
+              <!-- 開発ルーム内 4ミニタブ -->
+              <div class="mini-tab-bar">
+                <button type="button" class="mini-tab active" data-dev-tab="chat">💬 チャット</button>
+                <button type="button" class="mini-tab" data-dev-tab="media">📸 試作・写真</button>
+                <button type="button" class="mini-tab" data-dev-tab="cost">🧮 原価・資材</button>
+                <button type="button" class="mini-tab" data-dev-tab="plan">📅 予定・印刷</button>
+              </div>
+
+              <div id="dev-pane-chat" class="dev-pane active"></div>
+              <div id="dev-pane-media" class="dev-pane"></div>
+              <div id="dev-pane-cost" class="dev-pane"></div>
+              <div id="dev-pane-plan" class="dev-pane"></div>
             </div>
-          </div>
+          </section>
 
-          <!-- 4-3: 開発資材レコメンド & 50:50神道具 (#9) -->
-          <div id="marche-materials" class="subtab-panel">
-            <div id="marche-fund-box" class="fund-banner"></div>
-
-            <div class="card">
-              <div class="card-head">
-                <div>
-                  <span class="eyebrow">運営100% × 採用で無料PR掲載 (#9)</span>
-                  <h2>🫙 開発資材レコメンド（楽天 × Amazon比較）</h2>
-                </div>
-              </div>
-              <p class="hint-text">「開発室で採用」を押すと、選択中商品の原価に自動加算され、あなたの商品が「この資材を使った人気商品」として無料PR掲載されます。</p>
-              <div id="materials-list" class="material-grid"></div>
+          <!-- ホーム下段：個人メニュー（セグメント切替で縦長化を防止） -->
+          <section class="home-my-area">
+            <div class="seg-bar">
+              <button type="button" class="seg-btn active" data-seg-group="home" data-seg="profile">👤 プロフィール・診断</button>
+              <button type="button" class="seg-btn" data-seg-group="home" data-seg="ring">✍️ 年輪ボード</button>
+              <button type="button" class="seg-btn" data-seg-group="home" data-seg="ops">⚙️ 設定・データ</button>
             </div>
+            <div id="home-profile" class="seg-panel active"></div>
+            <div id="home-ring" class="seg-panel"></div>
+            <div id="home-ops" class="seg-panel"></div>
+          </section>
 
-            <div class="card">
-              <div class="card-head">
-                <div>
-                  <span class="eyebrow">50:50 みんなのマルシェ軍資金</span>
-                  <h2>🔧 現場の神道具・梱包アイテム</h2>
-                </div>
-              </div>
-              <div id="tools-list" class="material-grid"></div>
-            </div>
-          </div>
-
-          <!-- 4-4: ショート劇場 & 旬レシピ (v5.1/v5.2受け皿) -->
-          <div id="marche-shun" class="subtab-panel">
-            <div class="card roadmap-placeholder">
-              <span class="eyebrow">v5.1 ＆ v5.2 拡張エリア</span>
-              <h2>🎬 15秒ショート劇場 ＆ 🥬 旬のもの早見表・AI栄養レシピ</h2>
-              <p>v5.1で縦スワイプ動画劇場と買い物帳、v5.2で「旬の早見表・農家直伝の美味しい見分け方・大量消費レシピ・PFC栄養分析＆1週間献立」がここに開きます。</p>
-            </div>
-          </div>
-        </section>
-
-        <!-- ========================================================== -->
-        <!-- TAB 5: 🏆 マイ・輪（プロフィール・Lv・称号・運営管理）      -->
-        <!-- ========================================================== -->
-        <section id="tab-my" class="tab-panel" aria-label="マイ・輪">
-          <div class="subtab-bar" role="tablist">
-            <button type="button" class="subtab-btn active" data-subtab-group="my" data-subtab="profile">👤 プロフィール＆Lv</button>
-            <button type="button" class="subtab-btn" data-subtab-group="my" data-subtab="titles">🏅 努力型称号</button>
-            <button type="button" class="subtab-btn" data-subtab-group="my" data-subtab="ring">✍️ ご縁の年輪</button>
-            <button type="button" class="subtab-btn" data-subtab-group="my" data-subtab="ops">⚙️ サポート＆運営</button>
-          </div>
-
-          <!-- 5-1: プロフィール & 熱量 & 個人4軸Lv (#5, #15) -->
-          <div id="my-profile" class="subtab-panel active">
-            <article class="card">
-              <div class="card-head">
-                <div>
-                  <span class="eyebrow">ダブル・マルチカテゴリーLv (#15)</span>
-                  <h2>🌟 あなたの個人4軸レベル</h2>
-                </div>
-                <span id="my-total-lv-badge" class="big-lv-badge">総合 Lv.1</span>
-              </div>
-              <div id="my-lv-4-grid" class="lv-4-grid"></div>
-            </article>
-
-            <article class="card">
-              <div class="card-head">
-                <div>
-                  <span class="eyebrow">書くほど相性＆露出アップ (#5)</span>
-                  <h2>🔥 AI熱量メーター ＆ 詳細プロフィール</h2>
-                </div>
-                <span id="my-heat-badge" class="heat-pill">0%</span>
-              </div>
-              <div class="progress-track progress-lg">
-                <div id="my-heat-bar" class="progress-fill" style="width: 0%;"></div>
-              </div>
-              <p id="my-heat-comment" class="hint-text"></p>
-
-              <form id="form-profile" class="stack-form">
-                <div class="form-row-2">
-                  <label class="field-box">
-                    <span>お名前・屋号</span>
-                    <input type="text" id="prof-name" class="input" />
-                  </label>
-                  <label class="field-box">
-                    <span>立場・業種</span>
-                    <select id="prof-role" class="input">
-                      <option value="農家・生産者">農家・生産者</option>
-                      <option value="町工場・加工">町工場・加工</option>
-                      <option value="デザイン・企画">デザイン・企画</option>
-                      <option value="一般サポーター">一般サポーター</option>
-                    </select>
-                  </label>
-                </div>
-                <div class="form-row-2">
-                  <label class="field-box">
-                    <span>活動エリア</span>
-                    <input type="text" id="prof-area" class="input" placeholder="例：大阪府高槻市 / 長野県" />
-                  </label>
-                  <label class="field-box">
-                    <span>得意なこと・持っている設備</span>
-                    <input type="text" id="prof-skills" class="input" placeholder="例：りんご栽培・軽トラ・瓶詰め加工" />
-                  </label>
-                </div>
-                <label class="field-box">
-                  <span>ものづくりへの想い・組んでみたい相手（詳細を書くほど100%超え！）</span>
-                  <textarea id="prof-bio" class="input textarea" rows="3"></textarea>
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" id="prof-map-public" />
-                  <span>📍 ご縁めぐりマップ（v5.2）に自分の活動エリアを公開する（初期OFF）</span>
-                </label>
-                <div class="form-actions-right">
-                  <button type="submit" class="btn btn-primary">プロフィールを保存して熱量更新</button>
-                </div>
-              </form>
-            </article>
-          </div>
-
-          <!-- 5-2: 努力型称号 (#15 ％ゲージ) -->
-          <div id="my-titles" class="subtab-panel">
-            <div class="card">
-              <div class="card-head">
-                <div>
-                  <span class="eyebrow">行動がすべて積み上がる (#15)</span>
-                  <h2>🏅 努力型称号コレクション（達成率ゲージ）</h2>
-                </div>
-              </div>
-              <div id="titles-grid" class="titles-grid"></div>
-            </div>
-          </div>
-
-          <!-- 5-3: ご縁の年輪ボード (v5.1予告受け皿) -->
-          <div id="my-ring" class="subtab-panel">
-            <div class="card roadmap-placeholder">
-              <span class="eyebrow">Step 2（v5.1）実装予定</span>
-              <h2>✍️ 円形・和紙「ご縁の年輪ボード」</h2>
-              <p>中心の「EN•joy」から外へ広がる円形和紙ボードに、協賛企業・農家・加工業者・サポーターが金額別サイズ枠（S/M/L/XL）を選んで指で手書きサインできるボードを `board.js` で搭載します。</p>
-            </div>
-          </div>
-
-          <!-- 5-4: サポート＆運営管理 (#19) -->
-          <div id="my-ops" class="subtab-panel">
-            <article class="card">
-              <h2>✉️ 運営への直接問い合わせ・協賛相談 (#19)</h2>
-              <p class="hint-text">使いにくい点・不具合報告・テストキッチン協賛・マルシェ共同開催など、カテゴリー別にお送りいただけます。</p>
-              <button type="button" class="btn btn-primary" data-open-modal="modal-inquiry">カテゴリー別お問い合わせを開く</button>
-            </article>
-
-            <article class="card">
-              <h2>💾 データバックアップ ＆ 復元（JSON）</h2>
-              <p class="hint-text">スマホ機種変更やPC移行の際も、ワンタップで全データを保存・復元できます。</p>
-              <div class="btn-row">
-                <button type="button" id="btn-export-json" class="btn btn-outline">⬇️ JSONをダウンロード</button>
-                <label class="btn btn-outline file-btn">
-                  ⬆️ JSONから復元
-                  <input type="file" id="input-import-json" accept="application/json" hidden />
-                </label>
-                <button type="button" id="btn-reset-demo" class="btn btn-danger-outline">🔄 初期デモに戻す</button>
-              </div>
-            </article>
-
-            <article class="card admin-panel-card">
-              <div class="card-head">
-                <div>
-                  <span class="eyebrow">運営コントロールパネル (#19)</span>
-                  <h2>🔧 メンテナンス・お知らせバー管理</h2>
-                </div>
-              </div>
-              <form id="form-admin-banner" class="stack-form">
-                <div class="form-row-2">
-                  <select id="admin-banner-type" class="input">
-                    <option value="info">📢 運営からのお知らせ</option>
-                    <option value="maint">🔧 メンテナンス予定</option>
-                    <option value="release">🎉 新機能公開</option>
-                  </select>
-                  <label class="checkbox-label">
-                    <input type="checkbox" id="admin-banner-enabled" />
-                    <span>画面最上部に表示する</span>
-                  </label>
-                </div>
-                <input type="text" id="admin-banner-input" class="input" placeholder="例：11/30(月) 02:00〜03:00 v5.1アップデートのためメンテナンスを実施します" />
-                <div class="form-actions-right">
-                  <button type="submit" class="btn btn-primary">お知らせバーを反映</button>
-                </div>
-              </form>
-
-              <div class="divider"></div>
-              <h3 class="sub-heading">📩 受信済みお問い合わせログ</h3>
-              <div id="admin-inquiry-log" class="compact-log-list"></div>
-            </article>
-          </div>
         </section>
 
       </main>
     </div>
   </div>
 
-  <!-- ========== スマホ用 下部5タブ固定ドック ========== -->
+  <!-- ========== スマホ用 下部5タブ固定ドック（新配置） ========== -->
   <nav class="mobile-dock" aria-label="モバイルナビゲーション">
-    <button type="button" class="dock-item active" data-tab="home">
-      <span class="dock-ico">🏠</span>
-      <span class="dock-label">ホーム</span>
+    <button type="button" class="dock-item" data-tab="useful">
+      <span class="dock-ico">🥬</span><span class="dock-label">役立ち</span>
     </button>
     <button type="button" class="dock-item" data-tab="plaza">
-      <span class="dock-ico">💬</span>
-      <span class="dock-label">広場</span>
+      <span class="dock-ico">💬</span><span class="dock-label">広場</span>
     </button>
-    <button type="button" class="dock-item dock-item-center" data-tab="en">
-      <span class="dock-center-circle">EN</span>
-      <span class="dock-label">開発室</span>
-      <span id="badge-en-mobile" class="dock-badge hidden">0</span>
+    <button type="button" class="dock-item dock-center" data-tab="en">
+      <span class="dock-en-mark">EN</span><span class="dock-label">出会い</span>
     </button>
-    <button type="button" class="dock-item" data-tab="marche">
-      <span class="dock-ico">🎪</span>
-      <span class="dock-label">マルシェ</span>
+    <button type="button" class="dock-item" data-tab="shop">
+      <span class="dock-ico">🛍️</span><span class="dock-label">通販</span>
     </button>
-    <button type="button" class="dock-item" data-tab="my">
-      <span class="dock-ico">🏆</span>
-      <span class="dock-label">マイ・輪</span>
+    <button type="button" class="dock-item active" data-tab="home">
+      <span class="dock-ico">🏠</span><span class="dock-label">ホーム</span>
+      <span id="badge-home-mobile" class="dock-dot hidden"></span>
     </button>
   </nav>
 
-  <!-- スマホ用 右下クイックつぶやきFAB（広場タブで表示） -->
-  <button type="button" id="fab-quick-post" class="fab-btn hidden" aria-label="すぐにつぶやく">＋</button>
+  <!-- ========== モーダル群 ========== -->
 
-  <!-- ========================================================== -->
-  <!-- 共通モーダル群                                              -->
-  <!-- ========================================================== -->
-
-  <!-- 1. 一括メッセージ箱モーダル (#11) -->
-  <div id="modal-inbox" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="inbox-title">
-    <div class="modal-backdrop" data-close-modal="modal-inbox"></div>
-    <div class="modal-sheet modal-lg">
-      <div class="modal-head">
-        <h2 id="inbox-title">📬 一括メッセージ箱 (#11)</h2>
-        <button type="button" class="icon-close" data-close-modal="modal-inbox">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="filter-bar">
-          <button type="button" class="chip-filter active" data-inbox-filter="all">すべて</button>
-          <button type="button" class="chip-filter" data-inbox-filter="cheer">🧡 応援の声</button>
-          <button type="button" class="chip-filter" data-inbox-filter="offer">🙋 参加オファー</button>
-          <button type="button" class="chip-filter" data-inbox-filter="dev">🛠️ 開発連絡</button>
-          <button type="button" class="chip-filter" data-inbox-filter="ops">📢 運営</button>
-        </div>
-        <div id="inbox-list" class="inbox-list"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 2. カテゴリー別お問い合わせモーダル (#19) -->
-  <div id="modal-inquiry" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="inquiry-title">
-    <div class="modal-backdrop" data-close-modal="modal-inquiry"></div>
+  <!-- 1. やりたいこと・活用模索 新規募集モーダル -->
+  <div id="modal-new-idea" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close-modal="modal-new-idea"></div>
     <div class="modal-sheet">
       <div class="modal-head">
-        <h2 id="inquiry-title">✉️ カテゴリー別お問い合わせ (#19)</h2>
-        <button type="button" class="icon-close" data-close-modal="modal-inquiry">✕</button>
+        <h2>🚀 やりたいこと・活用相談を募集</h2>
+        <button type="button" class="icon-close" data-close-modal="modal-new-idea">✕</button>
       </div>
       <div class="modal-body">
-        <form id="form-inquiry" class="stack-form">
-          <label class="field-box">
-            <span>お問い合わせ種別</span>
-            <select id="inq-category" class="input" required>
-              <option value="🐛 使いにくい・不具合報告">🐛 使いにくい・不具合報告</option>
-              <option value="💡 機能要望・改善アイデア">💡 機能要望・改善アイデア</option>
-              <option value="🏢 協賛・テストキッチン・試供品相談">🏢 協賛・テストキッチン・試供品相談</option>
-              <option value="🎪 マルシェ共同開催・イベント連携">🎪 マルシェ共同開催・イベント連携</option>
-              <option value="📰 取材・自治体・メディア依頼">📰 取材・自治体・メディア依頼</option>
-              <option value="✉️ その他のお問い合わせ">✉️ その他のお問い合わせ</option>
+        <form id="form-new-idea" class="stack-form">
+          <input type="text" id="idea-title" class="input" placeholder="タイトル（例：間伐ヒノキ端材の新しい活用法を一緒に探したい）" required />
+          <div class="form-row-2">
+            <select id="idea-cat" class="input">
+              <option value="商品開発">🛠️ 商品開発</option>
+              <option value="活用模索">💡 素材・技術の活用模索</option>
+              <option value="イベント企画">🎪 イベント・販売企画</option>
             </select>
-          </label>
-          <label class="field-box">
-            <span>内容</span>
-            <textarea id="inq-body" class="input textarea" rows="4" placeholder="気づいたことやコラボのご相談をご自由にお書きください" required></textarea>
-          </label>
-          <p id="inq-auto-meta" class="hint-text">自動添付：EN•joy v5.0</p>
+            <input type="text" id="idea-need" class="input" placeholder="組みたい相手（例：デザイナー・食品工房）" required />
+          </div>
+          <textarea id="idea-detail" class="input textarea" rows="4" placeholder="詳細（持っている素材・技術、実現したいイメージ、条件など）" required></textarea>
           <div class="form-actions-right">
-            <button type="button" class="btn btn-outline" data-close-modal="modal-inquiry">キャンセル</button>
-            <button type="submit" class="btn btn-primary">送信する</button>
+            <button type="button" class="btn btn-outline" data-close-modal="modal-new-idea">閉じる</button>
+            <button type="submit" class="btn btn-accent">募集カードを公開</button>
           </div>
         </form>
       </div>
     </div>
   </div>
 
-  <!-- 3. バージョン＆更新履歴モーダル (#19) -->
-  <div id="modal-version" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="version-title">
-    <div class="modal-backdrop" data-close-modal="modal-version"></div>
+  <!-- 2. 一括チャット・受信箱モーダル -->
+  <div id="modal-chat" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close-modal="modal-chat"></div>
     <div class="modal-sheet">
       <div class="modal-head">
-        <h2 id="version-title">🔖 EN•joy リリースノート</h2>
-        <button type="button" class="icon-close" data-close-modal="modal-version">✕</button>
+        <h2>💬 やり取り・お知らせ</h2>
+        <button type="button" class="icon-close" data-close-modal="modal-chat">✕</button>
       </div>
-      <div class="modal-body stack-text">
-        <div class="release-item">
-          <span class="version-pill">v5.0（現在）</span>
-          <ul>
-            <li>5タブ固定の新UI ＆ 裏方番頭システム（本業集中・音声丸投げ・1分ブリーフィング）</li>
-            <li>1ご縁→複数商品ワークスペース、写真自動リサイズギャラリー</li>
-            <li>熱量メーター、公開プロジェクト4種リアクション、全員同意の参加オファー</li>
-            <li>資材レコメンド（採用で原価自動加算＆無料PR）、メンバー共有カレンダー</li>
-            <li>個人4軸Lv × 商品4軸Lv、努力型称号％ゲージ、一括受信箱、運営お知らせバー</li>
-          </ul>
-        </div>
-        <div class="release-item muted">
-          <span class="version-pill">v5.1（次期）</span>
-          <p>円形・和紙「ご縁の年輪ボード」、ショート動画劇場、買い物帳、行動アナリティクス</p>
-        </div>
-        <div class="release-item muted">
-          <span class="version-pill">v5.2（予定）</span>
-          <p>ポケフタ風ご縁めぐりマップ、旬のもの早見表＆見分け方、AI栄養分析＆1週間献立</p>
-        </div>
-      </div>
+      <div id="chat-modal-body" class="modal-body"></div>
     </div>
   </div>
 
-  <!-- 4. メッセージ付き参加オファーモーダル (#7) -->
-  <div id="modal-offer" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="offer-title">
-    <div class="modal-backdrop" data-close-modal="modal-offer"></div>
-    <div class="modal-sheet">
-      <div class="modal-head">
-        <h2 id="offer-title">🙋 参加オファーを送る (#7)</h2>
-        <button type="button" class="icon-close" data-close-modal="modal-offer">✕</button>
-      </div>
-      <div class="modal-body">
-        <p id="offer-target-name" class="strong-text"></p>
-        <p class="hint-text">開発メンバー全員の同意が揃うと、正式にこの開発ルームへ合流できます。</p>
-        <form id="form-send-offer" class="stack-form">
-          <input type="hidden" id="offer-product-id" />
-          <label class="field-box">
-            <span>あなたが手伝えること・ひとことメッセージ</span>
-            <textarea id="offer-message" class="input textarea" rows="3" placeholder="例：ラベルデザインと店頭POP作成で力になれます！ぜひ一緒に作らせてください！" required></textarea>
-          </label>
-          <div class="form-actions-right">
-            <button type="button" class="btn btn-outline" data-close-modal="modal-offer">閉じる</button>
-            <button type="submit" class="btn btn-primary">オファーを送信</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- 5. 印刷プレビューオーバーレイ（同意書・POP・名刺） -->
-  <div id="modal-print" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="print-title">
+  <!-- 3. 印刷プレビューモーダル -->
+  <div id="modal-print" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-backdrop" data-close-modal="modal-print"></div>
     <div class="modal-sheet modal-lg">
       <div class="modal-head no-print">
-        <h2 id="print-title">🖨️ 印刷プレビュー</h2>
+        <h2 id="print-title">🖨️ 印刷</h2>
         <div class="btn-row">
-          <button type="button" id="btn-do-print" class="btn btn-primary btn-sm">印刷 / PDF保存</button>
+          <button type="button" id="btn-do-print" class="btn btn-accent btn-sm">印刷 / PDF</button>
           <button type="button" class="icon-close" data-close-modal="modal-print">✕</button>
         </div>
       </div>
-      <div id="print-preview-area" class="modal-body print-area"></div>
+      <div id="print-body" class="modal-body print-area"></div>
     </div>
   </div>
 
-  <!-- トースト通知 -->
-  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <!-- トースト -->
+  <div id="toast" class="toast hidden" role="status"></div>
 
-
-
-<!-- スクリプト読込（データ → アプリ本体 → v5.1年輪ボード） -->
   <script src="data.js"></script>
   <script src="app.js"></script>
-  <script src="board.js"></script>
-  <script src="analytics.js"></script>
-  <script src="map.js"></script>
-  <script src="shun.js"></script>
-  <script src="diagnosis.js"></script>
 </body>
 </html>
