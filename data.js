@@ -1,466 +1,485 @@
-/* ==========================================
-   EN•joy マスターデータ ＆ 初期サンプル定義（v4.0）
-   ========================================== */
+/* ============================================================
+   EN•joy v5.0 — 初期データ & マスタ定義 (data.js)
+   ※ユーザー編集データは localStorage('enjoy_v5_state') に保存されます
+   ============================================================ */
 
-const KEYS = {
-  MODE: 'enjoy_readability_v3',
-  PROFILE: 'enjoy_user_profile_v1',
-  TWEETS: 'enjoy_local_tweets_v6',
-  PROJECTS: 'enjoy_projects_v2',
-  MARCHE: 'enjoy_marche_items_v2',
-  TOOLS: 'enjoy_tools_v1',
-  FUND: 'enjoy_marche_fund_v1',
-  BADGES: 'enjoy_earned_badges_v1',
-  GRATITUDE: 'enjoy_gratitude_count_v1',
-  CART: 'enjoy_ec_cart_v1'
-};
+window.ENJOY_VERSION = 'v5.0';
+window.ENJOY_STORAGE_KEY = 'enjoy_v5_state';
 
-const PAGE_META = {
-  home: { title: 'ホーム', sub: 'マルシェ開催カウントダウン・現場の知恵・最新つぶやきを一望' },
-  tweet: { title: 'つぶやき広場・相性順仲間さがし', sub: '47都道府県×地方ブロック×キーワードで、近くの仲間や案件をしっかり検索' },
-  en: { title: 'EN（ご縁・開発スタジオ）', sub: 'LINE風相談・ToDo・原価＆山分け電卓・同意書PDF・店頭POP＆名刺まで完結' },
-  marche: { title: 'マルシェ・京都古民家EC・神道具', sub: '誕生コラボ商品の店頭POP＆8枚ストーリー名刺印刷・ストーリーEC棚・50:50軍資金シェア' },
-  roadmap: { title: 'マイ職人カード・性格診断・構想', sub: 'かんたん登録から詳細プロフィールまで自在に編集・データバックアップ管理' }
-};
-
-const SAMPLE_APPLE_IMG = 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&q=80&w=700';
-
-/* ==========================================
-   地域検索用：地方ブロック ＆ 47都道府県
-   ========================================== */
-const REGION_BLOCKS = [
-  { key: 'ALL', label: '🗾 全国', prefs: [] },
+/* ---------- 1. 開発資材レコメンド（運営100% × 採用で原価自動加算＆無料PR）(#9) ---------- */
+window.ENJOY_MATERIALS = [
   {
-    key: 'hokkaido_tohoku',
-    label: '北海道・東北',
-    prefs: ['北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県']
+    id: 'mat-jar-140',
+    name: '耐熱ジャム瓶 140ml（ツイストキャップ付）',
+    unitPrice: 78,
+    desc: '脱気殺菌対応。ジャム・ペースト・ドレッシングの定番サイズ。',
+    rakutenUrl: 'https://search.rakuten.co.jp/search/mall/ジャム瓶+140ml+耐熱/',
+    amazonUrl: 'https://www.amazon.co.jp/s?k=ジャム瓶+140ml+耐熱'
   },
   {
-    key: 'kanto',
-    label: '関東',
-    prefs: ['茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県']
+    id: 'mat-pouch-craft',
+    name: 'クラフト紙スタンドパック（窓付き・チャック付）',
+    unitPrice: 32,
+    desc: 'ドライフルーツ・焼き菓子・グラノーラが映える和モダン袋。',
+    rakutenUrl: 'https://search.rakuten.co.jp/search/mall/クラフト+スタンドパック+窓付き/',
+    amazonUrl: 'https://www.amazon.co.jp/s?k=クラフト+スタンドパック+窓付き'
   },
   {
-    key: 'chubu',
-    label: '中部・北陸',
-    prefs: ['新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県', '静岡県', '愛知県']
+    id: 'mat-label-washi',
+    name: '耐水・和紙風ラベルシール（A4ノーカット）',
+    unitPrice: 18,
+    desc: '自宅プリンタで1枚から印刷OK。冷蔵商品でも剥がれにくい。',
+    rakutenUrl: 'https://search.rakuten.co.jp/search/mall/耐水+和紙+ラベルシール/',
+    amazonUrl: 'https://www.amazon.co.jp/s?k=耐水+和紙+ラベルシール'
   },
   {
-    key: 'kinki',
-    label: '近畿',
-    prefs: ['三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県']
-  },
-  {
-    key: 'chugoku_shikoku',
-    label: '中国・四国',
-    prefs: ['鳥取県', '島根県', '岡山県', '広島県', '山口県', '徳島県', '香川県', '愛媛県', '高知県']
-  },
-  {
-    key: 'kyushu_okinawa',
-    label: '九州・沖縄',
-    prefs: ['福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県']
+    id: 'mat-box-gift',
+    name: '京都・古民家風ギフト化粧箱（2本入）',
+    unitPrice: 120,
+    desc: 'EN•dressマルシェや手土産セットの単価アップに最適。',
+    rakutenUrl: 'https://search.rakuten.co.jp/search/mall/ギフトボックス+クラフト+瓶/',
+    amazonUrl: 'https://www.amazon.co.jp/s?k=ギフトボックス+クラフト+瓶'
   }
 ];
 
-const PREFECTURES = REGION_BLOCKS
-  .filter(r => r.key !== 'ALL')
-  .reduce((acc, r) => acc.concat(r.prefs), []);
-
-/* ==========================================
-   チャット・ニュース・性格診断・合意選択肢
-   ========================================== */
-const CHAT_QUICK_CHIPS = [
-  '📦 サンプル発送しました！',
-  '🍎 試作の味見しました！香り最高です',
-  '🧮 原価シミュレーターで試算してみました',
-  '📋 合意カード、この内容でOKです👍',
-  '🚚 軽トラ便の日程、今週金曜でどうでしょう？'
-];
-
-const FIELD_INSIGHTS = {
-  fruit: {
-    label: '🍎 果物・規格外活用',
-    title: '皮ごと使う無添加スプレッドがマルシェで完売続出',
-    body: '雹（ひょう）や枝スレで規格外になったりんご・柑橘は、皮の香りを活かした「無添加バター・ジュレ」にすると、50〜100個の小ロットでも初回完売する事例が急増しています。'
-  },
-  tea: {
-    label: '🍵 お茶・和素材',
-    title: '焙じ茶×ドライフルーツの「古民家カフェ系」土産が人気',
-    body: '単体では価格競争になりやすい茶葉も、別地域の果物農家と組んで「フルーツ焙じ茶」や焼き菓子ペーストに仕立てることで、高単価なセレクトショップ定番品に化けます。'
-  },
-  pack: {
-    label: '📦 小ロット包装',
-    title: '最初は「クラフト袋＋店頭POP＋8枚ストーリー名刺」で初期費ゼロ',
-    body: 'いきなり数千枚の専用印刷袋を作ると在庫リスクが跳ね上がります。初回マルシェは既製のクラフト袋＋EN•joyの自動生成「開発ストーリー名刺」を添えて手渡すのが鉄則です。'
-  },
-  grant: {
-    label: '🚚 地域物流・補助金',
-    title: '空き軽トラの混載＆「小規模事業者持続化補助金」の活用ヒント',
-    body: '試作の試食費やマルシェ出展の備品・パッケージ試作は、地域の商工会経由の補助金対象になるケースも。まずは3〜5商品のテスト販売実績を作っておくと採択率が上がります。'
-  }
-};
-
-const QUIZ_QUESTIONS = [
-  { q: '新しい商品アイデアが浮かんだとき、まずどう動く？', a: 'とりあえず小ロットで試作して、形にしながら考える！', b: 'まずは原価・材料・手順を紙に書き出して整理する' },
-  { q: 'コラボ相手に一番求めるのはどっち？', a: '「それ面白いね！」とノリよく乗ってくれる熱量', b: '納期や連絡をきっちり守ってくれる安心感' },
-  { q: '天候不良や材料不足など、想定外のトラブルが起きたら？', a: '「じゃあ別ルートで！」と柔軟に発想を切り替える', b: '原因を調べて、二度と起きない仕組みに整え直す' },
-  { q: 'ものづくりで一番ワクワクする瞬間は？', a: '誰も見たことのない組み合わせを思いついたとき', b: '味や仕上がりの精度が狙い通りにピタッとハマったとき' },
-  { q: 'マルシェやお店で目指したい理想のゴールは？', a: '話題になって行列ができるサプライズ商品！', b: '地域の人に何年も愛され続ける定番の逸品！' }
-];
-
-const DIAGNOSIS_TYPES = {
-  spark: {
-    title: '🔥 直感突破のアイデア職人', stamp: '直感', stampClass: 'terracotta',
-    partner: '🛡️ 段取り完璧な守護神',
-    desc: '「これ面白そう！」の閃きと行動力が武器。まず試作して形にしながら磨くチャレンジャーです。',
-    tip: '計画やコスト管理が得意な「守護神」と組むと、面白いアイデアが爆速でヒット商品に化けます！'
-  },
-  bridge: {
-    title: '⚡ 現場をつなぐ推進メーカー', stamp: '推進', stampClass: '',
-    partner: '🔬 こだわり抜く品質の匠',
-    desc: 'スピード感と巻き込み力が抜群。農家さんと町工場の想いを繋いで企画を前へ進めるムードメーカーです。',
-    tip: '製法に妥協しない「品質の匠」と組むと、ファンが熱狂する強いブランドが生まれます！'
-  },
-  artisan: {
-    title: '🔬 こだわり抜く品質の匠', stamp: '匠', stampClass: '',
-    partner: '⚡ 現場をつなぐ推進メーカー',
-    desc: '味・手触り・仕上がりに一切妥協しない本格派。「本当に良いもの」を生み出す確かな技術が武器です。',
-    tip: '発信や段取りを引っ張る「推進メーカー」と組むと、あなたのこだわりが一気に世の中へ届きます！'
-  },
-  guardian: {
-    title: '🛡️ 段取り完璧な守護神', stamp: '守護神', stampClass: '',
-    partner: '🔥 直感突破のアイデア職人',
-    desc: 'コスト・スケジュール・安心安全をきっちり守る現場の要。あなたがいるだけで成功率が跳ね上がります。',
-    tip: '突飛なアイデアを出す「直感職人」と組むと、夢物語が確実な定番商品に育ちます！'
-  }
-};
-
-const COST_OPTIONS = [
-  '試作費は折半（50:50）',
-  '素材を買い取り（加工側主導）',
-  '現物提供 × 加工技術（持ち出しゼロ型）',
-  'テスト販売後に売上分配'
-];
-
-const SALES_OPTIONS = [
-  'EN•joy マルシェ優先出品（出店無料）',
-  '公式ストーリーECで産地直送',
-  'お互いの直売所・販路で自由販売'
-];
-
-const LOGISTICS_OPTIONS = [
-  '農家から持ち込み・発送',
-  '加工工房が引き取り',
-  '🚚 軽トラ地域便オファー連携'
-];
-
-const GRATITUDE_STAMPS = ['🏅 素材の匠', '💡 開発の鬼', '🤝 安心の伴走者', '🚚 現場の救世主'];
-
-const FILTER_TAGS = [
-  { key: 'ALL', label: 'すべて' },
-  { key: '🆘', label: '🆘 ちょっと助けて' },
-  { key: '💡', label: '💡 余ってます・試作' },
-  { key: '🚚', label: '🚚 軽トラ便' },
-  { key: '🌱', label: '🌱 ひとこと' }
-];
-
-const DEFAULT_CALC = {
-  materialCost: 160,
-  processCost: 180,
-  packCost: 90,
-  fixedCost: 6000,
-  batchQty: 50,
-  sellPrice: 880,
-  shareRatioA: 50
-};
-
-/* ==========================================
-   相性％順・仲間さがし図鑑 サンプルデータ
-   ========================================== */
-const DEFAULT_MEMBERS = [
+/* ---------- 2. 現場の神道具（50:50 みんなのマルシェ軍資金）(#9) ---------- */
+window.ENJOY_TOOLS = [
   {
-    id: 'm1',
-    name: '信州りんご農園 / 田中',
-    role: '農家・生産者',
-    pref: '長野県',
-    city: '安曇野市',
-    typeId: 'artisan',
-    bio: '標高700mで減農薬ふじ・シナノゴールドを栽培。雹キズやサイズ外の極上りんごを加工品で活かしたいです。',
-    specialty: 'ふじ・紅玉・シナノゴールド（糖度14度以上）',
-    lot: '試作5kg〜 / 本生産200kgまで対応',
-    delivery: '安曇野・松本は軽トラ直納 / 全国クール便OK',
-    link: ''
+    id: 'tool-sealer',
+    name: '卓上インパルスシーラー（20cm幅）',
+    price: 3980,
+    desc: '袋詰めが一瞬で綺麗に決まる。小ロット試作〜マルシェ出店の必須機。',
+    rakutenUrl: 'https://search.rakuten.co.jp/search/mall/卓上+シーラー+20cm/',
+    amazonUrl: 'https://www.amazon.co.jp/s?k=卓上+シーラー+20cm'
   },
   {
-    id: 'm2',
-    name: '大阪クラフト菓子工房',
-    role: '加工業者・町工場',
-    pref: '大阪府',
-    city: '高槻市',
-    typeId: 'guardian',
-    bio: '小ロットのジャム・コンフィチュール・焼き菓子OEMが得意な町工房です。食品表示ラベル作成まで一緒に伴走します。',
-    specialty: '菓子製造業・びん詰加工許可 / 真空殺菌釜・低温乾燥機',
-    lot: '初回試作30個〜 / 本製造50〜500個',
-    delivery: '関西圏は引き取り相談可 / 全国宅配対応',
-    link: ''
+    id: 'tool-brix',
+    name: 'デジタル糖度計（果物・ジャム試作用）',
+    price: 4500,
+    desc: 'レシピの再現性を上げる神アイテム。規格外果物の見極めにも。',
+    rakutenUrl: 'https://search.rakuten.co.jp/search/mall/糖度計+デジタル/',
+    amazonUrl: 'https://www.amazon.co.jp/s?k=糖度計+デジタル'
   },
   {
-    id: 'm3',
-    name: '京都・宇治茶クラフト工房',
-    role: '加工業者・町工場',
-    pref: '京都府',
-    city: '宇治市',
-    typeId: 'spark',
-    bio: '焙じ茶・抹茶と地域の果物を掛け合わせた新感覚スイーツやクラフトシロップを作っています！面白い組み合わせ大歓迎。',
-    specialty: '焙煎機・ペースト粉砕機・ドリンク充填ライン',
-    lot: '小ロット50本〜テスト製造OK',
-    delivery: '京都・大阪・滋賀エリアは直接打ち合わせ可',
-    link: ''
+    id: 'tool-scale',
+    name: '防水デジタルはかり（0.1g単位〜3kg）',
+    price: 2280,
+    desc: '原価管理と食品表示の正確な計量に。水洗いできて現場向き。',
+    rakutenUrl: 'https://search.rakuten.co.jp/search/mall/防水+デジタルスケール+0.1g/',
+    amazonUrl: 'https://www.amazon.co.jp/s?k=防水+デジタルスケール+0.1g'
   },
   {
-    id: 'm4',
-    name: '丹波・黒豆ファーム',
-    role: '農家・生産者',
-    pref: '兵庫県',
-    city: '丹波篠山市',
-    typeId: 'bridge',
-    bio: '丹波黒豆と季節の根菜を育てています。選別ではじかれた割れ豆をきなこやグラノーラにしてくれる工房さん募集中！',
-    specialty: '丹波黒大豆・大納言小豆・山の芋',
-    lot: '乾燥豆3kg〜 / 定期供給相談可',
-    delivery: '兵庫・京都・大阪は軽トラ配達OK',
-    link: ''
-  },
-  {
-    id: 'm5',
-    name: '安曇野・軽トラ地域便サポーター',
-    role: '軽トラ・地域サポーター',
-    pref: '長野県',
-    city: '松本市・安曇野市',
-    typeId: 'guardian',
-    bio: '週2回、安曇野〜松本〜塩尻エリアを軽トラで回っています。試作品の受け渡しやマルシェ搬入の手伝いなら任せてください！',
-    specialty: '軽トラック（幌付き）・保冷コンテナ3台所有',
-    lot: 'ダンボール1箱〜最大350kgまで',
-    delivery: '長野県中信エリア全般（日時応相談）',
-    link: ''
-  },
-  {
-    id: 'm6',
-    name: '紀州みかん山・山本果樹園',
-    role: '農家・生産者',
-    pref: '和歌山県',
-    city: '有田川町',
-    typeId: 'spark',
-    bio: '温州みかん・八朔・レモンを段々畑で栽培。皮まで使える減農薬柑橘で、クラフトコーラやピール菓子を一緒に作りたい！',
-    specialty: '減農薬レモン・有田みかん・山椒',
-    lot: 'サンプル3kg〜 / 季節限定100kg対応',
-    delivery: '和歌山・大阪南部は持ち込み可 / 全国発送',
-    link: ''
-  },
-  {
-    id: 'm7',
-    name: '瀬戸内ドライフルーツ製作所',
-    role: '加工業者・町工場',
-    pref: '広島県',
-    city: '尾道市',
-    typeId: 'artisan',
-    bio: '砂糖不使用・低温じっくり乾燥で色と香りを残すドライ加工専門工場です。規格外フルーツの価値を最大まで引き上げます。',
-    specialty: '業務用低温乾燥機4台・シーラー包装機・粉末加工',
-    lot: '生果10kgから委託試作OK',
-    delivery: '中国・四国・関西エリア便あり / 全国宅配可',
-    link: ''
-  },
-  {
-    id: 'm8',
-    name: '博多マルシェ応援・パッケージ企画室',
-    role: '企画・アイデア応援',
-    pref: '福岡県',
-    city: '福岡市',
-    typeId: 'bridge',
-    bio: '農家さんと町工場のコラボ商品を「売れる物語」に仕上げるデザイン＆マルシェ出展サポートをしています！',
-    specialty: '小ロットラベル設計・ネーミング・試食導線づくり',
-    lot: '商品1アイテム・試作段階から相談OK',
-    delivery: '九州内は現地訪問 / 全国オンライン対応',
-    link: ''
-  },
-  {
-    id: 'm9',
-    name: '十勝・小さな乳製品ラボ',
-    role: '加工業者・町工場',
-    pref: '北海道',
-    city: '帯広市',
-    typeId: 'guardian',
-    bio: '十勝の生乳・発酵バターと全国の果物・お茶を合わせるコラボ開発が大好きです。冷凍配送テストも対応できます。',
-    specialty: '乳製品加工許可・急速冷凍機・バタースプレッド製造',
-    lot: '初回40個〜テスト製造可',
-    delivery: '全国クール・冷凍便対応',
-    link: ''
+    id: 'tool-wagon',
+    name: '折りたたみキャリーワゴン（マルシェ搬入用）',
+    price: 8900,
+    desc: '軽トラからマルシェブースまでの往復を1回で終わらせる相棒。',
+    rakutenUrl: 'https://search.rakuten.co.jp/search/mall/キャリーワゴン+折りたたみ/',
+    amazonUrl: 'https://www.amazon.co.jp/s?k=キャリーワゴン+折りたたみ'
   }
 ];
 
-/* ==========================================
-   初期サンプルデータ（つぶやき・ご縁・マルシェ・神道具）
-   ========================================== */
-const DEFAULT_TWEETS = [
+/* ---------- 3. 努力型称号マスタ（％ゲージ連動）(#15) ---------- */
+window.ENJOY_TITLES = [
   {
-    id: 101,
-    tag: '💡 余ってます・試作相談',
-    author: '信州りんご農園 / 田中',
-    pref: '長野県',
-    city: '安曇野市',
-    qty: '規格外ふじ 約50kg',
-    deadline: '今月中',
-    stamp: '匠',
-    stampClass: '',
-    typeId: 'artisan',
-    text: '【りんごの収穫が始まりました！】少しキズのある規格外ふじが50kgあります。無添加りんごバターや焼き菓子に試作してくれる工房さん、ぜひご縁を繋ぎませんか？🍎',
-    photo: SAMPLE_APPLE_IMG,
-    helps: 4,
-    solved: false,
-    daysLeft: 29,
-    time: '15分前'
+    id: 'title-heat-100',
+    icon: '🔥',
+    name: '本気の旗振り役',
+    desc: 'プロフィールのAI熱量メーターを100%以上に到達させる',
+    metric: 'heat',
+    target: 100
   },
   {
-    id: 102,
-    tag: '🚚 軽トラ空きあり',
-    author: '安曇野・軽トラサポーター',
-    pref: '長野県',
-    city: '松本市・安曇野市',
-    qty: '軽トラ荷台 空きあり',
-    deadline: '今週金曜 午前',
-    stamp: '守護神',
-    stampClass: '',
-    typeId: 'guardian',
-    text: '今週金曜の午前中、安曇野〜松本エリアを空荷で走ります！試作品や箱物の運搬があればお声がけください。',
-    photo: '',
-    helps: 5,
-    solved: false,
-    daysLeft: 28,
-    time: '1時間前'
+    id: 'title-feed-3',
+    icon: '📣',
+    name: '現場の伝令係',
+    desc: '広場で現場つぶやきを3回以上投稿する',
+    metric: 'feedsPosted',
+    target: 3
   },
   {
-    id: 103,
-    tag: '🆘 ちょっと助けて',
-    author: '京都・宇治茶クラフト工房',
-    pref: '京都府',
-    city: '宇治市',
-    qty: '初回試作50個分',
-    deadline: '来月中旬まで',
-    stamp: '直感',
-    stampClass: 'terracotta',
-    typeId: 'spark',
-    text: '焙じ茶ペーストの新商品に合う「甘み強めの柑橘」や「規格外フルーツ」を探しています！小ロット50個から一緒に試作できる農家さんいませんか？',
-    photo: '',
-    helps: 3,
-    solved: false,
-    daysLeft: 26,
-    time: '2時間前'
+    id: 'title-story-5',
+    icon: '🧪',
+    name: '試作の鬼',
+    desc: '開発ログ（ストーリー）を5回以上記録する',
+    metric: 'storiesPosted',
+    target: 5
   },
   {
-    id: 104,
-    tag: '🌱 今日のひとこと',
-    author: '大阪クラフト菓子工房',
-    pref: '大阪府',
-    city: '高槻市',
-    qty: '小ロット30瓶〜相談可',
-    deadline: '随時',
-    stamp: '守護神',
-    stampClass: '',
-    typeId: 'guardian',
-    text: '先月ここで出会った農家さんとの試作、原価と山分けバランスもスッキリ決まって来週いよいよマルシェ初出品です！関西の農家さんとも新しいご縁を作りたいです。',
-    photo: '',
-    helps: 7,
-    solved: false,
-    daysLeft: 24,
-    time: '3時間前'
+    id: 'title-products-3',
+    icon: '📦',
+    name: '多産クリエイター',
+    desc: 'ご縁ルーム内で合計3商品以上の企画を立ち上げる',
+    metric: 'productsCount',
+    target: 3
+  },
+  {
+    id: 'title-cheer-5',
+    icon: '🧡',
+    name: 'ご縁の目利き',
+    desc: '進行中プロジェクトへ5回以上リアクション・応援を送る',
+    metric: 'cheersSent',
+    target: 5
+  },
+  {
+    id: 'title-cal-3',
+    icon: '📅',
+    name: '段取り名人',
+    desc: 'メンバー共有カレンダーに3件以上予定を登録する',
+    metric: 'calendarsAdded',
+    target: 3
   }
 ];
 
-const DEFAULT_PROJECTS = [
+/* ---------- 4. 番頭の勝手にご縁＆仮収支提案プール ---------- */
+window.ENJOY_BANTO_PROPOSALS = [
   {
-    id: 1001,
-    title: '無添加「皮ごとりんごバター」小ロット試作',
-    partnerName: '長野りんご農園 × 大阪クラフト菓子工房',
-    partnerTypeId: 'guardian',
-    compatibility: 94,
-    completed: false,
-    costPlan: COST_OPTIONS[2],
-    salesPlan: SALES_OPTIONS[0],
-    logisticsPlan: LOGISTICS_OPTIONS[2],
-    partyA: '長野りんご農園（サンプル）',
-    partyB: '大阪クラフト菓子工房（サンプル）',
-    memo: '規格外ふじりんご5kgで初回50瓶を試作。マルシェで試食販売を目指す。',
-    calc: {
-      materialCost: 160,
-      processCost: 180,
-      packCost: 90,
-      fixedCost: 6000,
-      batchQty: 50,
-      sellPrice: 880,
-      shareRatioA: 50
+    title: '長野の規格外りんご × 大阪・町工場の低温ドライ加工',
+    partner: '信州・青木りんご園 × なにわ乾燥工房',
+    pitch: '傷ありりんご50kgを無添加チップス化。クラフト窓付き袋＋和紙ラベルでマルシェ映え抜群。',
+    estCost: 210,
+    estPrice: 580,
+    estProfit: 370
+  },
+  {
+    title: '高槻の朝採れトマト × 京都の老舗スパイス調合所',
+    partner: 'たかつき太陽農園 × 鴨川スパイス舎',
+    pitch: '完熟で出荷できない割れトマトを「食べるスパイスソース」に。140ml耐熱瓶で常温販売OK。',
+    estCost: 260,
+    estPrice: 680,
+    estProfit: 420
+  },
+  {
+    title: '間伐ヒノキ端材 × クラフト紙ラベル職人のコラボ香袋',
+    partner: '丹波きこり組 × 紙工アトリエ縁',
+    pitch: '食品以外の異業種コラボ案！マルシェのレジ横で「ついで買い」を狙える高粗利アイテム。',
+    estCost: 140,
+    estPrice: 500,
+    estProfit: 360
+  }
+];
+
+/* ---------- 5. 初期アプリ状態（デモデータ） ---------- */
+window.createDefaultEnjoyState = function () {
+  return {
+    version: window.ENJOY_VERSION,
+    focusMode: false,
+    fontLarge: false,
+    activeRoomId: 'room-1',
+    activeProductId: 'prod-1',
+    proposalIndex: 0,
+
+    /* 運営お知らせバー (#19) */
+    adminBanner: {
+      enabled: true,
+      type: 'release',
+      text: 'EN•joy v5.0 公開！裏方番頭システム・1ご縁複数商品・原価資材連動をスマホで触ってみてください。'
     },
-    todos: [
-      { text: '規格外ふじりんごの糖度・サンプル量（5kg）を共有する', done: true },
-      { text: '「🧮 原価・山分け」タブで売価と黒字ラインを確認する', done: false },
-      { text: '合意カードで「費用配分・売り方・軽トラ便」を確定してPDF出力する', done: false },
-      { text: '店頭ストーリーPOPと8枚面付けストーリー名刺を印刷テストする', done: false }
-    ],
-    messages: [
-      { id: 8001, sender: 'partner', name: '大阪クラフト菓子工房', text: 'はじめまして！規格外ふじの投稿を拝見しました。皮ごと煮詰める無添加りんごバター、50瓶の小ロットから試作できますよ🍎', time: '10:15' },
-      { id: 8002, sender: 'me', name: '自分', text: 'ありがとうございます！すごく嬉しいです。まずは糖度高めのふじ5kgを今週中にサンプル発送しますね📦', time: '10:22' },
-      { id: 8003, sender: 'partner', name: '大阪クラフト菓子工房', text: '助かります！右の「原価・山分け」タブで1瓶880円・50瓶試算を入れてみました。これならお互い無理なく黒字にできそうです👍', time: '10:28' }
-    ],
-    diaries: [
+
+    /* 自分のプロフィール (#5) */
+    profile: {
+      name: 'あなた（EN•joy発起人）',
+      role: 'デザイン・企画',
+      area: '大阪府高槻市',
+      skills: '企画設計・データ分析・Web仕組みづくり・現場ヒアリング',
+      bio: '農家さんや町工場、さまざまな産業の「もったいない」と「技術」を繋いで、楽しく続く経済圏と京都の古民家セレクトショップ（EN•dress）を作っています。まずは小さな試作から一緒に楽しみましょう！',
+      mapPublic: false
+    },
+
+    /* 個人4軸EXP (#15) */
+    personalExp: {
+      cheer: 120,
+      field: 95,
+      en: 150,
+      craft: 110
+    },
+
+    /* 努力型称号用カウンタ */
+    stats: {
+      feedsPosted: 1,
+      storiesPosted: 2,
+      cheersSent: 2,
+      calendarsAdded: 2
+    },
+
+    /* マルシェ軍資金（50:50連動） */
+    fund: {
+      current: 18500,
+      goal: 30000,
+      nextReward: '第1回 EN•dress マルシェ：出店者のテーブル・POP印刷費を全員無料化！'
+    },
+
+    /* 番頭：1分おかえりブリーフィング */
+    bantoBriefs: [
       {
-        id: 5001,
-        date: '試作1日目',
-        masked: true,
-        text: 'ふじりんごの皮を活かすため低温でじっくり煮詰めテスト！試作原価[非公開]内で収まる見込み。香りが部屋中に広がって最高でした🍎',
-        photo: SAMPLE_APPLE_IMG
+        id: 'br-1',
+        kind: '🙋 参加オファー',
+        text: '「蜜たっぷり規格外りんごジャム」に印刷デザイン担当から参加オファーが届いています。',
+        targetTab: 'en'
+      },
+      {
+        id: 'br-2',
+        kind: '📅 明日の予定',
+        text: '11/28 瓶詰めテスト＆糖度チェック（開発室カレンダーより自動抽出）',
+        targetTab: 'en'
+      },
+      {
+        id: 'br-3',
+        kind: '🧡 応援の声',
+        text: '広場プロジェクトに「食べてみたい！」が3件増えました。POPへ引用できます。',
+        targetTab: 'plaza'
+      }
+    ],
+
+    /* 広場つぶやき */
+    feeds: [
+      {
+        id: 'feed-1',
+        author: '信州・青木りんご園',
+        role: '農家・生産者',
+        area: '長野県安曇野市',
+        tag: '💡 余ってます',
+        body: '台風前の強風で枝スレしたりんご（サンふじ）が約80kg出ました！味は蜜入りで最高です。ジャムやチップスにしてくれる工房さんいませんか？',
+        createdAt: '2時間前',
+        likes: 14
+      },
+      {
+        id: 'feed-2',
+        author: 'なにわ乾燥・瓶詰め工房',
+        role: '町工場・加工',
+        area: '大阪府東大阪市',
+        tag: '🛠️ 加工・試作募集',
+        body: '来週火曜〜木曜、低温ドライ機と殺菌釜に空きが出ました！10kgの小ロット試作から相談OKです。',
+        createdAt: '5時間前',
+        likes: 9
+      },
+      {
+        id: 'feed-3',
+        author: 'たかつき軽トラ便（佐藤）',
+        role: '農家・生産者',
+        area: '大阪府高槻市 → 京都市',
+        tag: '🚚 軽トラ便',
+        body: '今週土曜の朝8時に高槻から京都方面へ走ります。荷台半分空いているので、試作品の相乗り配送あれば声かけてください！',
+        createdAt: '昨日',
+        likes: 11
+      }
+    ],
+
+    /* 仲間図鑑 (#5 熱量ブースト順) */
+    members: [
+      {
+        id: 'mem-1',
+        name: '信州・青木りんご園',
+        role: '農家・生産者',
+        area: '長野県安曇野市',
+        skills: 'サンふじ・シナノゴールド栽培、軽トラ運搬',
+        bio: '見た目だけで弾かれる蜜入りりんごを、加工のプロと組んで全国に届けたいです！試作サンプルすぐ送れます。',
+        heat: 118,
+        mapPublic: true
+      },
+      {
+        id: 'mem-2',
+        name: 'なにわ乾燥・瓶詰め工房',
+        role: '町工場・加工',
+        area: '大阪府東大阪市',
+        skills: '低温ドライ加工、ジャム瓶詰め、食品表示ラベル相談',
+        bio: '小ロット10kgから試作対応できる町工場です。農家さんの「これ何とかならん？」を形にするのが生きがい。',
+        heat: 112,
+        mapPublic: true
+      },
+      {
+        id: 'mem-3',
+        name: '紙工アトリエ縁（えん）',
+        role: 'デザイン・企画',
+        area: '京都府京都市',
+        skills: '和紙パッケージ設計、店頭POP、ロゴ・名刺デザイン',
+        bio: '京都で紙器とパッケージを仕立てています。マルシェで思わず手に取りたくなる装いをお手伝いします。',
+        heat: 104,
+        mapPublic: true
+      },
+      {
+        id: 'mem-4',
+        name: 'マルシェ好きのミキ',
+        role: '一般サポーター',
+        area: '大阪府茨木市',
+        skills: '試食レビュー、SNSショート動画撮影、レシピ投稿',
+        bio: '生産者さんの裏話が大好き！週末はマルシェ巡りをして応援レビューを書いています。',
+        heat: 88,
+        mapPublic: false
+      }
+    ],
+
+    /* 1ご縁（親）→ 複数商品（子）(#1〜#10) */
+    rooms: [
+      {
+        id: 'room-1',
+        name: '青木りんご園 × なにわ工房',
+        partner: '信州・青木りんご園 / なにわ乾燥・瓶詰め工房',
+        members: ['あなた（EN•joy発起人）', '信州・青木りんご園', 'なにわ乾燥・瓶詰め工房'],
+        products: [
+          {
+            id: 'prod-1',
+            title: '蜜たっぷり規格外りんごの無添加ジャム',
+            category: 'ジャム・瓶詰め',
+            phase: '試作中',
+            visibility: 'public',
+            images: [],
+            costRaw: 140,
+            costLabor: 110,
+            adoptedMaterialIds: ['mat-jar-140', 'mat-label-washi'],
+            priceSell: 650,
+            productExp: { story: 85, fan: 70, quality: 90, market: 40 },
+            stories: [
+              {
+                id: 'st-1',
+                author: '信州・青木りんご園',
+                text: '枝スレのサンふじ20kgを発送しました！皮ごと煮ると香りが出て最高です。',
+                date: '11/22 14:20',
+                isPrivate: false
+              },
+              {
+                id: 'st-2',
+                author: 'なにわ乾燥・瓶詰め工房',
+                text: '原価メモ：瓶の仕入れは100本単位にすると単価65円まで下がりそう（メンバー限定メモ）。',
+                date: '11/23 19:10',
+                isPrivate: true
+              }
+            ],
+            calendar: [
+              { id: 'cal-1', date: '2026-11-28', title: '試作2回目：糖度チェック＆瓶詰めテスト' },
+              { id: 'cal-2', date: '2026-12-05', title: '高槻・軽トラ相乗り便でサンプル受け渡し' }
+            ],
+            offers: [
+              {
+                id: 'off-1',
+                from: '紙工アトリエ縁（えん）',
+                message: '和紙ラベルとマルシェ用の手描き風POP作成でぜひ参加させてください！',
+                approvals: ['信州・青木りんご園']
+              }
+            ],
+            reactions: { cheer: 18, eat: 27, visit: 9 },
+            comments: [
+              { author: 'マルシェ好きのミキ', text: '皮ごと無添加ジャム絶対買いたいです！ヨーグルトに合わせたい！' }
+            ]
+          },
+          {
+            id: 'prod-2',
+            title: '第2弾：パリッと低温乾燥りんごチップス',
+            category: 'お菓子・ドライ',
+            phase: '準備OK',
+            visibility: 'public',
+            images: [],
+            costRaw: 110,
+            costLabor: 90,
+            adoptedMaterialIds: ['mat-pouch-craft', 'mat-label-washi'],
+            priceSell: 520,
+            productExp: { story: 65, fan: 80, quality: 85, market: 75 },
+            stories: [
+              {
+                id: 'st-3',
+                author: 'なにわ乾燥・瓶詰め工房',
+                text: '厚み2.5mmで低温8時間乾燥が一番パリッと甘みが出ました！マルシェ出品準備OKです。',
+                date: '11/24 11:00',
+                isPrivate: false
+              }
+            ],
+            calendar: [
+              { id: 'cal-3', date: '2026-12-12', title: 'プレマルシェ試食販売（京都古民家前）' }
+            ],
+            offers: [],
+            reactions: { cheer: 12, eat: 21, visit: 11 },
+            comments: [
+              { author: 'たかつき軽トラ便（佐藤）', text: '子どもが止まらなくなるやつですね！箱買いします！' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'room-2',
+        name: '高槻トマト × 紙工アトリエ縁',
+        partner: 'たかつき太陽農園 / 紙工アトリエ縁',
+        members: ['あなた（EN•joy発起人）', 'たかつき太陽農園', '紙工アトリエ縁（えん）'],
+        products: [
+          {
+            id: 'prod-3',
+            title: '完熟トマトの食べる和風スパイスソース',
+            category: '調味料・ソース',
+            phase: '出店中',
+            visibility: 'public',
+            images: [],
+            costRaw: 160,
+            costLabor: 120,
+            adoptedMaterialIds: ['mat-jar-140', 'mat-box-gift'],
+            priceSell: 780,
+            productExp: { story: 95, fan: 92, quality: 90, market: 88 },
+            stories: [
+              {
+                id: 'st-4',
+                author: '紙工アトリエ縁（えん）',
+                text: '2本入りの古民家風ギフト箱が完成しました！手土産需要バッチリです。',
+                date: '11/20 16:40',
+                isPrivate: false
+              }
+            ],
+            calendar: [],
+            offers: [],
+            reactions: { cheer: 31, eat: 44, visit: 19 },
+            comments: [
+              { author: 'マルシェ好きのミキ', text: 'パスタにも豆腐にも合って最高でした！リピート決定です。' }
+            ]
+          }
+        ]
+      }
+    ],
+
+    /* 一括メッセージ箱 (#11) */
+    inbox: [
+      {
+        id: 'msg-1',
+        type: 'cheer',
+        from: 'マルシェ好きのミキ',
+        text: '皮ごと無添加りんごジャム、発売したら絶対買いに行きます！応援してます！',
+        date: '11/24 18:10',
+        unread: true,
+        quotedForPop: true
+      },
+      {
+        id: 'msg-2',
+        type: 'offer',
+        from: '紙工アトリエ縁（えん）',
+        text: '「蜜たっぷり規格外りんごの無添加ジャム」へ参加オファーを送りました。',
+        date: '11/24 15:30',
+        unread: true,
+        quotedForPop: false
+      },
+      {
+        id: 'msg-3',
+        type: 'dev',
+        from: 'なにわ乾燥・瓶詰め工房',
+        text: '11/28の試作2回目、10時から釜を空けておきますね！',
+        date: '11/23 20:05',
+        unread: false,
+        quotedForPop: false
+      },
+      {
+        id: 'msg-4',
+        type: 'ops',
+        from: 'EN•joy 運営',
+        text: 'v5.0へアップデートされました。お問い合わせ窓口からいつでも改善要望を送れます。',
+        date: '11/24 19:00',
+        unread: false,
+        quotedForPop: false
+      }
+    ],
+
+    /* 受信済みお問い合わせログ (#19) */
+    inquiries: [
+      {
+        id: 'inq-demo-1',
+        category: '🏢 協賛・テストキッチン・試供品相談',
+        body: '（デモ履歴）京都のシェアキッチンです。試作枠として月2回提供できるか相談したいです。',
+        meta: 'EN•joy v5.0 / 広場',
+        date: '11/24 12:00'
       }
     ]
-  }
-];
-
-const DEFAULT_MARCHE = [
-  {
-    id: 201,
-    title: '信州ふじの無添加「ご縁りんごジュレ」',
-    makers: '信州りんご農園 × 松本ジャム工房',
-    price: 880,
-    story: '雹（ひょう）で少し傷がついただけの極上ふじを皮ごと煮詰めた、香り爆発の試作第1号。3回の糖度調整を経て完成しました。',
-    photo: SAMPLE_APPLE_IMG,
-    cheers: 18
-  },
-  {
-    id: 202,
-    title: '町工場の低温焙煎「黒豆きなこクランチ」',
-    makers: '丹波・黒豆農家 × 京都菓子製作所',
-    price: 750,
-    story: '割れ豆を捨てずに活かしたい一言つぶやきから3週間で形になった香ばしい逸品。古民家カフェのほうじ茶に抜群に合います。',
-    photo: '',
-    cheers: 14
-  }
-];
-
-const DEFAULT_TOOLS = [
-  {
-    id: 301,
-    name: 'プロ仕様・疲れにくい軽量剪定ばさみ（国産鍛造）',
-    author: '信州りんご農園 / 田中',
-    comment: '1日500本切っても手首が痛くならない神道具。農園スタッフ全員これに変えました。',
-    userUrl: 'https://hb.afl.rakuten.co.jp/example-farmer-tanaka',
-    adminUrl: 'https://hb.afl.rakuten.co.jp/example-enjoy-marche-fund',
-    clicks: 3
-  },
-  {
-    id: 302,
-    name: '小ロット試作向け・卓上真空パックシーラー',
-    author: '大阪クラフト菓子工房',
-    comment: 'マルシェ用の50〜100個包装ならこれで十分！食品ロスも激減しました。',
-    userUrl: 'https://amzn.to/example-osaka-kobo',
-    adminUrl: 'https://amzn.to/example-enjoy-marche-fund',
-    clicks: 2
-  }
-];
-
-const DEFAULT_BADGES = ['🌱 EN•joy 初期チャレンジャー'];
+  };
+};
