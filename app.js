@@ -1,73 +1,67 @@
 /* ============================================================
-   EN•joy v5.0 — アプリ本体ロジック (app.js)
+   EN•joy v6.0 — 統合アプリ本体 (app.js)
    ============================================================ */
 
 (function () {
   'use strict';
 
   const TAB_TITLES = {
-    home: '🏠 ホーム',
-    plaza: '💬 広場・めぐり',
-    en: '🤝 EN ご縁・開発室',
-    marche: '🎪 マルシェ・旬',
-    my: '🏆 マイ・輪'
+    useful: '🥬 役立ち',
+    plaza: '💬 広場',
+    en: '🤝 EN 出会い',
+    shop: '🛍️ 通販',
+    home: '🏠 ホーム'
   };
 
   let state = loadState();
   let currentTab = 'home';
-  let shelfFilter = 'all';
-  let inboxFilter = 'all';
-  let bannerDismissed = false;
+  let activeDevTab = 'chat';
+  let selectedMonth = new Date().getMonth() + 1;
+  let pendingFeedImg = null;
+  let currentShortIdx = 0;
+  let diagStep = -1;
+  let diagScores = { spark: 0, craft: 0, bridge: 0, cheer: 0 };
+  let generatedPlan = null;
 
-  /* ---------- 状態管理 (localStorage) ---------- */
+  /* ---------- 状態管理 ---------- */
   function loadState() {
     try {
-      const raw = localStorage.getItem(window.ENJOY_STORAGE_KEY);
+      const raw = localStorage.getItem(window.ENJOY_V6_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && parsed.rooms) return parsed;
       }
-    } catch (e) {
-      console.warn('localStorage load failed:', e);
-    }
-    return window.createDefaultEnjoyState();
+    } catch (e) {}
+    return window.createDefaultV6State();
   }
 
   function saveState() {
     try {
-      localStorage.setItem(window.ENJOY_STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(window.ENJOY_V6_KEY, JSON.stringify(state));
     } catch (e) {
-      showToast('⚠️ 端末の保存容量がいっぱいです。不要な写真を削除してください。');
+      toast('保存容量がいっぱいです。不要な写真を削除してください。');
     }
   }
 
-  /* ---------- ユーティリティ ---------- */
   function esc(str) {
     return String(str ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  function nowLabel() {
+  function nowShort() {
     const d = new Date();
-    const mm = d.getMonth() + 1;
-    const dd = d.getDate();
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mi = String(d.getMinutes()).padStart(2, '0');
-    return `${mm}/${dd} ${hh}:${mi}`;
+    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   }
 
   let toastTimer = null;
-  function showToast(msg) {
+  function toast(msg) {
     const el = document.getElementById('toast');
     if (!el) return;
     el.textContent = msg;
     el.classList.remove('hidden');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.add('hidden'), 2800);
+    toastTimer = setTimeout(() => el.classList.add('hidden'), 2600);
   }
 
   function getActiveRoom() {
@@ -75,12 +69,12 @@
   }
 
   function getActiveProduct() {
-    const room = getActiveRoom();
-    if (!room) return null;
-    return room.products.find(p => p.id === state.activeProductId) || room.products[0];
+    const r = getActiveRoom();
+    if (!r) return null;
+    return r.products.find(p => p.id === state.activeProductId) || r.products[0];
   }
 
-  function getAllProductsWithRoom() {
+  function getAllProducts() {
     const list = [];
     state.rooms.forEach(room => {
       room.products.forEach(prod => list.push({ room, prod }));
@@ -88,755 +82,14 @@
     return list;
   }
 
-  function calcHeat(profile) {
-    let score = 15;
-    if (profile.name && profile.name.trim().length >= 2) score += 15;
-    if (profile.area && profile.area.trim().length >= 2) score += 15;
-    if (profile.skills && profile.skills.trim().length >= 4) score += 20;
-    const bioLen = (profile.bio || '').trim().length;
-    score += Math.min(60, Math.floor(bioLen * 0.6));
-    return score;
-  }
-
-  function calcLevel(exp) {
-    return Math.max(1, Math.floor(exp / 50) + 1);
-  }
-
-  function calcMaterialCost(prod) {
+  function calcMatCost(prod) {
     return (prod.adoptedMaterialIds || []).reduce((sum, id) => {
       const m = window.ENJOY_MATERIALS.find(x => x.id === id);
       return sum + (m ? m.unitPrice : 0);
     }, 0);
   }
 
-  function addPersonalExp(axis, pts) {
-    if (!state.personalExp[axis]) state.personalExp[axis] = 0;
-    state.personalExp[axis] += pts;
-  }
-
-  /* ---------- ナビゲーション & モーダル ---------- */
-  function switchTab(tabName) {
-    currentTab = tabName;
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tabName}`));
-    document.querySelectorAll('.nav-item, .dock-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
-    const titleEl = document.getElementById('page-title');
-    if (titleEl) titleEl.textContent = TAB_TITLES[tabName] || 'EN•joy';
-
-    const fab = document.getElementById('fab-quick-post');
-    if (fab) fab.classList.toggle('hidden', tabName !== 'plaza');
-
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  }
-
-  function switchSubtab(group, subtab) {
-    document.querySelectorAll(`[data-subtab-group="${group}"]`).forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.subtab === subtab);
-    });
-    document.querySelectorAll(`#tab-${group} .subtab-panel`).forEach(panel => {
-      panel.classList.toggle('active', panel.id === `${group}-${subtab}`);
-    });
-  }
-
-  function openModal(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if (id === 'modal-inbox') renderInbox();
-    if (id === 'modal-inquiry') {
-      document.getElementById('inq-auto-meta').textContent = `自動添付：EN•joy ${window.ENJOY_VERSION} ／ 現在の画面：${TAB_TITLES[currentTab]}`;
-    }
-    el.classList.remove('hidden');
-  }
-
-  function closeModal(id) {
-    const el = document.getElementById(id);
-    if (el) el.classList.add('hidden');
-  }
-
-  /* ---------- 全体レンダリング ---------- */
-  function renderAll() {
-    document.body.classList.toggle('font-large', !!state.fontLarge);
-    renderAdminBanner();
-    renderBadges();
-    renderHome();
-    renderPlaza();
-    renderEnWorkspace();
-    renderMarche();
-    renderMy();
-  }
-
-  function renderAdminBanner() {
-    const bar = document.getElementById('admin-banner');
-    const badge = document.getElementById('admin-banner-badge');
-    const text = document.getElementById('admin-banner-text');
-    const b = state.adminBanner;
-    if (!b || !b.enabled || !b.text || bannerDismissed) {
-      bar.classList.add('hidden');
-      return;
-    }
-    bar.classList.remove('hidden', 'type-maint', 'type-release');
-    if (b.type === 'maint') {
-      bar.classList.add('type-maint');
-      badge.textContent = '🔧 メンテナンス';
-    } else if (b.type === 'release') {
-      bar.classList.add('type-release');
-      badge.textContent = '🎉 新機能';
-    } else {
-      badge.textContent = '📢 お知らせ';
-    }
-    text.textContent = b.text;
-  }
-
-  function renderBadges() {
-    const unread = state.inbox.filter(m => m.unread).length;
-    document.getElementById('badge-inbox').textContent = unread;
-
-    let pendingOffers = 0;
-    getAllProductsWithRoom().forEach(({ prod }) => {
-      pendingOffers += (prod.offers || []).length;
-    });
-    ['badge-en-pc', 'badge-en-mobile'].forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.textContent = pendingOffers;
-      el.classList.toggle('hidden', pendingOffers === 0);
-    });
-  }
-
-  /* ---------- TAB 1: ホーム ---------- */
-  function renderHome() {
-    const on = !!state.focusMode;
-    document.getElementById('focus-state-label').textContent = on ? 'ON' : 'OFF';
-    document.getElementById('focus-state-sidebar').textContent = on ? 'ON' : 'OFF';
-    document.getElementById('btn-focus-toggle').classList.toggle('active', on);
-    document.getElementById('btn-focus-sidebar').classList.toggle('active', on);
-    document.getElementById('focus-banner').classList.toggle('hidden', !on);
-
-    // 1分ブリーフィング
-    const briefList = document.getElementById('banto-brief-list');
-    document.getElementById('banto-brief-count').textContent = `${state.bantoBriefs.length}件`;
-    briefList.innerHTML = state.bantoBriefs.length
-      ? state.bantoBriefs.slice(0, 4).map(b => `
-          <li class="brief-item">
-            <div><strong>${esc(b.kind)}</strong><br>${esc(b.text)}</div>
-            <button type="button" class="text-btn" data-jump-tab="${esc(b.targetTab)}">見る</button>
-          </li>
-        `).join('')
-      : '<li class="brief-item">いま確認が必要な連絡はありません。現場に集中できます！</li>';
-
-    // 勝手にご縁＆仮収支提案
-    const prop = window.ENJOY_BANTO_PROPOSALS[state.proposalIndex % window.ENJOY_BANTO_PROPOSALS.length];
-    document.getElementById('banto-proposal-box').innerHTML = `
-      <div><strong>${esc(prop.title)}</strong></div>
-      <div class="hint-text" style="margin:0;">想定ペア：${esc(prop.partner)}</div>
-      <p style="font-size:0.84rem;">${esc(prop.pitch)}</p>
-      <div class="hint-text" style="margin:0;">
-        仮原価 ¥${prop.estCost} ／ 想定売価 ¥${prop.estPrice} → <strong>粗利 ¥${prop.estProfit}/個</strong>
-      </div>
-      <div>
-        <button type="button" class="btn btn-outline btn-sm" id="btn-adopt-proposal">この案でご縁ルームを作る</button>
-      </div>
-    `;
-    const adoptBtn = document.getElementById('btn-adopt-proposal');
-    if (adoptBtn) {
-      adoptBtn.onclick = () => {
-        const newRoomId = 'room-' + Date.now();
-        const newProdId = 'prod-' + Date.now();
-        state.rooms.unshift({
-          id: newRoomId,
-          name: prop.partner,
-          partner: prop.partner,
-          members: [state.profile.name, prop.partner],
-          products: [{
-            id: newProdId,
-            title: prop.title,
-            category: '新規コラボ案',
-            phase: '企画中',
-            visibility: 'public',
-            images: [],
-            costRaw: Math.round(prop.estCost * 0.5),
-            costLabor: Math.round(prop.estCost * 0.5),
-            adoptedMaterialIds: [],
-            priceSell: prop.estPrice,
-            productExp: { story: 20, fan: 10, quality: 20, market: 10 },
-            stories: [{ id: 'st-' + Date.now(), author: '☕ 裏方番頭', text: `仮提案から作成：${prop.pitch}`, date: nowLabel(), isPrivate: false }],
-            calendar: [],
-            offers: [],
-            reactions: { cheer: 1, eat: 0, visit: 0 },
-            comments: []
-          }]
-        });
-        state.activeRoomId = newRoomId;
-        state.activeProductId = newProdId;
-        addPersonalExp('en', 25);
-        saveState();
-        renderAll();
-        switchTab('en');
-        showToast('✨ 番頭の提案から新しいご縁ルームを作成しました！');
-      };
-    }
-
-    // マイ簡易ステータス
-    const heat = calcHeat(state.profile);
-    const totalLv = calcLevel(
-      state.personalExp.cheer + state.personalExp.field + state.personalExp.en + state.personalExp.craft
-    );
-    const unlockedCount = window.ENJOY_TITLES.filter(t => getTitleProgress(t) >= 100).length;
-    document.getElementById('home-status-body').innerHTML = `
-      <div class="stat-tile">
-        <div class="stat-tile-label">総合レベル</div>
-        <div class="stat-tile-val">Lv.${totalLv}</div>
-        <div class="hint-text" style="margin:0;">応援・現場・ご縁・ものづくり合算</div>
-      </div>
-      <div class="stat-tile">
-        <div class="stat-tile-label">🔥 AI熱量メーター</div>
-        <div class="stat-tile-val">${heat}%</div>
-        <div class="progress-track"><div class="progress-fill" style="width:${Math.min(100, heat)}%;"></div></div>
-      </div>
-      <div class="stat-tile">
-        <div class="stat-tile-label">🏅 努力型称号</div>
-        <div class="stat-tile-val">${unlockedCount} / ${window.ENJOY_TITLES.length}</div>
-        <div class="hint-text" style="margin:0;">達成でプロフィールに勲章表示</div>
-      </div>
-    `;
-
-    // 進行中の開発ボード
-    const allProds = getAllProductsWithRoom();
-    document.getElementById('home-projects-list').innerHTML = allProds.slice(0, 4).map(({ room, prod }) => `
-      <div class="mini-project-card" data-open-prod="${esc(room.id)}|${esc(prod.id)}">
-        <div class="badge-row">
-          <span class="phase-badge">${esc(prod.phase)}</span>
-          <span class="vis-badge">${esc(room.name)}</span>
-        </div>
-        <strong>${esc(prod.title)}</strong>
-        <div class="hint-text">🧡 ${prod.reactions.cheer} ／ 😋 ${prod.reactions.eat} ／ 🚗 ${prod.reactions.visit}</div>
-      </div>
-    `).join('');
-
-    // 直近カレンダー
-    const cals = [];
-    allProds.forEach(({ prod }) => {
-      (prod.calendar || []).forEach(c => cals.push({ ...c, prodTitle: prod.title }));
-    });
-    cals.sort((a, b) => a.date.localeCompare(b.date));
-    document.getElementById('home-calendar-list').innerHTML = cals.length
-      ? cals.slice(0, 4).map(c => `
-          <li class="cal-item">
-            <div><span class="cal-date-badge">${esc(c.date)}</span> <strong>${esc(c.title)}</strong> <span class="hint-text">(${esc(c.prodTitle)})</span></div>
-            <a href="${buildGoogleCalUrl(c.title, c.date)}" target="_blank" rel="noopener" class="text-btn">Google追加 ↗</a>
-          </li>
-        `).join('')
-      : '<li class="cal-item">登録されている予定はまだありません。</li>';
-
-    // 軍資金 & ピックアップ資材
-    const fundHtml = buildFundBannerHtml();
-    document.getElementById('home-fund-box').innerHTML = fundHtml;
-    document.getElementById('home-pickup-materials').innerHTML = window.ENJOY_MATERIALS.slice(0, 2).map(m => `
-      <div class="material-card">
-        <strong>${esc(m.name)}</strong>
-        <div class="hint-text" style="margin:0;">目安単価：¥${m.unitPrice}/個</div>
-        <div class="btn-row">
-          <button type="button" class="btn btn-outline btn-sm" data-adopt-mat="${esc(m.id)}">開発室で採用</button>
-          <a href="${m.rakutenUrl}" target="_blank" rel="noopener" class="text-btn">楽天 ↗</a>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  function buildFundBannerHtml() {
-    const pct = Math.min(100, Math.round((state.fund.current / state.fund.goal) * 100));
-    return `
-      <div class="fund-banner-top">
-        <span>🎪 みんなのマルシェ軍資金（50:50神道具連動）</span>
-        <span class="fund-amount">¥${state.fund.current.toLocaleString()} / ¥${state.fund.goal.toLocaleString()}</span>
-      </div>
-      <div class="progress-track"><div class="progress-fill" style="width:${pct}%;"></div></div>
-      <p style="font-size:0.8rem; margin-top:6px; color:#E8DCCB;">🔓 達成特典：${esc(state.fund.nextReward)}</p>
-    `;
-  }
-
-  /* ---------- TAB 2: 広場・めぐり ---------- */
-  function renderPlaza() {
-    // 2-1: 現場つぶやき
-    const q = (document.getElementById('feed-search').value || '').toLowerCase();
-    const tag = document.getElementById('feed-filter-tag').value;
-    const filteredFeeds = state.feeds.filter(f => {
-      const matchTag = !tag || f.tag === tag;
-      const matchQ = !q || `${f.author} ${f.area} ${f.body} ${f.tag}`.toLowerCase().includes(q);
-      return matchTag && matchQ;
-    });
-    document.getElementById('feed-list').innerHTML = filteredFeeds.length
-      ? filteredFeeds.map(f => `
-          <article class="feed-card">
-            <div class="feed-meta">
-              <span class="tag-pill">${esc(f.tag)}</span>
-              <strong>${esc(f.author)}</strong>
-              <span>(${esc(f.role)} / ${esc(f.area)})</span>
-              <span>・${esc(f.createdAt)}</span>
-            </div>
-            <p class="feed-body">${esc(f.body)}</p>
-            <div class="reaction-row">
-              <button type="button" class="react-btn" data-like-feed="${esc(f.id)}">🧡 いいね (${f.likes})</button>
-              <button type="button" class="react-btn" data-connect-author="${esc(f.author)}">🤝 声をかけてご縁ルーム作成</button>
-            </div>
-          </article>
-        `).join('')
-      : '<div class="card">該当するつぶやきがありません。</div>';
-
-    // 2-2: 仲間図鑑 (#5 熱量ブースト順)
-    const mq = (document.getElementById('member-search').value || '').toLowerCase();
-    const mrole = document.getElementById('member-filter-role').value;
-    const sortedMembers = [...state.members]
-      .sort((a, b) => b.heat - a.heat)
-      .filter(m => {
-        const okRole = !mrole || m.role === mrole;
-        const okQ = !mq || `${m.name} ${m.area} ${m.skills} ${m.bio}`.toLowerCase().includes(mq);
-        return okRole && okQ;
-      });
-    document.getElementById('members-grid').innerHTML = sortedMembers.map(m => {
-      const matchPct = Math.min(99, 72 + Math.floor(m.heat / 5));
-      return `
-        <article class="member-card">
-          <div class="member-top">
-            <div>
-              <strong>${esc(m.name)}</strong>
-              <div class="hint-text" style="margin:0;">${esc(m.role)} ／ ${esc(m.area)}</div>
-            </div>
-            <span class="match-badge">相性 ${matchPct}%</span>
-          </div>
-          <div class="hint-text" style="margin:0;">🔥 熱量 ${m.heat}% ／ 得意：${esc(m.skills)}</div>
-          <p style="font-size:0.86rem;">${esc(m.bio)}</p>
-          <div class="form-actions-right">
-            <button type="button" class="btn btn-outline btn-sm" data-connect-author="${esc(m.name)}">🤝 ご縁を結ぶ</button>
-          </div>
-        </article>
-      `;
-    }).join('');
-
-    // 2-3: 進行中企画公開一覧 (#6・#7)
-    const pubList = getAllProductsWithRoom().filter(({ prod }) => prod.visibility !== 'private');
-    document.getElementById('public-projects-list').innerHTML = pubList.map(({ room, prod }) => `
-      <article class="card">
-        <div class="card-head">
-          <div>
-            <div class="badge-row">
-              <span class="phase-badge">${esc(prod.phase)}</span>
-              <span class="vis-badge">${esc(room.name)}</span>
-            </div>
-            <h3>${esc(prod.title)}</h3>
-          </div>
-          <button type="button" class="btn btn-outline btn-sm" data-open-offer="${esc(prod.id)}">🙋 参加オファー</button>
-        </div>
-        <div class="reaction-row" style="margin-bottom:10px;">
-          <button type="button" class="react-btn" data-react="${esc(prod.id)}|cheer">🧡 応援 (${prod.reactions.cheer})</button>
-          <button type="button" class="react-btn" data-react="${esc(prod.id)}|eat">😋 食べてみたい (${prod.reactions.eat})</button>
-          <button type="button" class="react-btn" data-react="${esc(prod.id)}|visit">🚗 行ってみたい (${prod.reactions.visit})</button>
-        </div>
-        <div class="hint-text" style="margin-bottom:6px;">
-          ${(prod.comments || []).slice(-2).map(c => `💬 <strong>${esc(c.author)}</strong>：${esc(c.text)}`).join('<br>') || 'まだ応援コメントはありません'}
-        </div>
-        <form class="voice-input-row" data-comment-form="${esc(prod.id)}">
-          <input type="text" class="input" placeholder="温かい応援コメントを書く（作り手のLvが伸びます！）" required />
-          <button type="submit" class="btn btn-primary btn-sm">送る</button>
-        </form>
-      </article>
-    `).join('');
-
-    // 2-4: マップ公開ONメンバーのプレビュー
-    const publicSpots = state.members.filter(m => m.mapPublic);
-    if (state.profile.mapPublic) {
-      publicSpots.unshift({ name: state.profile.name, area: state.profile.area });
-    }
-    document.getElementById('map-preview-list').innerHTML = publicSpots.map(s =>
-      `<span class="tag-pill">📍 ${esc(s.name)}（${esc(s.area)}）</span>`
-    ).join('');
-  }
-
-  /* ---------- TAB 3: EN ご縁・開発室 ---------- */
-  function renderEnWorkspace() {
-    const room = getActiveRoom();
-    const prod = getActiveProduct();
-    if (!room || !prod) return;
-
-    // 親ルーム一覧
-    document.getElementById('en-room-pills').innerHTML = state.rooms.map(r => `
-      <button type="button" class="room-pill ${r.id === room.id ? 'active' : ''}" data-select-room="${esc(r.id)}">
-        🤝 ${esc(r.name)} (${r.products.length})
-      </button>
-    `).join('');
-
-    // 子商品一覧
-    document.getElementById('en-product-pills').innerHTML = room.products.map(p => `
-      <button type="button" class="prod-pill ${p.id === prod.id ? 'active' : ''}" data-select-prod="${esc(p.id)}">
-        📦 ${esc(p.title)}
-      </button>
-    `).join('');
-
-    // ヘッダー
-    document.getElementById('ws-phase-badge').textContent = prod.phase;
-    const visMap = { public: '🌐 広場に公開', supporters: '🧡 サポーター限定', private: '🔒 メンバーのみ非公開' };
-    document.getElementById('ws-visibility-badge').textContent = visMap[prod.visibility] || '🌐 公開';
-    document.getElementById('ws-product-title').textContent = prod.title;
-    document.getElementById('ws-members-line').textContent = `参加メンバー（${room.members.length}名）：${room.members.join(' ／ ')}`;
-    document.getElementById('ws-phase-select').value = prod.phase;
-    document.getElementById('ws-visibility-select').value = prod.visibility;
-
-    // 商品4軸Lv
-    const pe = prod.productExp || { story: 10, fan: 10, quality: 10, market: 10 };
-    const prodTotalLv = calcLevel(pe.story + pe.fan + pe.quality + pe.market);
-    document.getElementById('ws-product-total-lv').textContent = `総合 Lv.${prodTotalLv}`;
-    const pAxes = [
-      { label: '📖 物語・試作Lv', val: pe.story },
-      { label: '🧡 ファン熱量Lv', val: pe.fan },
-      { label: '🛠️ 仕立て・品質Lv', val: pe.quality },
-      { label: '🎪 市場・出店Lv', val: pe.market }
-    ];
-    document.getElementById('ws-product-lv-grid').innerHTML = pAxes.map(a => `
-      <div class="lv-card">
-        <div class="lv-card-head"><span>${a.label}</span><span>Lv.${calcLevel(a.val)}</span></div>
-        <div class="progress-track"><div class="progress-fill" style="width:${(a.val % 50) * 2}%;"></div></div>
-      </div>
-    `).join('');
-
-    // 複数画像ギャラリー (#2)
-    const gal = document.getElementById('ws-gallery');
-    gal.innerHTML = (prod.images && prod.images.length)
-      ? prod.images.map((src, idx) => `
-          <div class="gallery-item">
-            <img src="${src}" alt="商品写真 ${idx + 1}" />
-            <button type="button" class="gallery-del" data-del-img="${idx}" title="削除">✕</button>
-          </div>
-        `).join('')
-      : '<div class="hint-text">まだ写真がありません。「＋ 写真を追加」から試作や素材の写真を登録できます。</div>';
-
-    // 参加オファー承認箱 (#7)
-    const offersCard = document.getElementById('ws-offers-card');
-    const offers = prod.offers || [];
-    offersCard.classList.toggle('hidden', offers.length === 0);
-    document.getElementById('ws-offers-list').innerHTML = offers.map(o => {
-      const approved = (o.approvals || []).includes(state.profile.name);
-      return `
-        <div class="offer-item">
-          <div><strong>🙋 ${esc(o.from)}</strong> さんからの参加オファー</div>
-          <p style="font-size:0.86rem;">「${esc(o.message)}」</p>
-          <div class="hint-text" style="margin:0;">現在の同意：${o.approvals.length} / ${room.members.length} 名（全員同意で正式合流）</div>
-          <div class="btn-row">
-            <button type="button" class="btn btn-primary btn-sm" data-approve-offer="${esc(o.id)}" ${approved ? 'disabled' : ''}>
-              ${approved ? '✅ あなたは同意済み' : '👍 参加に同意する'}
-            </button>
-            <button type="button" class="btn btn-olive btn-sm" data-approve-all="${esc(o.id)}">
-              ⚡ 全員同意を完了して合流（デモ）
-            </button>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    // 原価電卓 & 採用資材
-    const matCost = calcMaterialCost(prod);
-    document.getElementById('ws-cost-raw').value = prod.costRaw;
-    document.getElementById('ws-cost-labor').value = prod.costLabor;
-    document.getElementById('ws-cost-mat').value = matCost;
-    document.getElementById('ws-price-sell').value = prod.priceSell;
-    const totalCost = Number(prod.costRaw) + Number(prod.costLabor) + matCost;
-    const profit = Number(prod.priceSell) - totalCost;
-    const rate = prod.priceSell > 0 ? Math.round((profit / prod.priceSell) * 100) : 0;
-    document.getElementById('ws-cost-summary').innerHTML = `
-      <div>合計原価：<strong>¥${totalCost}</strong></div>
-      <div>予定粗利：<strong style="color:${profit >= 0 ? 'var(--olive)' : 'var(--accent)'};">¥${profit}</strong></div>
-      <div>粗利率：<strong>${rate}%</strong></div>
-    `;
-    document.getElementById('ws-adopted-materials').innerHTML = (prod.adoptedMaterialIds || []).length
-      ? prod.adoptedMaterialIds.map(id => {
-          const m = window.ENJOY_MATERIALS.find(x => x.id === id);
-          if (!m) return '';
-          return `<span class="mat-chip">${esc(m.name)} (¥${m.unitPrice}) <button type="button" data-remove-mat="${esc(id)}">✕</button></span>`;
-        }).join('')
-      : '<span class="hint-text">まだ採用中の資材はありません。マルシェの「資材＆神道具」から採用できます。</span>';
-
-    // ストーリーログ (#8)
-    document.getElementById('ws-story-list').innerHTML = (prod.stories || []).map(st => `
-      <div class="story-item ${st.isPrivate ? 'is-private' : ''}">
-        <div class="story-item-head">
-          <span><strong>${esc(st.author)}</strong> ・ ${esc(st.date)}</span>
-          <button type="button" class="text-btn" data-toggle-story-priv="${esc(st.id)}">
-            ${st.isPrivate ? '🔒 メンバー限定（公開にする）' : '🌐 公開中（非公開にする）'}
-          </button>
-        </div>
-        <p style="font-size:0.88rem;">${esc(st.text)}</p>
-      </div>
-    `).join('');
-
-    // 参加型カレンダー (#10)
-    document.getElementById('ws-calendar-list').innerHTML = (prod.calendar || []).length
-      ? prod.calendar.map(c => `
-          <li class="cal-item">
-            <div><span class="cal-date-badge">${esc(c.date)}</span> <strong>${esc(c.title)}</strong></div>
-            <div class="btn-row">
-              <a href="${buildGoogleCalUrl(c.title, c.date)}" target="_blank" rel="noopener" class="text-btn">Googleカレンダーへ ↗</a>
-              <button type="button" class="text-btn" data-del-cal="${esc(c.id)}">削除</button>
-            </div>
-          </li>
-        `).join('')
-      : '<li class="cal-item">予定はまだありません。開発ログに「12/10 試作」のように書いても自動追加されます！</li>';
-  }
-
-  function buildGoogleCalUrl(title, dateStr) {
-    const clean = (dateStr || '2026-12-01').replace(/-/g, '');
-    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('EN•joy: ' + title)}&dates=${clean}/${clean}`;
-  }
-
-  /* ---------- TAB 4: マルシェ・旬 ---------- */
-  function renderMarche() {
-    // 4-1: みんなの棚 (#3)
-    const all = getAllProductsWithRoom().filter(({ prod }) => prod.visibility !== 'private');
-    const filtered = shelfFilter === 'all' ? all : all.filter(({ prod }) => prod.phase === shelfFilter);
-    document.getElementById('marche-shelf-grid').innerHTML = filtered.length
-      ? filtered.map(({ room, prod }) => {
-          const thumb = prod.images && prod.images[0]
-            ? `<img class="product-thumb" src="${prod.images[0]}" alt="${esc(prod.title)}" />`
-            : `<div class="product-thumb">🧺</div>`;
-          return `
-            <article class="product-card">
-              ${thumb}
-              <div class="badge-row">
-                <span class="phase-badge">${esc(prod.phase)}</span>
-                <span class="vis-badge">${esc(prod.category)}</span>
-              </div>
-              <strong>${esc(prod.title)}</strong>
-              <div class="hint-text" style="margin:0;">${esc(room.name)} ／ 予定価格 ¥${prod.priceSell}</div>
-              <div class="reaction-row">
-                <button type="button" class="react-btn" data-react="${esc(prod.id)}|eat">😋 食べてみたい (${prod.reactions.eat})</button>
-                <button type="button" class="react-btn" data-open-prod="${esc(room.id)}|${esc(prod.id)}">開発室を見る</button>
-              </div>
-            </article>
-          `;
-        }).join('')
-      : '<div class="card">このフェーズの商品はまだありません。</div>';
-
-    // 4-2: マイ商品カタログ (#4)
-    const groupBy = document.getElementById('catalog-group-by').value;
-    const groups = {};
-    getAllProductsWithRoom().forEach(({ room, prod }) => {
-      const key = groupBy === 'room' ? room.name : groupBy === 'category' ? prod.category : prod.phase;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push({ room, prod });
-    });
-    document.getElementById('my-catalog-body').innerHTML = Object.entries(groups).map(([k, items]) => `
-      <div>
-        <div class="catalog-group-title">${esc(k)}（${items.length}点）</div>
-        <div class="mini-project-grid">
-          ${items.map(({ room, prod }) => `
-            <div class="mini-project-card" data-open-prod="${esc(room.id)}|${esc(prod.id)}">
-              <span class="phase-badge">${esc(prod.phase)}</span>
-              <div style="margin-top:6px;"><strong>${esc(prod.title)}</strong></div>
-              <div class="hint-text">売価 ¥${prod.priceSell} ／ 原価 ¥${Number(prod.costRaw) + Number(prod.costLabor) + calcMaterialCost(prod)}</div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `).join('');
-
-    // 4-3: 資材 & 神道具 (#9)
-    document.getElementById('marche-fund-box').innerHTML = buildFundBannerHtml();
-    const activeProd = getActiveProduct();
-    document.getElementById('materials-list').innerHTML = window.ENJOY_MATERIALS.map(m => {
-      const adoptedBy = getAllProductsWithRoom()
-        .filter(({ prod }) => (prod.adoptedMaterialIds || []).includes(m.id))
-        .map(({ prod }) => prod.title);
-      const isAdoptedHere = activeProd && (activeProd.adoptedMaterialIds || []).includes(m.id);
-      return `
-        <article class="material-card">
-          <strong>${esc(m.name)}</strong>
-          <div class="hint-text" style="margin:0;">目安単価：¥${m.unitPrice}/個 ・ ${esc(m.desc)}</div>
-          <div class="pr-box">
-            ✨ 無料PR掲載中：${adoptedBy.length ? adoptedBy.map(esc).join(' ／ ') : '最初に採用するとここに掲載されます！'}
-          </div>
-          <div class="btn-row">
-            <button type="button" class="btn ${isAdoptedHere ? 'btn-olive' : 'btn-primary'} btn-sm" data-adopt-mat="${esc(m.id)}">
-              ${isAdoptedHere ? '✅ 採用中' : '📦 開発室で採用'}
-            </button>
-            <a href="${m.rakutenUrl}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">楽天比較 ↗</a>
-            <a href="${m.amazonUrl}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Amazon ↗</a>
-          </div>
-        </article>
-      `;
-    }).join('');
-
-    document.getElementById('tools-list').innerHTML = window.ENJOY_TOOLS.map(t => `
-      <article class="material-card">
-        <strong>${esc(t.name)}</strong>
-        <div class="hint-text" style="margin:0;">目安：¥${t.price.toLocaleString()} ・ ${esc(t.desc)}</div>
-        <div class="btn-row">
-          <a href="${t.rakutenUrl}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" data-fund-boost="150">楽天で見る ↗</a>
-          <a href="${t.amazonUrl}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" data-fund-boost="150">Amazonで見る ↗</a>
-        </div>
-      </article>
-    `).join('');
-  }
-
-  /* ---------- TAB 5: マイ・輪 ---------- */
-  function getTitleProgress(t) {
-    let val = 0;
-    if (t.metric === 'heat') val = calcHeat(state.profile);
-    else if (t.metric === 'productsCount') val = getAllProductsWithRoom().length;
-    else val = state.stats[t.metric] || 0;
-    return Math.min(100, Math.round((val / t.target) * 100));
-  }
-
-  function renderMy() {
-    // 個人4軸Lv
-    const pe = state.personalExp;
-    const totalLv = calcLevel(pe.cheer + pe.field + pe.en + pe.craft);
-    document.getElementById('my-total-lv-badge').textContent = `総合 Lv.${totalLv}`;
-    const axes = [
-      { label: '🧡 応援・目利きLv', val: pe.cheer },
-      { label: '🎪 現場・マルシェLv', val: pe.field },
-      { label: '🤝 ご縁・つなぎLv', val: pe.en },
-      { label: '🛠️ ものづくりLv', val: pe.craft }
-    ];
-    document.getElementById('my-lv-4-grid').innerHTML = axes.map(a => `
-      <div class="lv-card">
-        <div class="lv-card-head"><span>${a.label}</span><span>Lv.${calcLevel(a.val)} (${a.val} EXP)</span></div>
-        <div class="progress-track"><div class="progress-fill" style="width:${(a.val % 50) * 2}%;"></div></div>
-      </div>
-    `).join('');
-
-    // 熱量メーター & プロフィール
-    const heat = calcHeat(state.profile);
-    document.getElementById('my-heat-badge').textContent = `${heat}%`;
-    document.getElementById('my-heat-bar').style.width = `${Math.min(100, heat)}%`;
-    document.getElementById('my-heat-comment').textContent =
-      heat >= 100
-        ? '🔥 100%突破！仲間図鑑で最上位ブースト表示され、相性マッチングが優遇されています！'
-        : 'あと少し！想いや持っている設備を詳しく書くほど100%に近づきます。';
-
-    document.getElementById('prof-name').value = state.profile.name || '';
-    document.getElementById('prof-role').value = state.profile.role || '農家・生産者';
-    document.getElementById('prof-area').value = state.profile.area || '';
-    document.getElementById('prof-skills').value = state.profile.skills || '';
-    document.getElementById('prof-bio').value = state.profile.bio || '';
-    document.getElementById('prof-map-public').checked = !!state.profile.mapPublic;
-
-    // 努力型称号
-    document.getElementById('titles-grid').innerHTML = window.ENJOY_TITLES.map(t => {
-      const pct = getTitleProgress(t);
-      const unlocked = pct >= 100;
-      return `
-        <div class="title-card ${unlocked ? 'unlocked' : ''}">
-          <div class="lv-card-head">
-            <span>${t.icon} ${esc(t.name)}</span>
-            <span>${unlocked ? '✨ 獲得済み' : pct + '%'}</span>
-          </div>
-          <p class="hint-text" style="margin:0 0 8px;">${esc(t.desc)}</p>
-          <div class="progress-track"><div class="progress-fill" style="width:${pct}%;"></div></div>
-        </div>
-      `;
-    }).join('');
-
-    // 運営コントロールパネル
-    document.getElementById('admin-banner-type').value = state.adminBanner.type || 'info';
-    document.getElementById('admin-banner-enabled').checked = !!state.adminBanner.enabled;
-    document.getElementById('admin-banner-input').value = state.adminBanner.text || '';
-    document.getElementById('admin-inquiry-log').innerHTML = (state.inquiries || []).length
-      ? state.inquiries.map(i => `
-          <div class="inbox-item">
-            <div class="feed-meta" style="margin-bottom:4px;">
-              <span class="tag-pill">${esc(i.category)}</span>
-              <span>${esc(i.date)}</span>
-              <span>(${esc(i.meta)})</span>
-            </div>
-            <p style="font-size:0.86rem;">${esc(i.body)}</p>
-          </div>
-        `).join('')
-      : '<p class="hint-text">まだお問い合わせはありません。</p>';
-  }
-
-  /* ---------- 一括メッセージ箱 (#11) ---------- */
-  function renderInbox() {
-    const list = inboxFilter === 'all' ? state.inbox : state.inbox.filter(m => m.type === inboxFilter);
-    const typeLabel = { cheer: '🧡 応援の声', offer: '🙋 参加オファー', dev: '🛠️ 開発連絡', ops: '📢 運営' };
-    document.getElementById('inbox-list').innerHTML = list.length
-      ? list.map(m => `
-          <div class="inbox-item">
-            <div class="feed-meta" style="margin-bottom:4px;">
-              <span class="tag-pill">${typeLabel[m.type] || '✉️ 連絡'}</span>
-              <strong>${esc(m.from)}</strong>
-              <span>・${esc(m.date)}</span>
-              ${m.unread ? '<span class="phase-badge">未読</span>' : ''}
-            </div>
-            <p style="font-size:0.88rem; margin-bottom:8px;">${esc(m.text)}</p>
-            <div class="btn-row">
-              ${m.unread ? `<button type="button" class="btn btn-outline btn-sm" data-read-msg="${esc(m.id)}">既読にする</button>` : ''}
-              ${m.type === 'cheer' ? `<button type="button" class="btn ${m.quotedForPop ? 'btn-olive' : 'btn-outline'} btn-sm" data-quote-pop="${esc(m.id)}">${m.quotedForPop ? '✅ POP引用中' : '🪧 店頭POPに引用'}</button>` : ''}
-            </div>
-          </div>
-        `).join('')
-      : '<p class="hint-text">該当するメッセージはありません。</p>';
-  }
-
-  /* ---------- 印刷プレビュー（同意書 / A4 POP / 8枚名刺） ---------- */
-  function openPrintPreview(mode) {
-    const room = getActiveRoom();
-    const prod = getActiveProduct();
-    if (!room || !prod) return;
-    const area = document.getElementById('print-preview-area');
-    const title = document.getElementById('print-title');
-
-    if (mode === 'agreement') {
-      title.textContent = '📄 簡易コラボ同意書（印刷・PDF保存）';
-      const totalCost = Number(prod.costRaw) + Number(prod.costLabor) + calcMaterialCost(prod);
-      area.innerHTML = `
-        <div class="print-doc">
-          <h2 style="text-align:center; margin-bottom:14px;">EN•joy 簡易コラボ開発 確認書</h2>
-          <p><strong>ご縁ルーム：</strong>${esc(room.name)}</p>
-          <p><strong>対象商品：</strong>${esc(prod.title)}（フェーズ：${esc(prod.phase)}）</p>
-          <p><strong>参加メンバー：</strong>${esc(room.members.join(' ／ '))}</p>
-          <hr style="margin:12px 0;" />
-          <p><strong>想定原価：</strong>¥${totalCost}/個 ／ <strong>予定販売価格：</strong>¥${prod.priceSell}/個</p>
-          <p style="margin-top:10px; font-size:0.88rem;">
-            1. 本プロジェクトはメンバー全員の合意のもとで進行し、追加参加も全員同意を原則とします。<br>
-            2. 試作費・資材費の分担および売上配分は、販売開始前にメンバー間で最終確認を行います。<br>
-            3. 本書は現場での認識合わせを目的とした簡易メモです。
-          </p>
-          <div style="margin-top:24px; display:flex; justify-content:space-between;">
-            <span>作成日：${new Date().toLocaleDateString('ja-JP')}</span>
-            <span>確認サイン：______________________</span>
-          </div>
-        </div>
-      `;
-    } else if (mode === 'pop') {
-      title.textContent = '🪧 応援の声つき A4店頭POP';
-      const quoted = state.inbox.find(m => m.quotedForPop) || (prod.comments && prod.comments[0]);
-      const voiceText = quoted ? quoted.text : '作り手の想いが詰まった、ご縁から生まれた自信作です！';
-      area.innerHTML = `
-        <div class="print-doc print-pop">
-          <div style="color:var(--accent); font-weight:900; letter-spacing:0.1em;">EN•joy × EN•dress</div>
-          <h1 style="font-size:1.8rem; margin:12px 0;">${esc(prod.title)}</h1>
-          <p style="font-size:1rem; color:#555; margin-bottom:16px;">${esc(room.name)} 共同開発</p>
-          <div style="background:#FBF4E4; padding:14px; border-radius:10px; margin:14px 0;">
-            <div style="font-size:0.8rem; font-weight:800; color:#8A5A12;">🧡 みんなの応援の声</div>
-            <p style="font-size:1.05rem; font-weight:700; margin-top:4px;">「${esc(voiceText)}」</p>
-          </div>
-          <div style="font-size:2rem; font-weight:900; color:var(--accent); margin-top:14px;">¥${prod.priceSell} <span style="font-size:0.9rem;">(税込目安)</span></div>
-        </div>
-      `;
-    } else if (mode === 'cards') {
-      title.textContent = '🪪 8枚まとめ名刺シート（A4印刷用）';
-      const cardHtml = `
-        <div class="print-biz-card">
-          <div style="font-weight:900; color:var(--accent);">EN•joy / EN•dress</div>
-          <div style="font-size:1rem; font-weight:900; margin:4px 0;">${esc(state.profile.name)}</div>
-          <div>${esc(state.profile.role)} ／ ${esc(state.profile.area)}</div>
-          <div style="font-size:0.75rem; color:#666; margin-top:4px;">${esc(state.profile.skills)}</div>
-        </div>
-      `;
-      area.innerHTML = `<div class="print-doc"><div class="print-cards-grid">${Array(8).fill(cardHtml).join('')}</div></div>`;
-    }
-    openModal('modal-print');
-  }
-
-  /* ---------- 画像自動軽量リサイズ（パンク防止） ---------- */
-  function resizeImageFile(file, maxW, callback) {
+  function resizeImage(file, maxW, cb) {
     const reader = new FileReader();
     reader.onload = e => {
       const img = new Image();
@@ -845,738 +98,1014 @@
         const canvas = document.createElement('canvas');
         canvas.width = Math.round(img.width * scale);
         canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        callback(canvas.toDataURL('image/jpeg', 0.72));
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        cb(canvas.toDataURL('image/jpeg', 0.72));
       };
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
   }
 
-  /* ---------- イベントリスナー登録 ---------- */
+  /* ---------- ナビ・UIモード・モーダル ---------- */
+  function applyUiMode() {
+    document.body.classList.toggle('ui-simple', state.uiMode === 'simple');
+    const pcBtn = document.getElementById('btn-ui-mode-pc');
+    if (pcBtn) pcBtn.textContent = state.uiMode === 'simple' ? '🔰 かんたん（切替）' : '⚡ モダン（切替）';
+    const focusBtn = document.getElementById('btn-focus-pc');
+    if (focusBtn) {
+      focusBtn.textContent = `🚜 集中モード：${state.focusMode ? 'ON' : 'OFF'}`;
+      focusBtn.classList.toggle('active', !!state.focusMode);
+    }
+  }
+
+  function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tab}`));
+    document.querySelectorAll('.nav-item, .dock-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    const t = document.getElementById('page-title');
+    if (t) t.textContent = TAB_TITLES[tab] || 'EN•joy';
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+
+  function switchSeg(group, seg) {
+    document.querySelectorAll(`[data-seg-group="${group}"]`).forEach(b => b.classList.toggle('active', b.dataset.seg === seg));
+    document.querySelectorAll(`#tab-${group} .seg-panel`).forEach(p => p.classList.toggle('active', p.id === `${group}-${seg}`));
+  }
+
+  function switchDevTab(tab) {
+    activeDevTab = tab;
+    document.querySelectorAll('[data-dev-tab]').forEach(b => b.classList.toggle('active', b.dataset.devTab === tab));
+    document.querySelectorAll('.dev-pane').forEach(p => p.classList.toggle('active', p.id === `dev-pane-${tab}`));
+  }
+
+  function openModal(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (id === 'modal-chat') renderChatModal();
+    el.classList.remove('hidden');
+  }
+
+  function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+  }
+
+  /* ---------- 全体描画 ---------- */
+  function renderAll() {
+    applyUiMode();
+    renderBadges();
+    renderUseful();
+    renderPlaza();
+    renderEn();
+    renderShop();
+    renderHome();
+  }
+
+  function renderBadges() {
+    const unread = state.inbox.filter(m => m.unread).length;
+    document.getElementById('badge-chat').textContent = unread;
+    ['badge-home-pc', 'badge-home-mobile'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('hidden', unread === 0);
+    });
+  }
+
+  /* ============================================================
+     1. 左端：🥬 役立ち（旬・レシピ / 1週間献立 / 資材・協賛）
+     ============================================================ */
+  function renderUseful() {
+    // 1-1: 旬＆レシピ
+    const inSeason = window.ENJOY_SHUN.filter(s => s.months.includes(selectedMonth));
+    document.getElementById('useful-shun').innerHTML = `
+      <div class="card">
+        <div class="card-head">
+          <h2>🥬 ${selectedMonth}月の旬・見分け方</h2>
+          <div class="chip-scroll">
+            ${[1,2,3,4,5,6,7,8,9,10,11,12].map(m => `
+              <button type="button" class="chip-btn ${m === selectedMonth ? 'active-accent' : ''}" data-month="${m}">${m}月</button>
+            `).join('')}
+          </div>
+        </div>
+        <div class="card-grid-2">
+          ${inSeason.map(s => `
+            <div class="card" style="background:var(--surface-sub);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <strong>${s.icon} ${esc(s.name)}</strong>
+                <span class="tag">${s.nutrients.join('・')}</span>
+              </div>
+              <p class="muted-text"><strong>見分け方：</strong>${esc(s.tip)}</p>
+              <p class="muted-text" style="margin-top:4px;"><strong>保存：</strong>${esc(s.save)}</p>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>🍳 大量消費レシピ ＆ 簡易PFC分析</h2>
+        </div>
+        <form id="form-recipe" class="stack-form" style="margin-bottom:12px;">
+          <div class="form-row-2">
+            <input type="text" id="rec-title" class="input" placeholder="レシピ名" required />
+            <input type="text" id="rec-ing" class="input" placeholder="材料（例：白菜、豚肉、みそ）" required />
+          </div>
+          <div class="form-actions-right">
+            <button type="submit" class="btn btn-accent btn-sm">レシピ追加</button>
+          </div>
+        </form>
+        <div class="card-grid-2">
+          ${state.recipes.map(r => {
+            const hasP = /豚|鶏|卵|豆腐|魚/.test(r.ingredients);
+            const pW = hasP ? 35 : 15, fW = hasP ? 25 : 15, cW = 100 - pW - fW;
+            return `
+              <div class="card" style="background:var(--surface-sub);">
+                <span class="tag-accent">${esc(r.tag)}</span>
+                <strong style="display:block; margin:4px 0;">${esc(r.title)}</strong>
+                <p class="muted-text">材料：${esc(r.ingredients)}</p>
+                <p style="font-size:0.82rem; margin:4px 0;">${esc(r.steps)}</p>
+                <div class="pfc-strip" title="P/F/Cバランス">
+                  <div class="pfc-p" style="width:${pW}%;"></div>
+                  <div class="pfc-f" style="width:${fW}%;"></div>
+                  <div class="pfc-c" style="width:${cW}%;"></div>
+                </div>
+                <span class="muted-text">${hasP ? 'バランス◎' : '＋タンパク質（豆腐・卵など）を足すと◎'}</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+
+    // 1-2: 1週間献立
+    document.getElementById('useful-plan').innerHTML = `
+      <div class="card">
+        <div class="card-head">
+          <h2>📅 旬めし 1週間献立コンシェルジュ</h2>
+          <span class="tag-dark">箱買い使い切り</span>
+        </div>
+        <div class="form-row-2" style="margin-bottom:10px;">
+          <select id="plan-item" class="input">
+            <option value="白菜＆大根">🥬 白菜＆大根</option>
+            <option value="りんご＆みかん">🍎 りんご＆みかん</option>
+          </select>
+          <button type="button" id="btn-gen-plan" class="btn btn-accent">1週間献立を作成</button>
+        </div>
+        ${generatedPlan ? `
+          <div class="stack-list">
+            ${generatedPlan.map(d => `
+              <div class="chat-item"><strong>${d.day}</strong>：${esc(d.menu)} <span class="muted-text">(${esc(d.note)})</span></div>
+            `).join('')}
+          </div>
+        ` : '<p class="muted-text">使い切りたい旬の食材を選んでボタンを押してください。</p>'}
+      </div>
+    `;
+
+    // 1-3: 資材・協賛
+    const activeProd = getActiveProduct();
+    document.getElementById('useful-tools').innerHTML = `
+      <div class="card">
+        <div class="card-head">
+          <h2>🛠️ 開発資材（採用すると原価に自動加算）</h2>
+        </div>
+        <div class="card-grid-2">
+          ${window.ENJOY_MATERIALS.map(m => {
+            const adopted = activeProd && (activeProd.adoptedMaterialIds || []).includes(m.id);
+            return `
+              <div class="card" style="background:var(--surface-sub);">
+                <strong>${esc(m.name)}</strong>
+                <p class="muted-text" style="margin:4px 0;">単価目安：¥${m.unitPrice}/個</p>
+                <div class="btn-row">
+                  <button type="button" class="btn ${adopted ? 'btn-dark' : 'btn-accent'} btn-sm" data-adopt-mat="${esc(m.id)}">
+                    ${adopted ? '採用中' : '開発室で採用'}
+                  </button>
+                  <a href="${m.rakuten}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">楽天 ↗</a>
+                  <a href="${m.amazon}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Amazon ↗</a>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>🏢 協賛テストキッチン・試供品枠</h2></div>
+        <div class="card-grid-2">
+          ${window.ENJOY_SPONSORS.map(sp => `
+            <div class="card" style="background:var(--surface-sub);">
+              <span class="tag">${esc(sp.area)}</span>
+              <strong style="display:block; margin:4px 0;">${esc(sp.name)}</strong>
+              <p class="muted-text" style="margin-bottom:8px;">${esc(sp.offer)}</p>
+              <button type="button" class="btn btn-outline btn-sm" data-apply-sp="${esc(sp.id)}">協賛枠を申請</button>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  /* ============================================================
+     2. 左2：💬 広場（画像付きつぶやき / 15秒動画）
+     ============================================================ */
+  function renderPlaza() {
+    const q = (document.getElementById('feed-search').value || '').toLowerCase();
+    const list = state.feeds.filter(f => !q || `${f.author} ${f.area} ${f.text} ${f.tag}`.toLowerCase().includes(q));
+
+    document.getElementById('feed-list').innerHTML = list.map(f => `
+      <article class="feed-card">
+        <div class="feed-meta">
+          <span class="tag-accent">${esc(f.tag)}</span>
+          <strong>${esc(f.author)}</strong>
+          <span>${esc(f.area)}</span>
+          <span>・${esc(f.createdAt)}</span>
+        </div>
+        ${f.image ? `<img class="feed-card-img" src="${f.image}" alt="投稿写真" />` : ''}
+        <p style="font-size:0.9rem;">${esc(f.text)}</p>
+        <div class="btn-row">
+          <button type="button" class="btn btn-outline btn-sm" data-like-feed="${esc(f.id)}">♥ ${f.likes}</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-start-room="${esc(f.author)}|${esc(f.text.slice(0, 14))}">🤝 話してみる</button>
+        </div>
+      </article>
+    `).join('');
+
+    // 15秒動画
+    const v = state.shorts[currentShortIdx % state.shorts.length];
+    document.getElementById('plaza-shorts').innerHTML = `
+      <div class="card" style="background:var(--ink); color:#FFF;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <span class="tag-accent">${esc(v.tag)}</span>
+          <span style="font-size:0.78rem;">${currentShortIdx + 1} / ${state.shorts.length}</span>
+        </div>
+        <h2 style="font-size:1.1rem; margin-bottom:6px;">▶️ ${esc(v.title)}</h2>
+        <p style="font-size:0.82rem; color:#CCC; margin-bottom:14px;">${esc(v.author)}</p>
+        <div class="btn-row">
+          <a href="${esc(v.url)}" target="_blank" rel="noopener" class="btn btn-accent btn-sm">動画を再生 ↗</a>
+          <button type="button" id="btn-short-like" class="btn btn-outline btn-sm">♥ ${v.likes}</button>
+          <button type="button" id="btn-short-next" class="btn btn-outline btn-sm">次の動画 ⬇</button>
+        </div>
+      </div>
+    `;
+  }
+
+  /* ============================================================
+     3. 真ん中：🤝 EN 出会い（やりたいこと募集 / 人 / マップ）
+     ============================================================ */
+  function renderEn() {
+    // やりたいこと募集カード
+    document.getElementById('en-ideas-list').innerHTML = state.ideas.map(idea => `
+      <article class="card">
+        <div class="feed-meta" style="margin-bottom:6px;">
+          <span class="tag-accent">${esc(idea.cat)}</span>
+          <span class="tag">募集：${esc(idea.need)}</span>
+        </div>
+        <h3 style="font-size:0.98rem; margin-bottom:6px;">${esc(idea.title)}</h3>
+        <p class="muted-text" style="margin-bottom:8px;">${esc(idea.detail)}</p>
+        <div class="feed-meta" style="margin-bottom:10px;">
+          <strong>${esc(idea.author)}</strong>（${esc(idea.area)}）
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-accent btn-sm" data-start-room="${esc(idea.author)}|${esc(idea.title.slice(0, 14))}">🤝 一緒に開発ルームを作る</button>
+          <button type="button" class="btn btn-outline btn-sm" data-like-idea="${esc(idea.id)}">気になる (${idea.likes})</button>
+        </div>
+      </article>
+    `).join('');
+
+    // おすすめの人
+    const sorted = [...state.people].sort((a, b) => b.heat - a.heat);
+    document.getElementById('en-people').innerHTML = `
+      <div class="card-grid-3">
+        ${sorted.map(p => `
+          <article class="card">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+              <strong>${esc(p.name)}</strong>
+              <span class="tag-accent">熱量 ${p.heat}%</span>
+            </div>
+            <p class="muted-text">${esc(p.role)} ／ ${esc(p.area)}</p>
+            <p style="font-size:0.84rem; margin:6px 0 10px;">${esc(p.skills)}</p>
+            <button type="button" class="btn btn-outline btn-sm" data-start-room="${esc(p.name)}|コラボ相談">🤝 ご縁を結ぶ</button>
+          </article>
+        `).join('')}
+      </div>
+    `;
+
+    // ご縁マップ
+    const stampedCnt = state.spots.filter(s => s.stamped).length;
+    document.getElementById('en-map').innerHTML = `
+      <div class="card">
+        <div class="card-head">
+          <h2>🗺️ ご縁めぐりマップ</h2>
+          <span class="tag-dark">スタンプ ${stampedCnt} / ${state.spots.length}</span>
+        </div>
+        <div class="map-board">
+          ${state.spots.map(s => `
+            <button type="button" class="map-pin ${s.stamped ? 'stamped' : ''}" style="left:${s.x}%; top:${s.y}%;" data-stamp-spot="${esc(s.id)}" title="${esc(s.name)}">
+              ${s.icon}
+            </button>
+          `).join('')}
+        </div>
+        <div class="card-grid-3">
+          ${state.spots.map(s => `
+            <div class="card" style="background:var(--surface-sub);">
+              <div style="display:flex; justify-content:space-between;">
+                <strong>${s.icon} ${esc(s.name)}</strong>
+                ${s.stamped ? '<span class="tag-accent">済</span>' : ''}
+              </div>
+              <p class="muted-text" style="margin:4px 0;">${esc(s.memo)}</p>
+              <div class="btn-row">
+                <button type="button" class="btn btn-outline btn-sm" data-stamp-spot="${esc(s.id)}">${s.stamped ? 'スタンプ済' : '訪問スタンプ'}</button>
+                <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.area)}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">経路 ↗</a>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  /* ============================================================
+     4. 右2：🛍️ 通販（開発中・早割 / EC / 買い物帳）
+     ============================================================ */
+  function renderShop() {
+    const all = getAllProducts();
+    const wip = all.filter(({ prod }) => prod.phase !== '販売中');
+    const ec = all.filter(({ prod }) => prod.phase === '販売中');
+
+    // 開発中・早割
+    document.getElementById('shop-wip').innerHTML = `
+      <div class="card" style="background:var(--accent-soft); border-color:var(--accent);">
+        <strong>👑 ご縁株主優待：保有 ${state.myShares}株</strong>
+        <span class="muted-text">（5株以上で試食モニター優先・10株で古民家EC 10%OFF）</span>
+      </div>
+      <div class="card-grid-2">
+        ${wip.map(({ room, prod }) => `
+          <article class="card">
+            <div class="feed-meta" style="margin-bottom:4px;">
+              <span class="tag-accent">${esc(prod.phase)}</span>
+              <span>${esc(room.name)}</span>
+            </div>
+            <h3>${esc(prod.title)}</h3>
+            <p style="margin:6px 0;"><strong>早割 ¥${prod.earlyPrice}</strong> <span class="muted-text">（通常 ¥${prod.priceSell}）</span></p>
+            <div class="bar-track" style="margin-bottom:8px;">
+              <div class="bar-fill" style="width:${Math.min(100, Math.round((prod.ticketsBought / prod.ticketsLimit) * 100))}%;"></div>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn btn-accent btn-sm" data-buy-tkt="${esc(prod.id)}">🎟️ 早割予約 (+2株)</button>
+              <button type="button" class="btn btn-outline btn-sm" data-fav-prod="${esc(prod.id)}">
+                ${state.shoppingBook.favorites.includes(prod.id) ? '♥ お気に入り済' : '♡ 保存'}
+              </button>
+            </div>
+          </article>
+        `).join('')}
+      </div>
+    `;
+
+    // EN•dress EC
+    document.getElementById('shop-ec').innerHTML = `
+      <div class="card-grid-3">
+        ${ec.length ? ec.map(({ room, prod }) => `
+          <article class="card">
+            <span class="tag-dark">EN•dress 販売中</span>
+            <h3 style="margin:6px 0 4px;">${esc(prod.title)}</h3>
+            <p class="muted-text">${esc(room.name)}</p>
+            <p style="font-size:1.1rem; font-weight:900; margin:8px 0;">¥${prod.priceSell}</p>
+            <div class="btn-row">
+              <button type="button" class="btn btn-dark btn-sm" data-buy-ec="${esc(prod.title)}">購入する（デモ）</button>
+              <button type="button" class="btn btn-outline btn-sm" data-fav-prod="${esc(prod.id)}">♡</button>
+            </div>
+          </article>
+        `).join('') : '<div class="card">販売中の商品はまだありません。</div>'}
+      </div>
+    `;
+
+    // 買い物帳
+    const favProds = all.filter(({ prod }) => state.shoppingBook.favorites.includes(prod.id));
+    document.getElementById('shop-book').innerHTML = `
+      <div class="card">
+        <div class="card-head"><h2>❤️ お気に入り</h2></div>
+        <div class="stack-list">
+          ${favProds.length ? favProds.map(({ prod }) => `
+            <div class="chat-item" style="display:flex; justify-content:space-between;">
+              <strong>${esc(prod.title)}（¥${prod.priceSell}）</strong>
+              <button type="button" class="btn btn-ghost btn-sm" data-fav-prod="${esc(prod.id)}">解除</button>
+            </div>
+          `).join('') : '<p class="muted-text">お気に入りはまだありません。</p>'}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>🛍️ 購入・リピートメモ</h2></div>
+        <div class="stack-list">
+          ${state.shoppingBook.purchases.map(p => `
+            <div class="chat-item">
+              <strong>${'★'.repeat(p.rating)} ${esc(p.title)}</strong> <span class="muted-text">(${esc(p.date)})</span>
+              <p class="muted-text">${esc(p.memo)}</p>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  /* ============================================================
+     5. 右端：🏠 ホーム（最上段：開発ルーム4ミニタブ ／ 下段：個人）
+     ============================================================ */
+  function renderHome() {
+    const room = getActiveRoom();
+    const prod = getActiveProduct();
+    if (!room || !prod) return;
+
+    // ルーム＆商品スイッチャー
+    document.getElementById('dev-room-tabs').innerHTML = state.rooms.map(r => `
+      <button type="button" class="chip-btn ${r.id === room.id ? 'active' : ''}" data-sel-room="${esc(r.id)}">
+        ${esc(r.name)}
+      </button>
+    `).join('');
+
+    document.getElementById('dev-prod-tabs').innerHTML = room.products.map(p => `
+      <button type="button" class="chip-btn ${p.id === prod.id ? 'active-accent' : ''}" data-sel-prod="${esc(p.id)}">
+        ${esc(p.title)}
+      </button>
+    `).join('');
+
+    document.getElementById('dev-phase-tag').textContent = prod.phase;
+    document.getElementById('dev-prod-title').textContent = prod.title;
+    document.getElementById('dev-phase-select').value = prod.phase;
+
+    // ミニタブ1: チャット
+    document.getElementById('dev-pane-chat').innerHTML = `
+      <div class="chat-stream">
+        ${(prod.chats || []).map(c => `
+          <div class="chat-item ${c.isPrivate ? 'is-priv' : ''}">
+            <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:var(--ink-sub); margin-bottom:2px;">
+              <span><strong>${esc(c.author)}</strong> ・ ${esc(c.date)}</span>
+              <button type="button" class="btn btn-ghost btn-sm" style="padding:0 4px;" data-toggle-priv="${esc(c.id)}">
+                ${c.isPrivate ? '🔒 限定' : '🌐 公開'}
+              </button>
+            </div>
+            <p style="font-size:0.86rem;">${esc(c.text)}</p>
+          </div>
+        `).join('')}
+      </div>
+      <form id="form-dev-chat" class="stack-form">
+        <div style="display:flex; gap:6px;">
+          <input type="text" id="dev-chat-input" class="input" placeholder="メッセージ（例：12/6 試作2回目やります）" required />
+          <button type="submit" class="btn btn-accent btn-sm">送信</button>
+        </div>
+        <label style="font-size:0.78rem; color:var(--ink-sub);">
+          <input type="checkbox" id="dev-chat-priv" /> 🔒 メンバー限定メモにする
+        </label>
+      </form>
+    `;
+
+    // ミニタブ2: 試作・写真
+    document.getElementById('dev-pane-media').innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="muted-text">試作・素材写真（最大6枚・自動軽量化）</span>
+        <label class="btn btn-outline btn-sm file-label">
+          ＋ 写真を追加
+          <input type="file" id="dev-img-input" accept="image/*" hidden />
+        </label>
+      </div>
+      <div class="photo-strip">
+        ${(prod.images || []).length ? prod.images.map((src, i) => `
+          <div class="photo-cell">
+            <img src="${src}" alt="試作写真" />
+            <button type="button" class="img-preview-del" data-del-dev-img="${i}">✕</button>
+          </div>
+        `).join('') : '<p class="muted-text">まだ写真がありません。</p>'}
+      </div>
+    `;
+
+    // ミニタブ3: 原価・資材
+    const matCost = calcMatCost(prod);
+    const totalCost = Number(prod.costRaw) + Number(prod.costLabor) + matCost;
+    const profit = Number(prod.priceSell) - totalCost;
+    const rate = prod.priceSell > 0 ? Math.round((profit / prod.priceSell) * 100) : 0;
+    document.getElementById('dev-pane-cost').innerHTML = `
+      <div class="cost-row-4">
+        <label class="muted-text">素材費<input type="number" id="c-raw" class="input" value="${prod.costRaw}" /></label>
+        <label class="muted-text">加工費<input type="number" id="c-lab" class="input" value="${prod.costLabor}" /></label>
+        <label class="muted-text">資材(自動)<input type="number" class="input" value="${matCost}" readonly /></label>
+        <label class="muted-text">売価<input type="number" id="c-sell" class="input" value="${prod.priceSell}" /></label>
+      </div>
+      <div class="cost-bar">
+        <span>原価 ¥${totalCost}</span>
+        <span>粗利 ¥${profit}</span>
+        <span>粗利率 ${rate}%</span>
+      </div>
+      <div class="btn-row" style="margin-top:8px;">
+        ${(prod.adoptedMaterialIds || []).map(id => {
+          const m = window.ENJOY_MATERIALS.find(x => x.id === id);
+          return m ? `<span class="tag">${esc(m.name)} (¥${m.unitPrice}) <button type="button" style="border:none;background:none;cursor:pointer;" data-rem-mat="${esc(id)}">✕</button></span>` : '';
+        }).join('')}
+      </div>
+    `;
+
+    // ミニタブ4: 予定・印刷
+    document.getElementById('dev-pane-plan').innerHTML = `
+      <form id="form-dev-cal" style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+        <input type="date" id="cal-d" class="input input-compact" required />
+        <input type="text" id="cal-t" class="input" style="flex:1;" placeholder="予定（例：瓶詰めテスト）" required />
+        <button type="submit" class="btn btn-outline btn-sm">追加</button>
+      </form>
+      <div class="stack-list" style="margin-bottom:12px;">
+        ${(prod.calendar || []).map(c => `
+          <div class="chat-item" style="display:flex; justify-content:space-between; align-items:center;">
+            <span><strong>${esc(c.date)}</strong> ${esc(c.title)}</span>
+            <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(c.title)}" target="_blank" rel="noopener" class="muted-text">Google ↗</a>
+          </div>
+        `).join('') || '<p class="muted-text">予定はまだありません。</p>'}
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-outline btn-sm" data-print="agreement">📄 簡易同意書</button>
+        <button type="button" class="btn btn-outline btn-sm" data-print="pop">🪧 A4店頭POP</button>
+        <button type="button" class="btn btn-outline btn-sm" data-print="cards">🪪 8枚名刺</button>
+      </div>
+    `;
+
+    // ホーム下段1: プロフィール & 30秒診断
+    const diagRes = state.profile.diagType ? window.ENJOY_DIAG_RES[state.profile.diagType] : null;
+    let diagHtml = '';
+    if (diagStep >= 0) {
+      const q = window.ENJOY_DIAG_Q[diagStep];
+      diagHtml = `
+        <div class="card">
+          <div class="card-head"><h3>🔮 ${q.q}</h3><span>${diagStep + 1}/${window.ENJOY_DIAG_Q.length}</span></div>
+          <div class="stack-list">
+            ${q.opts.map(o => `<button type="button" class="btn btn-outline" style="justify-content:flex-start;" data-diag-ans="${o.type}">${o.label}</button>`).join('')}
+          </div>
+        </div>
+      `;
+    } else if (diagRes) {
+      diagHtml = `
+        <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div>
+            <span class="tag-accent">診断結果</span>
+            <strong style="margin-left:6px;">${diagRes.icon} ${diagRes.title}</strong>
+            <span class="muted-text">（相性◎：${diagRes.match}）</span>
+          </div>
+          <button type="button" id="btn-start-diag" class="btn btn-outline btn-sm">再診断</button>
+        </div>
+      `;
+    } else {
+      diagHtml = `
+        <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+          <strong>🔮 30秒ご縁タイプ診断</strong>
+          <button type="button" id="btn-start-diag" class="btn btn-accent btn-sm">診断する</button>
+        </div>
+      `;
+    }
+
+    document.getElementById('home-profile').innerHTML = `
+      ${diagHtml}
+      <form id="form-profile" class="card stack-form">
+        <div class="form-row-2">
+          <input type="text" id="p-name" class="input" value="${esc(state.profile.name)}" placeholder="名前・屋号" />
+          <input type="text" id="p-area" class="input" value="${esc(state.profile.area)}" placeholder="活動エリア" />
+        </div>
+        <input type="text" id="p-skills" class="input" value="${esc(state.profile.skills)}" placeholder="得意なこと・設備" />
+        <textarea id="p-bio" class="input textarea" rows="2">${esc(state.profile.bio)}</textarea>
+        <div class="form-actions-right">
+          <button type="submit" class="btn btn-dark btn-sm">プロフィール保存</button>
+        </div>
+      </form>
+    `;
+
+    // ホーム下段2: 年輪ボード
+    document.getElementById('home-ring').innerHTML = `
+      <div class="card">
+        <div class="card-head">
+          <h3>✍️ ご縁の年輪ボード（${state.ringEntries.length}組）</h3>
+        </div>
+        <form id="form-ring" style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+          <input type="text" id="ring-msg" class="input" style="flex:1;" placeholder="応援メッセージ・サインを刻む" required />
+          <button type="submit" class="btn btn-accent btn-sm">刻む</button>
+        </form>
+        <div class="card-grid-3">
+          ${state.ringEntries.map(r => `
+            <div class="card" style="background:var(--surface-sub);">
+              <span class="tag">${esc(r.role)}</span>
+              <strong style="display:block; margin:4px 0;">${esc(r.name)}</strong>
+              <p class="muted-text">${esc(r.message)}</p>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
+    // ホーム下段3: 設定・データ
+    document.getElementById('home-ops').innerHTML = `
+      <div class="card">
+        <div class="card-head"><h3>⚙️ 表示・バックアップ設定</h3></div>
+        <div class="btn-row">
+          <button type="button" id="btn-switch-ui" class="btn btn-outline btn-sm">⚡ モダン / 🔰 かんたん切替</button>
+          <button type="button" id="btn-export" class="btn btn-outline btn-sm">⬇️ JSON保存</button>
+          <button type="button" id="btn-reset" class="btn btn-outline btn-sm">🔄 初期デモに戻す</button>
+        </div>
+      </div>
+    `;
+  }
+
+  /* ---------- チャット受信箱モーダル ---------- */
+  function renderChatModal() {
+    document.getElementById('chat-modal-body').innerHTML = `
+      <div class="stack-list">
+        ${state.inbox.map(m => `
+          <div class="chat-item ${m.unread ? 'is-priv' : ''}">
+            <div style="display:flex; justify-content:space-between; font-size:0.75rem;">
+              <strong>${esc(m.from)}</strong>
+              <span>${esc(m.date)}</span>
+            </div>
+            <p style="font-size:0.86rem; margin:4px 0;">${esc(m.text)}</p>
+            ${m.unread ? `<button type="button" class="btn btn-outline btn-sm" data-read-msg="${esc(m.id)}">既読</button>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  /* ---------- 印刷プレビュー ---------- */
+  function openPrint(mode) {
+    const room = getActiveRoom();
+    const prod = getActiveProduct();
+    if (!room || !prod) return;
+    const body = document.getElementById('print-body');
+    if (mode === 'agreement') {
+      document.getElementById('print-title').textContent = '📄 簡易コラボ確認書';
+      body.innerHTML = `<h2>EN•joy 簡易コラボ確認書</h2><p>ルーム：${esc(room.name)} ／ 商品：${esc(prod.title)} ／ 売価目安：¥${prod.priceSell}</p><p style="margin-top:16px;">確認サイン：__________________</p>`;
+    } else if (mode === 'pop') {
+      document.getElementById('print-title').textContent = '🪧 A4店頭POP';
+      body.innerHTML = `<div style="text-align:center; border:3px solid #1A1A1A; padding:24px;"><p>EN•joy × EN•dress</p><h1 style="margin:12px 0;">${esc(prod.title)}</h1><p>${esc(room.name)}</p><h2 style="color:#C65D3B; margin-top:14px;">¥${prod.priceSell}</h2></div>`;
+    } else {
+      document.getElementById('print-title').textContent = '🪪 8枚名刺シート';
+      const c = `<div style="border:1px dashed #999; padding:10px;"><strong>${esc(state.profile.name)}</strong><br><span style="font-size:0.78rem;">${esc(state.profile.area)} / EN•joy</span></div>`;
+      body.innerHTML = `<div class="form-row-2">${Array(8).fill(c).join('')}</div>`;
+    }
+    openModal('modal-print');
+  }
+
+  /* ---------- イベント委譲 ---------- */
   function bindEvents() {
-    // 5タブ切替 & ホーム帰還
     document.addEventListener('click', e => {
+      const pickUi = e.target.closest('[data-pick-ui]');
+      if (pickUi) {
+        state.uiMode = pickUi.dataset.pickUi;
+        saveState();
+        applyUiMode();
+        closeModal('modal-ui-select');
+        toast(state.uiMode === 'simple' ? '🔰 かんたんモードに設定しました' : '⚡ モダンモードに設定しました');
+        return;
+      }
       const tabBtn = e.target.closest('[data-tab]');
-      if (tabBtn) {
-        switchTab(tabBtn.dataset.tab);
-        return;
-      }
-      if (e.target.closest('[data-go-home]')) {
-        switchTab('home');
-        return;
-      }
-      const subBtn = e.target.closest('[data-subtab]');
-      if (subBtn) {
-        switchSubtab(subBtn.dataset.subtabGroup, subBtn.dataset.subtab);
-        return;
-      }
-      const jumpBtn = e.target.closest('[data-jump-tab]');
-      if (jumpBtn) {
-        switchTab(jumpBtn.dataset.jumpTab);
-        if (jumpBtn.dataset.jumpSubtab) switchSubtab(jumpBtn.dataset.jumpTab, jumpBtn.dataset.jumpSubtab);
-        return;
-      }
-      const openModalBtn = e.target.closest('[data-open-modal]');
-      if (openModalBtn) {
-        openModal(openModalBtn.dataset.openModal);
-        return;
-      }
-      const closeModalBtn = e.target.closest('[data-close-modal]');
-      if (closeModalBtn) {
-        closeModal(closeModalBtn.dataset.closeModal);
-        return;
-      }
+      if (tabBtn) { switchTab(tabBtn.dataset.tab); return; }
 
-      // ご縁ルーム・商品選択
-      const openProd = e.target.closest('[data-open-prod]');
-      if (openProd) {
-        const [rid, pid] = openProd.dataset.openProd.split('|');
-        state.activeRoomId = rid;
-        state.activeProductId = pid;
-        saveState();
-        renderEnWorkspace();
-        switchTab('en');
-        return;
-      }
-      const selRoom = e.target.closest('[data-select-room]');
-      if (selRoom) {
-        state.activeRoomId = selRoom.dataset.selectRoom;
-        const r = getActiveRoom();
-        state.activeProductId = r && r.products[0] ? r.products[0].id : null;
-        saveState();
-        renderEnWorkspace();
-        return;
-      }
-      const selProd = e.target.closest('[data-select-prod]');
-      if (selProd) {
-        state.activeProductId = selProd.dataset.selectProd;
-        saveState();
-        renderEnWorkspace();
-        return;
-      }
+      const segBtn = e.target.closest('[data-seg]');
+      if (segBtn) { switchSeg(segBtn.dataset.segGroup, segBtn.dataset.seg); return; }
 
-      // 広場いいね & ご縁作成
-      const likeFeed = e.target.closest('[data-like-feed]');
-      if (likeFeed) {
-        const f = state.feeds.find(x => x.id === likeFeed.dataset.likeFeed);
-        if (f) {
-          f.likes += 1;
-          addPersonalExp('cheer', 5);
-          saveState();
-          renderAll();
-          showToast('🧡 いいねを送りました (+5 EXP)');
-        }
-        return;
-      }
-      const connAuthor = e.target.closest('[data-connect-author]');
-      if (connAuthor) {
-        const partner = connAuthor.dataset.connectAuthor;
-        const newRoomId = 'room-' + Date.now();
-        const newProdId = 'prod-' + Date.now();
-        state.rooms.unshift({
-          id: newRoomId,
-          name: `${partner} とのご縁`,
-          partner,
-          members: [state.profile.name, partner],
-          products: [{
-            id: newProdId,
-            title: `${partner} コラボ第1弾（企画中）`,
-            category: '新規コラボ',
-            phase: '企画中',
-            visibility: 'public',
-            images: [],
-            costRaw: 100,
-            costLabor: 100,
-            adoptedMaterialIds: [],
-            priceSell: 500,
-            productExp: { story: 15, fan: 10, quality: 10, market: 10 },
-            stories: [{ id: 'st-' + Date.now(), author: state.profile.name, text: `${partner}さんに声をかけてご縁ルームを立ち上げました！`, date: nowLabel(), isPrivate: false }],
-            calendar: [],
-            offers: [],
-            reactions: { cheer: 1, eat: 0, visit: 0 },
-            comments: []
-          }]
-        });
-        state.activeRoomId = newRoomId;
-        state.activeProductId = newProdId;
-        addPersonalExp('en', 20);
-        saveState();
-        renderAll();
-        switchTab('en');
-        showToast(`🤝 ${partner}さんとのご縁ルームを作成しました！`);
-        return;
-      }
+      const devTab = e.target.closest('[data-dev-tab]');
+      if (devTab) { switchDevTab(devTab.dataset.devTab); return; }
 
-      // プロジェクトリアクション (#6)
-      const reactBtn = e.target.closest('[data-react]');
-      if (reactBtn) {
-        const [pid, kind] = reactBtn.dataset.react.split('|');
-        const found = getAllProductsWithRoom().find(({ prod }) => prod.id === pid);
-        if (found) {
-          found.prod.reactions[kind] = (found.prod.reactions[kind] || 0) + 1;
-          found.prod.productExp.fan += 5;
-          state.stats.cheersSent += 1;
-          addPersonalExp('cheer', 8);
-          saveState();
-          renderAll();
-          showToast('🧡 リアクションを届けました (+8 EXP)');
-        }
-        return;
-      }
+      const closeBtn = e.target.closest('[data-close-modal]');
+      if (closeBtn) { closeModal(closeBtn.dataset.closeModal); return; }
 
-      // 参加オファーモーダル (#7)
-      const offerBtn = e.target.closest('[data-open-offer]');
-      if (offerBtn) {
-        const found = getAllProductsWithRoom().find(({ prod }) => prod.id === offerBtn.dataset.openOffer);
-        if (found) {
-          document.getElementById('offer-product-id').value = found.prod.id;
-          document.getElementById('offer-target-name').textContent = `対象：${found.prod.title}（${found.room.name}）`;
-          openModal('modal-offer');
-        }
-        return;
-      }
+      const mBtn = e.target.closest('[data-month]');
+      if (mBtn) { selectedMonth = Number(mBtn.dataset.month); renderUseful(); return; }
 
-      // オファー同意 (#7)
-      const approveBtn = e.target.closest('[data-approve-offer], [data-approve-all]');
-      if (approveBtn) {
-        const oid = approveBtn.dataset.approveOffer || approveBtn.dataset.approveAll;
-        const room = getActiveRoom();
-        const prod = getActiveProduct();
-        const idx = (prod.offers || []).findIndex(o => o.id === oid);
-        if (idx >= 0) {
-          const offer = prod.offers[idx];
-          if (approveBtn.dataset.approveAll) {
-            if (!room.members.includes(offer.from)) room.members.push(offer.from);
-            prod.offers.splice(idx, 1);
-            prod.stories.unshift({ id: 'st-' + Date.now(), author: '🤝 システム', text: `全員同意が揃い、${offer.from}さんが正式合流しました！`, date: nowLabel(), isPrivate: false });
-            addPersonalExp('en', 25);
-            showToast(`🎉 ${offer.from}さんが正式合流しました！`);
-          } else {
-            if (!offer.approvals.includes(state.profile.name)) offer.approvals.push(state.profile.name);
-            showToast('👍 同意を記録しました（全員同意で正式合流）');
-          }
-          saveState();
-          renderAll();
-        }
-        return;
-      }
-
-      // 資材採用 / 解除 (#9)
       const adoptMat = e.target.closest('[data-adopt-mat]');
       if (adoptMat) {
         const prod = getActiveProduct();
-        const mid = adoptMat.dataset.adoptMat;
-        if (prod) {
-          if (!prod.adoptedMaterialIds) prod.adoptedMaterialIds = [];
-          if (!prod.adoptedMaterialIds.includes(mid)) {
-            prod.adoptedMaterialIds.push(mid);
-            prod.productExp.quality += 10;
-            addPersonalExp('craft', 10);
-            saveState();
-            renderAll();
-            showToast('📦 資材を採用！原価に自動加算＆無料PR掲載されました');
-          } else {
-            showToast('すでに選択中の商品に採用済みです');
-          }
+        const id = adoptMat.dataset.adoptMat;
+        if (prod && !prod.adoptedMaterialIds.includes(id)) {
+          prod.adoptedMaterialIds.push(id);
+          saveState(); renderAll(); toast('資材を採用し、原価に加算しました');
         }
         return;
       }
-      const remMat = e.target.closest('[data-remove-mat]');
+
+      const remMat = e.target.closest('[data-rem-mat]');
       if (remMat) {
         const prod = getActiveProduct();
-        if (prod) {
-          prod.adoptedMaterialIds = (prod.adoptedMaterialIds || []).filter(x => x !== remMat.dataset.removeMat);
-          saveState();
-          renderAll();
+        prod.adoptedMaterialIds = prod.adoptedMaterialIds.filter(x => x !== remMat.dataset.remMat);
+        saveState(); renderAll(); return;
+      }
+
+      const spBtn = e.target.closest('[data-apply-sp]');
+      if (spBtn) { toast('🏢 協賛枠へ申請しました！'); return; }
+
+      const likeFeed = e.target.closest('[data-like-feed]');
+      if (likeFeed) {
+        const f = state.feeds.find(x => x.id === likeFeed.dataset.likeFeed);
+        if (f) { f.likes += 1; saveState(); renderPlaza(); }
+        return;
+      }
+
+      const likeIdea = e.target.closest('[data-like-idea]');
+      if (likeIdea) {
+        const i = state.ideas.find(x => x.id === likeIdea.dataset.likeIdea);
+        if (i) { i.likes += 1; saveState(); renderEn(); }
+        return;
+      }
+
+      const startRoom = e.target.closest('[data-start-room]');
+      if (startRoom) {
+        const [partner, title] = startRoom.dataset.startRoom.split('|');
+        const rid = 'room-' + Date.now();
+        const pid = 'prod-' + Date.now();
+        state.rooms.unshift({
+          id: rid, name: `${partner} とのご縁`, members: [state.profile.name, partner],
+          products: [{
+            id: pid, title: title || '新規コラボ案', phase: '企画中',
+            priceSell: 550, earlyPrice: 480, ticketsBought: 0, ticketsLimit: 20,
+            costRaw: 100, costLabor: 100, adoptedMaterialIds: [], images: [],
+            chats: [{ id: 'c-' + Date.now(), author: state.profile.name, text: `${partner}さんとの開発ルームを作成しました！`, date: nowShort(), isPrivate: false }],
+            calendar: [], reactions: { cheer: 1, eat: 0 }
+          }]
+        });
+        state.activeRoomId = rid;
+        state.activeProductId = pid;
+        saveState(); renderAll(); switchTab('home');
+        toast(`🤝 ${partner}さんとの開発ルームをホームに作成しました！`);
+        return;
+      }
+
+      const stampSpot = e.target.closest('[data-stamp-spot]');
+      if (stampSpot) {
+        const s = state.spots.find(x => x.id === stampSpot.dataset.stampSpot);
+        if (s) { s.stamped = !s.stamped; saveState(); renderEn(); }
+        return;
+      }
+
+      const buyTkt = e.target.closest('[data-buy-tkt]');
+      if (buyTkt) {
+        const found = getAllProducts().find(({ prod }) => prod.id === buyTkt.dataset.buyTkt);
+        if (found) {
+          found.prod.ticketsBought += 1;
+          state.myShares += 2;
+          saveState(); renderShop(); toast('🎟️ 早割予約完了！＋2ご縁株を獲得');
         }
         return;
       }
 
-      // 神道具クリックで軍資金デモ加算
-      const fundBoost = e.target.closest('[data-fund-boost]');
-      if (fundBoost) {
-        state.fund.current += Number(fundBoost.dataset.fundBoost || 100);
-        saveState();
-        renderMarche();
-        renderHome();
+      const buyEc = e.target.closest('[data-buy-ec]');
+      if (buyEc) {
+        state.shoppingBook.purchases.unshift({ id: 'pur-' + Date.now(), title: buyEc.dataset.buyEc, rating: 5, memo: 'ECで購入', date: nowShort().split(' ')[0] });
+        saveState(); renderShop(); toast('🛍️ 買い物帳に購入履歴を記録しました');
         return;
       }
 
-      // 写真削除 / ストーリー個別非公開切替 / カレンダー削除
-      const delImg = e.target.closest('[data-del-img]');
-      if (delImg) {
-        const prod = getActiveProduct();
-        prod.images.splice(Number(delImg.dataset.delImg), 1);
-        saveState();
-        renderEnWorkspace();
-        return;
+      const favProd = e.target.closest('[data-fav-prod]');
+      if (favProd) {
+        const id = favProd.dataset.favProd;
+        const idx = state.shoppingBook.favorites.indexOf(id);
+        if (idx >= 0) state.shoppingBook.favorites.splice(idx, 1);
+        else state.shoppingBook.favorites.push(id);
+        saveState(); renderShop(); return;
       }
-      const togPriv = e.target.closest('[data-toggle-story-priv]');
+
+      const selRoom = e.target.closest('[data-sel-room]');
+      if (selRoom) {
+        state.activeRoomId = selRoom.dataset.selRoom;
+        const r = getActiveRoom();
+        state.activeProductId = r && r.products[0] ? r.products[0].id : null;
+        saveState(); renderHome(); return;
+      }
+
+      const selProd = e.target.closest('[data-sel-prod]');
+      if (selProd) { state.activeProductId = selProd.dataset.selProd; saveState(); renderHome(); return; }
+
+      const togPriv = e.target.closest('[data-toggle-priv]');
       if (togPriv) {
-        const prod = getActiveProduct();
-        const st = prod.stories.find(s => s.id === togPriv.dataset.toggleStoryPriv);
-        if (st) {
-          st.isPrivate = !st.isPrivate;
-          saveState();
-          renderEnWorkspace();
-        }
-        return;
-      }
-      const delCal = e.target.closest('[data-del-cal]');
-      if (delCal) {
-        const prod = getActiveProduct();
-        prod.calendar = prod.calendar.filter(c => c.id !== delCal.dataset.delCal);
-        saveState();
-        renderAll();
+        const c = getActiveProduct().chats.find(x => x.id === togPriv.dataset.togglePriv);
+        if (c) { c.isPrivate = !c.isPrivate; saveState(); renderHome(); }
         return;
       }
 
-      // マルシェ棚フィルタ / 受信箱フィルタ
-      const sf = e.target.closest('[data-shelf-filter]');
-      if (sf) {
-        shelfFilter = sf.dataset.shelfFilter;
-        document.querySelectorAll('[data-shelf-filter]').forEach(b => b.classList.toggle('active', b === sf));
-        renderMarche();
-        return;
+      const delDevImg = e.target.closest('[data-del-dev-img]');
+      if (delDevImg) {
+        getActiveProduct().images.splice(Number(delDevImg.dataset.delDevImg), 1);
+        saveState(); renderHome(); return;
       }
-      const inf = e.target.closest('[data-inbox-filter]');
-      if (inf) {
-        inboxFilter = inf.dataset.inboxFilter;
-        document.querySelectorAll('[data-inbox-filter]').forEach(b => b.classList.toggle('active', b === inf));
-        renderInbox();
-        return;
-      }
+
+      const prBtn = e.target.closest('[data-print]');
+      if (prBtn) { openPrint(prBtn.dataset.print); return; }
+
       const readMsg = e.target.closest('[data-read-msg]');
       if (readMsg) {
         const m = state.inbox.find(x => x.id === readMsg.dataset.readMsg);
-        if (m) m.unread = false;
-        saveState();
-        renderBadges();
-        renderInbox();
+        if (m) { m.unread = false; saveState(); renderBadges(); renderChatModal(); }
         return;
       }
-      const quotePop = e.target.closest('[data-quote-pop]');
-      if (quotePop) {
-        const m = state.inbox.find(x => x.id === quotePop.dataset.quotePop);
-        if (m) {
-          m.quotedForPop = !m.quotedForPop;
+
+      const diagAns = e.target.closest('[data-diag-ans]');
+      if (diagAns) {
+        diagScores[diagAns.dataset.diagAns] += 1;
+        diagStep += 1;
+        if (diagStep >= window.ENJOY_DIAG_Q.length) {
+          state.profile.diagType = Object.entries(diagScores).sort((a, b) => b[1] - a[1])[0][0];
+          diagStep = -1;
           saveState();
-          renderInbox();
-          showToast(m.quotedForPop ? '🪧 A4店頭POPの引用にセットしました！' : 'POP引用を解除しました');
         }
+        renderHome(); return;
+      }
+
+      if (e.target.id === 'btn-start-diag') {
+        diagStep = 0; diagScores = { spark: 0, craft: 0, bridge: 0, cheer: 0 }; renderHome(); return;
+      }
+      if (e.target.id === 'btn-short-like') {
+        state.shorts[currentShortIdx % state.shorts.length].likes += 1; saveState(); renderPlaza(); return;
+      }
+      if (e.target.id === 'btn-short-next') {
+        currentShortIdx = (currentShortIdx + 1) % state.shorts.length; renderPlaza(); return;
+      }
+      if (e.target.id === 'btn-gen-plan') {
+        const item = document.getElementById('plan-item').value;
+        generatedPlan = item === '白菜＆大根'
+          ? [
+              { day: '月', menu: '白菜と豚バラのみそ重ね蒸し', note: '疲労回復' },
+              { day: '水', menu: '冷凍大根と鶏むねの時短煮', note: '高タンパク' },
+              { day: '金', menu: '白菜の無限コールスロー', note: '5分で完成' },
+              { day: '日', menu: 'ほうれん草と大根のみぞれ鍋', note: '鉄分プラス' }
+            ]
+          : [
+              { day: '月', menu: '皮ごとレンジりんごコンポート', note: '朝の腸活' },
+              { day: '水', menu: 'すりおろしりんごの生姜焼き', note: 'お肉が柔らか' },
+              { day: '金', menu: 'みかんとほうれん草のサラダ', note: 'ビタミンC' },
+              { day: '日', menu: '焼きりんごとシナモンのおやつ', note: '廃棄ゼロ' }
+            ];
+        renderUseful(); return;
+      }
+      if (e.target.id === 'btn-switch-ui') {
+        state.uiMode = state.uiMode === 'simple' ? 'modern' : 'simple';
+        saveState(); applyUiMode(); toast(state.uiMode === 'simple' ? '🔰 かんたんモード' : '⚡ モダンモード'); return;
+      }
+      if (e.target.id === 'btn-export') {
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'enjoy_v6_backup.json'; a.click(); return;
+      }
+      if (e.target.id === 'btn-reset') {
+        if (confirm('初期デモに戻しますか？')) { state = window.createDefaultV6State(); state.uiMode = 'modern'; saveState(); renderAll(); }
         return;
       }
     });
 
-    // ヘッダー・基本ボタン
-    document.getElementById('btn-close-banner').onclick = () => {
-      bannerDismissed = true;
-      renderAdminBanner();
-    };
-    document.getElementById('btn-version-pc').onclick = () => openModal('modal-version');
-    document.getElementById('btn-version-mobile').onclick = () => openModal('modal-version');
-    document.getElementById('btn-open-inbox').onclick = () => openModal('modal-inbox');
-    document.getElementById('btn-font-toggle').onclick = () => {
-      state.fontLarge = !state.fontLarge;
-      saveState();
-      renderAll();
-      showToast(state.fontLarge ? '文字サイズ：大文字モード' : '文字サイズ：標準');
-    };
-
-    // 本業集中モード
-    const toggleFocus = () => {
-      state.focusMode = !state.focusMode;
-      saveState();
-      renderHome();
-      showToast(state.focusMode ? '🚜 本業集中モードON！通知は番頭がまとめます' : '☕ おかえりなさい！通常モードに戻しました');
-    };
-    document.getElementById('btn-focus-toggle').onclick = toggleFocus;
-    document.getElementById('btn-focus-sidebar').onclick = toggleFocus;
-
-    // 番頭：音声入力 & 丸投げ
-    document.getElementById('btn-voice-rec').onclick = () => {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) {
-        showToast('このブラウザでは音声認識が使えません。キーボードのマイク入力をお使いください。');
-        return;
-      }
-      const rec = new SR();
-      rec.lang = 'ja-JP';
-      rec.onresult = ev => {
-        document.getElementById('banto-memo-input').value = ev.results[0][0].transcript;
-        showToast('🎙️ 音声を読み取りました！「番頭に投げる」を押してください');
-      };
-      rec.start();
-      showToast('🎙️ お話しください...');
-    };
-
-    document.getElementById('btn-banto-submit').onclick = () => {
-      const input = document.getElementById('banto-memo-input');
-      const txt = input.value.trim();
-      if (!txt) return;
-      state.bantoBriefs.unshift({
-        id: 'br-' + Date.now(),
-        kind: '🎙️ 番頭仕込み済',
-        text: `「${txt}」→ 広場の下書き＆開発室メモへ整理しました。`,
-        targetTab: 'plaza'
-      });
-      state.feeds.unshift({
-        id: 'feed-' + Date.now(),
-        author: state.profile.name,
-        role: state.profile.role,
-        area: state.profile.area,
-        tag: '💡 余ってます',
-        body: `【番頭代筆】${txt}`,
-        createdAt: 'たった今',
-        likes: 1
-      });
-      state.stats.feedsPosted += 1;
-      addPersonalExp('field', 12);
-      input.value = '';
-      saveState();
-      renderAll();
-      showToast('☕ 番頭が受け取り、広場とブリーフィングへ自動整理しました！');
-    };
-
-    document.getElementById('btn-refresh-proposal').onclick = () => {
-      state.proposalIndex = (state.proposalIndex + 1) % window.ENJOY_BANTO_PROPOSALS.length;
-      saveState();
-      renderHome();
-    };
-
-    // 広場つぶやき投稿 & 検索
-    document.getElementById('form-post-feed').onsubmit = e => {
-      e.preventDefault();
-      const body = document.getElementById('feed-body').value.trim();
-      if (!body) return;
-      state.feeds.unshift({
-        id: 'feed-' + Date.now(),
-        author: state.profile.name,
-        role: state.profile.role,
-        area: document.getElementById('feed-area').value.trim() || state.profile.area,
-        tag: document.getElementById('feed-tag').value,
-        body,
-        createdAt: 'たった今',
-        likes: 0
-      });
-      state.stats.feedsPosted += 1;
-      addPersonalExp('field', 15);
-      document.getElementById('feed-body').value = '';
-      saveState();
-      renderAll();
-      showToast('📣 広場につぶやきました (+15 EXP)');
-    };
-    document.getElementById('feed-search').oninput = renderPlaza;
-    document.getElementById('feed-filter-tag').onchange = renderPlaza;
-    document.getElementById('member-search').oninput = renderPlaza;
-    document.getElementById('member-filter-role').onchange = renderPlaza;
-    document.getElementById('fab-quick-post').onclick = () => {
-      switchSubtab('plaza', 'feed');
-      document.getElementById('feed-body').focus();
-    };
-
-    // 公開プロジェクトへのコメント送信
+    // フォーム送信委譲
     document.addEventListener('submit', e => {
-      const cForm = e.target.closest('[data-comment-form]');
-      if (!cForm) return;
-      e.preventDefault();
-      const pid = cForm.dataset.commentForm;
-      const input = cForm.querySelector('input');
-      const txt = input.value.trim();
-      if (!txt) return;
-      const found = getAllProductsWithRoom().find(({ prod }) => prod.id === pid);
-      if (found) {
-        found.prod.comments.push({ author: state.profile.name, text: txt });
-        found.prod.productExp.fan += 10;
-        state.inbox.unshift({
-          id: 'msg-' + Date.now(),
-          type: 'cheer',
-          from: state.profile.name,
-          text: `【${found.prod.title}】${txt}`,
-          date: nowLabel(),
-          unread: true,
-          quotedForPop: false
+      if (e.target.id === 'form-feed') {
+        e.preventDefault();
+        const text = document.getElementById('feed-text').value.trim();
+        if (!text && !pendingFeedImg) return;
+        state.feeds.unshift({
+          id: 'f-' + Date.now(),
+          tag: document.getElementById('feed-tag').value,
+          area: document.getElementById('feed-area').value.trim() || state.profile.area,
+          author: state.profile.name,
+          text,
+          image: pendingFeedImg,
+          likes: 0,
+          createdAt: 'たった今'
         });
-        addPersonalExp('cheer', 12);
-        input.value = '';
-        saveState();
-        renderAll();
-        showToast('💬 応援コメントを送りました！(+12 EXP)');
+        pendingFeedImg = null;
+        document.getElementById('feed-text').value = '';
+        document.getElementById('feed-img-preview').classList.add('hidden');
+        saveState(); renderPlaza(); toast('投稿しました');
+      }
+      if (e.target.id === 'form-new-idea') {
+        e.preventDefault();
+        state.ideas.unshift({
+          id: 'idea-' + Date.now(),
+          cat: document.getElementById('idea-cat').value,
+          title: document.getElementById('idea-title').value.trim(),
+          need: document.getElementById('idea-need').value.trim(),
+          detail: document.getElementById('idea-detail').value.trim(),
+          author: state.profile.name,
+          area: state.profile.area,
+          likes: 1
+        });
+        e.target.reset();
+        closeModal('modal-new-idea');
+        saveState(); renderEn(); toast('🚀 募集カードを公開しました');
+      }
+      if (e.target.id === 'form-recipe') {
+        e.preventDefault();
+        state.recipes.unshift({
+          id: 'rec-' + Date.now(),
+          title: document.getElementById('rec-title').value.trim(),
+          ingredients: document.getElementById('rec-ing').value.trim(),
+          tag: 'みんな投稿', author: state.profile.name, steps: '材料を合わせて美味しく調理！'
+        });
+        saveState(); renderUseful(); toast('🍳 レシピを追加しました');
+      }
+      if (e.target.id === 'form-dev-chat') {
+        e.preventDefault();
+        const prod = getActiveProduct();
+        const txt = document.getElementById('dev-chat-input').value.trim();
+        const priv = document.getElementById('dev-chat-priv').checked;
+        if (!txt) return;
+        prod.chats.push({ id: 'c-' + Date.now(), author: state.profile.name, text: txt, date: nowShort(), isPrivate: priv });
+        const m = txt.match(/(\d{1,2})\/(\d{1,2})/);
+        if (m) {
+          prod.calendar.push({ id: 'cal-' + Date.now(), date: `2026-${String(m[1]).padStart(2,'0')}-${String(m[2]).padStart(2,'0')}`, title: txt.slice(0, 24) });
+          toast('📅 日付を検知し予定にも自動追加しました');
+        }
+        saveState(); renderHome();
+      }
+      if (e.target.id === 'form-dev-cal') {
+        e.preventDefault();
+        getActiveProduct().calendar.push({ id: 'cal-' + Date.now(), date: document.getElementById('cal-d').value, title: document.getElementById('cal-t').value.trim() });
+        saveState(); renderHome();
+      }
+      if (e.target.id === 'form-profile') {
+        e.preventDefault();
+        state.profile.name = document.getElementById('p-name').value.trim();
+        state.profile.area = document.getElementById('p-area').value.trim();
+        state.profile.skills = document.getElementById('p-skills').value.trim();
+        state.profile.bio = document.getElementById('p-bio').value.trim();
+        saveState(); toast('プロフィールを保存しました');
+      }
+      if (e.target.id === 'form-ring') {
+        e.preventDefault();
+        state.ringEntries.unshift({ id: 'r-' + Date.now(), name: state.profile.name, role: 'メンバー', message: document.getElementById('ring-msg').value.trim(), rank: 'S' });
+        saveState(); renderHome(); toast('✍️ 年輪ボードに刻みました');
       }
     });
 
-    // 参加オファー送信 (#7)
-    document.getElementById('form-send-offer').onsubmit = e => {
-      e.preventDefault();
-      const pid = document.getElementById('offer-product-id').value;
-      const msg = document.getElementById('offer-message').value.trim();
-      const found = getAllProductsWithRoom().find(({ prod }) => prod.id === pid);
-      if (found && msg) {
-        found.prod.offers.push({
-          id: 'off-' + Date.now(),
-          from: state.profile.name,
-          message: msg,
-          approvals: []
+    // 入力・変更イベント
+    document.addEventListener('change', e => {
+      if (e.target.id === 'feed-img-input' && e.target.files[0]) {
+        resizeImage(e.target.files[0], 720, url => {
+          pendingFeedImg = url;
+          const prev = document.getElementById('feed-img-preview');
+          prev.innerHTML = `<img src="${url}" alt="プレビュー" /><button type="button" class="img-preview-del" id="btn-del-feed-img">✕</button>`;
+          prev.classList.remove('hidden');
+          document.getElementById('btn-del-feed-img').onclick = () => {
+            pendingFeedImg = null;
+            prev.classList.add('hidden');
+          };
         });
-        state.inbox.unshift({
-          id: 'msg-' + Date.now(),
-          type: 'offer',
-          from: state.profile.name,
-          text: `「${found.prod.title}」へ参加オファー：${msg}`,
-          date: nowLabel(),
-          unread: true,
-          quotedForPop: false
-        });
-        document.getElementById('offer-message').value = '';
-        closeModal('modal-offer');
-        saveState();
-        renderAll();
-        showToast('🙋 参加オファーを送信しました！');
+        e.target.value = '';
       }
-    };
+      if (e.target.id === 'dev-img-input' && e.target.files[0]) {
+        const prod = getActiveProduct();
+        if ((prod.images || []).length >= 6) { toast('写真は最大6枚までです'); return; }
+        resizeImage(e.target.files[0], 640, url => {
+          prod.images.push(url); saveState(); renderHome(); toast('📸 写真を追加しました');
+        });
+        e.target.value = '';
+      }
+      if (e.target.id === 'dev-phase-select') {
+        getActiveProduct().phase = e.target.value;
+        saveState(); renderAll(); toast(`フェーズを「${e.target.value}」に更新`);
+      }
+    });
 
-    // ご縁ルーム新規 & 新商品追加 (#1)
+    document.addEventListener('input', e => {
+      if (e.target.id === 'feed-search') renderPlaza();
+      if (['c-raw', 'c-lab', 'c-sell'].includes(e.target.id)) {
+        const prod = getActiveProduct();
+        prod.costRaw = Number(document.getElementById('c-raw').value || 0);
+        prod.costLabor = Number(document.getElementById('c-lab').value || 0);
+        prod.priceSell = Number(document.getElementById('c-sell').value || 0);
+        saveState(); renderHome();
+      }
+    });
+
+    // 固定ボタン
+    const toggleUi = () => {
+      state.uiMode = state.uiMode === 'simple' ? 'modern' : 'simple';
+      saveState(); applyUiMode(); toast(state.uiMode === 'simple' ? '🔰 かんたんモード' : '⚡ モダンモード');
+    };
+    document.getElementById('btn-ui-mode-pc').onclick = toggleUi;
+    document.getElementById('btn-ui-mode-mobile').onclick = toggleUi;
+    document.getElementById('btn-focus-pc').onclick = () => {
+      state.focusMode = !state.focusMode; saveState(); applyUiMode();
+      toast(state.focusMode ? '🚜 本業集中モードON' : '通常モードに戻しました');
+    };
+    document.getElementById('btn-open-chat').onclick = () => openModal('modal-chat');
+    document.getElementById('btn-open-new-idea').onclick = () => openModal('modal-new-idea');
+    document.getElementById('btn-do-print').onclick = () => window.print();
+
     document.getElementById('btn-new-room').onclick = () => {
-      const name = prompt('新しいご縁ルーム名（例：〇〇農園 × △△工房）');
-      if (!name || !name.trim()) return;
-      const rid = 'room-' + Date.now();
-      const pid = 'prod-' + Date.now();
+      const name = prompt('新しい開発ルーム名（例：〇〇農園 × △△工房）');
+      if (!name) return;
+      const rid = 'room-' + Date.now(), pid = 'prod-' + Date.now();
       state.rooms.unshift({
-        id: rid,
-        name: name.trim(),
-        partner: name.trim(),
-        members: [state.profile.name, name.trim()],
-        products: [{
-          id: pid,
-          title: '第1弾コラボ商品（企画中）',
-          category: '新規コラボ',
-          phase: '企画中',
-          visibility: 'public',
-          images: [],
-          costRaw: 100,
-          costLabor: 100,
-          adoptedMaterialIds: [],
-          priceSell: 500,
-          productExp: { story: 10, fan: 10, quality: 10, market: 10 },
-          stories: [],
-          calendar: [],
-          offers: [],
-          reactions: { cheer: 0, eat: 0, visit: 0 },
-          comments: []
-        }]
+        id: rid, name: name.trim(), members: [state.profile.name, name.trim()],
+        products: [{ id: pid, title: '第1弾商品', phase: '企画中', priceSell: 500, earlyPrice: 450, ticketsBought: 0, ticketsLimit: 20, costRaw: 100, costLabor: 100, adoptedMaterialIds: [], images: [], chats: [], calendar: [], reactions: { cheer: 0, eat: 0 } }]
       });
-      state.activeRoomId = rid;
-      state.activeProductId = pid;
-      addPersonalExp('en', 20);
-      saveState();
-      renderAll();
-      showToast('🤝 新しいご縁ルームを作成しました！');
+      state.activeRoomId = rid; state.activeProductId = pid; saveState(); renderAll();
     };
 
     document.getElementById('btn-new-product').onclick = () => {
-      const room = getActiveRoom();
-      if (!room) return;
-      const title = prompt(`「${room.name}」に追加する新商品名（第2弾・別展開など）`);
-      if (!title || !title.trim()) return;
+      const title = prompt('追加する新商品名');
+      if (!title) return;
       const pid = 'prod-' + Date.now();
-      room.products.push({
-        id: pid,
-        title: title.trim(),
-        category: 'コラボ商品',
-        phase: '企画中',
-        visibility: 'public',
-        images: [],
-        costRaw: 120,
-        costLabor: 100,
-        adoptedMaterialIds: [],
-        priceSell: 550,
-        productExp: { story: 15, fan: 10, quality: 10, market: 10 },
-        stories: [{ id: 'st-' + Date.now(), author: state.profile.name, text: `新商品「${title.trim()}」の企画をスタート！`, date: nowLabel(), isPrivate: false }],
-        calendar: [],
-        offers: [],
-        reactions: { cheer: 0, eat: 0, visit: 0 },
-        comments: []
+      getActiveRoom().products.push({
+        id: pid, title: title.trim(), phase: '企画中', priceSell: 550, earlyPrice: 480, ticketsBought: 0, ticketsLimit: 20, costRaw: 100, costLabor: 100, adoptedMaterialIds: [], images: [], chats: [], calendar: [], reactions: { cheer: 0, eat: 0 }
       });
-      state.activeProductId = pid;
-      addPersonalExp('craft', 20);
-      saveState();
-      renderAll();
-      showToast('📦 新商品を追加しました！');
-    };
-
-    // フェーズ・公開範囲・原価変更
-    document.getElementById('ws-phase-select').onchange = e => {
-      const prod = getActiveProduct();
-      if (!prod) return;
-      prod.phase = e.target.value;
-      prod.productExp.market += 15;
-      saveState();
-      renderAll();
-      showToast(`🚩 フェーズを「${prod.phase}」へ更新（マルシェ棚に自動反映）`);
-    };
-    document.getElementById('ws-visibility-select').onchange = e => {
-      const prod = getActiveProduct();
-      if (!prod) return;
-      prod.visibility = e.target.value;
-      saveState();
-      renderAll();
-    };
-    ['ws-cost-raw', 'ws-cost-labor', 'ws-price-sell'].forEach(id => {
-      document.getElementById(id).oninput = () => {
-        const prod = getActiveProduct();
-        if (!prod) return;
-        prod.costRaw = Number(document.getElementById('ws-cost-raw').value || 0);
-        prod.costLabor = Number(document.getElementById('ws-cost-labor').value || 0);
-        prod.priceSell = Number(document.getElementById('ws-price-sell').value || 0);
-        saveState();
-        renderEnWorkspace();
-      };
-    });
-
-    // 写真追加（自動軽量リサイズ・最大6枚）
-    document.getElementById('ws-image-input').onchange = e => {
-      const file = e.target.files && e.target.files[0];
-      const prod = getActiveProduct();
-      if (!file || !prod) return;
-      if ((prod.images || []).length >= 6) {
-        showToast('⚠️ 1商品あたり最大6枚まで登録できます');
-        return;
-      }
-      resizeImageFile(file, 640, dataUrl => {
-        if (!prod.images) prod.images = [];
-        prod.images.push(dataUrl);
-        prod.productExp.story += 10;
-        saveState();
-        renderAll();
-        showToast('📸 写真を軽量化してギャラリーへ追加しました！');
-      });
-      e.target.value = '';
-    };
-
-    // ストーリー投稿（MM/DDを検知してカレンダー自動追加）
-    document.getElementById('form-story-post').onsubmit = e => {
-      e.preventDefault();
-      const prod = getActiveProduct();
-      const txt = document.getElementById('ws-story-input').value.trim();
-      const isPriv = document.getElementById('ws-story-private').checked;
-      if (!prod || !txt) return;
-      prod.stories.unshift({
-        id: 'st-' + Date.now(),
-        author: state.profile.name,
-        text: txt,
-        date: nowLabel(),
-        isPrivate: isPriv
-      });
-      prod.productExp.story += 12;
-      state.stats.storiesPosted += 1;
-      addPersonalExp('craft', 12);
-
-      // 日付（例: 12/6）自動抽出 → カレンダー追記 (#10)
-      const m = txt.match(/(\d{1,2})\/(\d{1,2})/);
-      if (m) {
-        const mm = String(m[1]).padStart(2, '0');
-        const dd = String(m[2]).padStart(2, '0');
-        const year = new Date().getFullYear();
-        prod.calendar.push({
-          id: 'cal-' + Date.now(),
-          date: `${year}-${mm}-${dd}`,
-          title: txt.slice(0, 28)
-        });
-        state.stats.calendarsAdded += 1;
-        showToast(`📅 ログ内の「${mm}/${dd}」を検知してカレンダーにも自動登録しました！`);
-      } else {
-        showToast('💬 開発ログを追記しました (+12 EXP)');
-      }
-
-      document.getElementById('ws-story-input').value = '';
-      document.getElementById('ws-story-private').checked = false;
-      saveState();
-      renderAll();
-    };
-
-    // カレンダー手動追加
-    document.getElementById('form-add-cal').onsubmit = e => {
-      e.preventDefault();
-      const prod = getActiveProduct();
-      const date = document.getElementById('cal-date').value;
-      const title = document.getElementById('cal-title').value.trim();
-      if (!prod || !date || !title) return;
-      prod.calendar.push({ id: 'cal-' + Date.now(), date, title });
-      state.stats.calendarsAdded += 1;
-      addPersonalExp('field', 10);
-      document.getElementById('cal-title').value = '';
-      saveState();
-      renderAll();
-      showToast('📅 共有カレンダーに予定を追加しました！');
-    };
-
-    // 印刷ボタン
-    document.getElementById('btn-print-agreement').onclick = () => openPrintPreview('agreement');
-    document.getElementById('btn-print-pop').onclick = () => openPrintPreview('pop');
-    document.getElementById('btn-print-cards').onclick = () => openPrintPreview('cards');
-    document.getElementById('btn-do-print').onclick = () => window.print();
-
-    // カタログ分類切替
-    document.getElementById('catalog-group-by').onchange = renderMarche;
-
-    // プロフィール保存
-    document.getElementById('form-profile').onsubmit = e => {
-      e.preventDefault();
-      state.profile = {
-        name: document.getElementById('prof-name').value.trim() || 'ゲスト',
-        role: document.getElementById('prof-role').value,
-        area: document.getElementById('prof-area').value.trim(),
-        skills: document.getElementById('prof-skills').value.trim(),
-        bio: document.getElementById('prof-bio').value.trim(),
-        mapPublic: document.getElementById('prof-map-public').checked
-      };
-      saveState();
-      renderAll();
-      showToast(`🔥 プロフィール保存完了！現在の熱量：${calcHeat(state.profile)}%`);
-    };
-
-    // カテゴリー別お問い合わせ (#19)
-    document.getElementById('form-inquiry').onsubmit = e => {
-      e.preventDefault();
-      const category = document.getElementById('inq-category').value;
-      const body = document.getElementById('inq-body').value.trim();
-      if (!body) return;
-      const meta = `EN•joy ${window.ENJOY_VERSION} / ${TAB_TITLES[currentTab]}`;
-      state.inquiries.unshift({ id: 'inq-' + Date.now(), category, body, meta, date: nowLabel() });
-      state.inbox.unshift({
-        id: 'msg-' + Date.now(),
-        type: 'ops',
-        from: `お問い合わせ (${category})`,
-        text: body,
-        date: nowLabel(),
-        unread: true,
-        quotedForPop: false
-      });
-      document.getElementById('inq-body').value = '';
-      closeModal('modal-inquiry');
-      saveState();
-      renderAll();
-      showToast('✉️ お問い合わせを受け付けました！ありがとうございます');
-    };
-
-    // 運営お知らせバー設定 (#19)
-    document.getElementById('form-admin-banner').onsubmit = e => {
-      e.preventDefault();
-      state.adminBanner = {
-        type: document.getElementById('admin-banner-type').value,
-        enabled: document.getElementById('admin-banner-enabled').checked,
-        text: document.getElementById('admin-banner-input').value.trim()
-      };
-      bannerDismissed = false;
-      saveState();
-      renderAdminBanner();
-      showToast('📢 運営お知らせバーを更新しました');
-    };
-
-    // JSONエクスポート / インポート / リセット
-    document.getElementById('btn-export-json').onclick = () => {
-      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `enjoy_v5_backup_${Date.now()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      showToast('💾 バックアップJSONをダウンロードしました');
-    };
-
-    document.getElementById('input-import-json').onchange = e => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = ev => {
-        try {
-          const imported = JSON.parse(ev.target.result);
-          if (!imported.rooms) throw new Error('invalid');
-          state = imported;
-          saveState();
-          renderAll();
-          showToast('⬆️ JSONからデータを復元しました！');
-        } catch {
-          showToast('⚠️ 正しいEN•joyのバックアップJSONではありません');
-        }
-      };
-      reader.readAsText(file);
-      e.target.value = '';
-    };
-
-    document.getElementById('btn-reset-demo').onclick = () => {
-      if (!confirm('初期デモデータに戻しますか？（現在の編集内容は消去されます）')) return;
-      state = window.createDefaultEnjoyState();
-      saveState();
-      renderAll();
-      showToast('🔄 初期デモデータに戻しました');
+      state.activeProductId = pid; saveState(); renderAll();
     };
   }
 
   /* ---------- 起動 ---------- */
   bindEvents();
   renderAll();
+  if (!state.uiMode) openModal('modal-ui-select');
 })();
