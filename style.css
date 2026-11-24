@@ -671,67 +671,59 @@ body.ui-simple .dock-label {
 /* ========== モバイル下部ドック ========== */
 .mobile-only { display: none; }
 .mobile-dock { display: none; }
-
+/* ============================================================
+   親指ゾーン完結パッチ（操作を画面下部に集約・視線移動を最小化）
+   ============================================================ */
+/* ============================================================
+   スマホ用：常設タブからスッと出て、選ぶと消えるサブタブ設計
+   ============================================================ */
 @media (max-width: 860px) {
-  .sidebar { display: none !important; }
-  .mobile-only { display: inline-flex; }
-  .main-wrap { margin-left: 0; padding-bottom: calc(var(--dock-h) + 10px); }
-  .app-main { padding: 10px 8px 20px; }
-
-  .card-grid-2, .card-grid-3, .feed-grid, .form-row-2 {
-    grid-template-columns: 1fr;
-  }
-  .cost-row-4, .photo-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* 普段はサブタブが消えているので余白も最小限で画面が広い */
+  .main-wrap {
+    padding-bottom: calc(var(--dock-h) + 12px);
   }
 
-  .mobile-dock {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    position: fixed; left: 0; right: 0; bottom: 0;
-    height: var(--dock-h);
+  /* サブタブ・開発4ミニタブをドックのすぐ上に配置（初期状態は非表示） */
+  #tab-useful > .seg-bar,
+  #tab-plaza > .seg-bar,
+  #tab-en > .seg-bar,
+  #tab-shop > .seg-bar,
+  #tab-home .mini-tab-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--dock-h);
+    z-index: 85;
     background: var(--surface);
-    border-top: 1px solid var(--border);
-    z-index: 90;
-    padding-bottom: env(safe-area-inset-bottom);
+    border-top: 2px solid var(--ink);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.12);
+    transform: translateY(100%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.16s ease, opacity 0.16s ease;
   }
-  .dock-item {
-    position: relative;
-    background: transparent;
-    border: none;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 1px;
-    color: var(--ink-sub);
-    font-size: 0.68rem;
-    font-weight: 700;
-    cursor: pointer;
-  }
-  .dock-item.active { color: var(--accent); }
-  .dock-ico { font-size: 1.15rem; }
-  .dock-en-mark {
-    background: var(--ink);
-    color: #FFF;
-    padding: 2px 8px;
-    font-size: 0.78rem;
-    font-weight: 900;
-    border-radius: 2px;
-  }
-  .dock-center.active .dock-en-mark { background: var(--accent); }
-  .dock-dot {
-    position: absolute; top: 6px; right: 18px;
-    width: 7px; height: 7px; background: var(--accent); border-radius: 50%;
-  }
-  .toast { bottom: calc(var(--dock-h) + 12px); }
-}
 
-/* 印刷 */
-@media print {
-  body * { visibility: hidden; }
-  #modal-print, #modal-print .print-area, #modal-print .print-area * { visibility: visible; }
-  #modal-print { position: absolute; inset: 0; padding: 0; background: #FFF; }
-  .no-print, .modal-backdrop { display: none !important; }
-  .modal-sheet { border: none; max-width: none; max-height: none; }
+  /* 常設タブを押したときだけスッと表示 */
+  body.subnav-open #tab-useful > .seg-bar,
+  body.subnav-open #tab-plaza > .seg-bar,
+  body.subnav-open #tab-en > .seg-bar,
+  body.subnav-open #tab-shop > .seg-bar,
+  body.subnav-open #tab-home .mini-tab-bar {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* 選択中タブの目印 */
+  #tab-useful > .seg-bar .seg-btn.active,
+  #tab-plaza > .seg-bar .seg-btn.active,
+  #tab-en > .seg-bar .seg-btn.active,
+  #tab-shop > .seg-bar .seg-btn.active,
+  #tab-home .mini-tab.active {
+    border-bottom-color: transparent;
+    border-top: 2px solid var(--accent);
+    background: var(--accent-soft);
+    color: var(--ink);
+  }
 }

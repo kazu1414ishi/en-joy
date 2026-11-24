@@ -755,14 +755,37 @@
         return;
       }
       const tabBtn = e.target.closest('[data-tab]');
-      if (tabBtn) { switchTab(tabBtn.dataset.tab); return; }
+      if (tabBtn) {
+        const nextTab = tabBtn.dataset.tab;
+        const isMobileDock = tabBtn.classList.contains('dock-item');
+        if (isMobileDock) {
+          if (currentTab === nextTab) {
+            // 同じ常設タブをもう一度押したら開閉トグル
+            document.body.classList.toggle('subnav-open');
+          } else {
+            // 別の常設タブを押したら切替＋次の選択タブを表示
+            switchTab(nextTab);
+            document.body.classList.add('subnav-open');
+          }
+        } else {
+          switchTab(nextTab);
+        }
+        return;
+      }
 
       const segBtn = e.target.closest('[data-seg]');
-      if (segBtn) { switchSeg(segBtn.dataset.segGroup, segBtn.dataset.seg); return; }
+      if (segBtn) {
+        switchSeg(segBtn.dataset.segGroup, segBtn.dataset.seg);
+        document.body.classList.remove('subnav-open'); // 選んだら消す
+        return;
+      }
 
       const devTab = e.target.closest('[data-dev-tab]');
-      if (devTab) { switchDevTab(devTab.dataset.devTab); return; }
-
+      if (devTab) {
+        switchDevTab(devTab.dataset.devTab);
+        document.body.classList.remove('subnav-open'); // 選んだら消す
+        return;
+      }
       const closeBtn = e.target.closest('[data-close-modal]');
       if (closeBtn) { closeModal(closeBtn.dataset.closeModal); return; }
 
