@@ -16,6 +16,7 @@
   let state = loadState();
   let currentTab = 'home';
   let activeDevTab = 'chat';
+  let isInsideRoom = false; // false: ルーム一覧 / true: ルームの中
   let selectedMonth = new Date().getMonth() + 1;
   let pendingFeedImg = null;
   let currentShortIdx = 0;
@@ -507,121 +508,197 @@
   /* ============================================================
      5. 右端：🏠 ホーム（最上段：開発ルーム4ミニタブ ／ 下段：個人）
      ============================================================ */
+  /* ---------- 要更新チェック（色を変えて目立たせる判定） ---------- */
+  function getProductAlerts(prod) {
+    const alerts = [];
+    if (!prod.images || prod.images.length === 0) alerts.push({ tab: 'media', label: '📸 写真未登録' });
+    if (!prod.calendar || prod.calendar.length === 0) alerts.push({ tab: 'plan', label: '📅 予定未設定' });
+    if (!prod.priceSell || prod.priceSell <= 0) alerts.push({ tab: 'cost', label: '🧮 売価未設定' });
+    const lastChat = (prod.chats || [])[prod.chats.length - 1];
+    if (lastChat && lastChat.author !== state.profile.name && lastChat.author !== 'あなた') {
+      alerts.push({ tab: 'chat', label: '💬 返信待ち' });
+    }
+    return alerts;
+  }
+
+  /* ============================================================
+     5. 右端：🏠 ホーム（一覧 ⇄ ルームの中へ入る2段階設計）
+     ============================================================ */
   function renderHome() {
+    const listView = document.getElementById('home-list-view');
+    const roomView = document.getElementById('home-room-view');
+    if (listView && roomView) {
+      listView.classList.toggle('hidden', isInsideRoom);
+      roomView.classList.toggle('hidden', !isInsideRoom);
+    }
+
+    // 【画面A】ルーム一覧カード描画
+    const cardsEl = document.getElementById('home-room-cards');
+    if (cardsEl) {
+      cardsEl.innerHTML = state.rooms.map(r => {
+        const mainProd = r.products[0];
+        const allAlerts = [];
+        r.products.forEach(p => allAlerts.push(...getProductAlerts(p)));
+        const needsAction = allAlerts.length > 0;
+        const uniqueLabels = [...new Set(allAlerts.map(a => a.label))].slice(0, 2);
+
+        return `
+          <article class="room-entry-card ${needsAction ? 'needs-action' : ''}" data-enter-room="${esc(r.id)}">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+              <span class="tag-dark">${esc(mainProd ? mainProd.phase : '企画中')}</span>
+              <span class="muted-text">商品 ${r.products.length}件</span>
+            </div>
+            <div>
+              <h3 style="font-size:1rem; margin-bottom:2px;">${esc(r.name)}</h3>
+              <p class="muted-text">${esc(mainProd ? mainProd.title : '')}</p>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-top:auto;">
+              <div class="btn-row">
+                ${needsAction
+                  ? uniqueLabels.map(l => `<span class="action-pill">${l}</span>`).join('')
+                  : '<span class="tag">✅ 最新</span>'}
+              </div>
+              <span style="font-size:0.8rem; font-weight:800; color:var(--accent);">入る →</span>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    // 【画面B】ルームの中（コックピット）
     const room = getActiveRoom();
     const prod = getActiveProduct();
-    if (!room || !prod) return;
+    if (room && prod) {
+      document.getElementById('dev-room-name').textContent = room.name;
+      document.getElementById('dev-prod-title').textContent = prod.title;
+      document.getElementById('dev-phase-select').value = prod.phase;
 
-    // ルーム＆商品スイッチャー
-    document.getElementById('dev-room-tabs').innerHTML = state.rooms.map(r => `
-      <button type="button" class="chip-btn ${r.id === room.id ? 'active' : ''}" data-sel-room="${esc(r.id)}">
-        ${esc(r.name)}
-      </button>
-    `).join('');
+      // 商品スイッチャー
+      document.getElementById('dev-prod-tabs').innerHTML = room.products.map(p => {
+        const hasAlert = getProductAlerts(p).length > 0;
+        return `
+          <button type="button" class="chip-btn ${p.id === prod.id ? 'active-accent' : ''}" data-sel-prod="${esc(p.id)}">
+            ${esc(p.title)}${hasAlert ? ' ●' : ''}
+          </button>
+        `;
+      }).join('');
 
-    document.getElementById('dev-prod-tabs').innerHTML = room.products.map(p => `
-      <button type="button" class="chip-btn ${p.id === prod.id ? 'active-accent' : ''}" data-sel-prod="${esc(p.id)}">
-        ${esc(p.title)}
-      </button>
-    `).join('');
+      // 4ミニタブの要更新ドット制御
+      const alerts = getProductAlerts(prod);
+      ['chat', 'media', 'cost', 'plan'].forEach(t => {
+        const dot = document.getElementById(`dot-dev-${t}`);
+        if (dot) dot.classList.toggle('hidden', !alerts.some(a => a.tab === t));
+      });
 
-    document.getElementById('dev-phase-tag').textContent = prod.phase;
-    document.getElementById('dev-prod-title').textContent = prod.title;
-    document.getElementById('dev-phase-select').value = prod.phase;
-
-    // ミニタブ1: チャット
-    document.getElementById('dev-pane-chat').innerHTML = `
-      <div class="chat-stream">
-        ${(prod.chats || []).map(c => `
-          <div class="chat-item ${c.isPrivate ? 'is-priv' : ''}">
-            <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:var(--ink-sub); margin-bottom:2px;">
-              <span><strong>${esc(c.author)}</strong> ・ ${esc(c.date)}</span>
-              <button type="button" class="btn btn-ghost btn-sm" style="padding:0 4px;" data-toggle-priv="${esc(c.id)}">
-                ${c.isPrivate ? '🔒 限定' : '🌐 公開'}
-              </button>
-            </div>
-            <p style="font-size:0.86rem;">${esc(c.text)}</p>
-          </div>
-        `).join('')}
-      </div>
-      <form id="form-dev-chat" class="stack-form">
-        <div style="display:flex; gap:6px;">
-          <input type="text" id="dev-chat-input" class="input" placeholder="メッセージ（例：12/6 試作2回目やります）" required />
-          <button type="submit" class="btn btn-accent btn-sm">送信</button>
+      // ミニタブ1: LINE風左右吹き出しチャット
+      document.getElementById('dev-pane-chat').innerHTML = `
+        <div class="line-chat-stream">
+          ${(prod.chats || []).length ? prod.chats.map(c => {
+            const isMe = c.author === state.profile.name || c.author === 'あなた';
+            return `
+              <div class="bubble-row ${isMe ? 'is-me' : 'is-other'} ${c.isPrivate ? 'is-priv' : ''}">
+                <div class="bubble-meta">
+                  <span>${esc(c.author)} ・ ${esc(c.date)}</span>
+                  <button type="button" style="border:none;background:none;padding:0;cursor:pointer;font-size:0.7rem;color:var(--ink-sub);" data-toggle-priv="${esc(c.id)}">
+                    ${c.isPrivate ? '🔒限定' : '🌐公開'}
+                  </button>
+                </div>
+                <div class="bubble-body">${esc(c.text)}</div>
+              </div>
+            `;
+          }).join('') : '<p class="muted-text" style="text-align:center; padding:20px 0;">まだメッセージはありません。最初のひとことを送りましょう！</p>'}
         </div>
-        <label style="font-size:0.78rem; color:var(--ink-sub);">
-          <input type="checkbox" id="dev-chat-priv" /> 🔒 メンバー限定メモにする
-        </label>
-      </form>
-    `;
-
-    // ミニタブ2: 試作・写真
-    document.getElementById('dev-pane-media').innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span class="muted-text">試作・素材写真（最大6枚・自動軽量化）</span>
-        <label class="btn btn-outline btn-sm file-label">
-          ＋ 写真を追加
-          <input type="file" id="dev-img-input" accept="image/*" hidden />
-        </label>
-      </div>
-      <div class="photo-strip">
-        ${(prod.images || []).length ? prod.images.map((src, i) => `
-          <div class="photo-cell">
-            <img src="${src}" alt="試作写真" />
-            <button type="button" class="img-preview-del" data-del-dev-img="${i}">✕</button>
+        <form id="form-dev-chat" class="stack-form">
+          <div style="display:flex; gap:6px;">
+            <input type="text" id="dev-chat-input" class="input" placeholder="メッセージ（例：12/6 試作2回目やります）" required />
+            <button type="submit" class="btn btn-accent btn-sm">送信</button>
           </div>
-        `).join('') : '<p class="muted-text">まだ写真がありません。</p>'}
-      </div>
-    `;
+          <label style="font-size:0.76rem; color:var(--ink-sub);">
+            <input type="checkbox" id="dev-chat-priv" /> 🔒 メンバー限定メモにする
+          </label>
+        </form>
+      `;
 
-    // ミニタブ3: 原価・資材
-    const matCost = calcMatCost(prod);
-    const totalCost = Number(prod.costRaw) + Number(prod.costLabor) + matCost;
-    const profit = Number(prod.priceSell) - totalCost;
-    const rate = prod.priceSell > 0 ? Math.round((profit / prod.priceSell) * 100) : 0;
-    document.getElementById('dev-pane-cost').innerHTML = `
-      <div class="cost-row-4">
-        <label class="muted-text">素材費<input type="number" id="c-raw" class="input" value="${prod.costRaw}" /></label>
-        <label class="muted-text">加工費<input type="number" id="c-lab" class="input" value="${prod.costLabor}" /></label>
-        <label class="muted-text">資材(自動)<input type="number" class="input" value="${matCost}" readonly /></label>
-        <label class="muted-text">売価<input type="number" id="c-sell" class="input" value="${prod.priceSell}" /></label>
-      </div>
-      <div class="cost-bar">
-        <span>原価 ¥${totalCost}</span>
-        <span>粗利 ¥${profit}</span>
-        <span>粗利率 ${rate}%</span>
-      </div>
-      <div class="btn-row" style="margin-top:8px;">
-        ${(prod.adoptedMaterialIds || []).map(id => {
-          const m = window.ENJOY_MATERIALS.find(x => x.id === id);
-          return m ? `<span class="tag">${esc(m.name)} (¥${m.unitPrice}) <button type="button" style="border:none;background:none;cursor:pointer;" data-rem-mat="${esc(id)}">✕</button></span>` : '';
-        }).join('')}
-      </div>
-    `;
+      // ミニタブ2: 試作・写真
+      document.getElementById('dev-pane-media').innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="muted-text">${(prod.images || []).length ? `登録済み ${prod.images.length}/6枚` : '⚠️ まだ写真がありません（追加すると通販棚に映えます）'}</span>
+          <label class="btn btn-accent btn-sm file-label">
+            ＋ 写真を追加
+            <input type="file" id="dev-img-input" accept="image/*" hidden />
+          </label>
+        </div>
+        <div class="photo-strip">
+          ${(prod.images || []).map((src, i) => `
+            <div class="photo-cell">
+              <img src="${src}" alt="試作写真" />
+              <button type="button" class="img-preview-del" data-del-dev-img="${i}">✕</button>
+            </div>
+          `).join('')}
+        </div>
+      `;
 
-    // ミニタブ4: 予定・印刷
-    document.getElementById('dev-pane-plan').innerHTML = `
-      <form id="form-dev-cal" style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
-        <input type="date" id="cal-d" class="input input-compact" required />
-        <input type="text" id="cal-t" class="input" style="flex:1;" placeholder="予定（例：瓶詰めテスト）" required />
-        <button type="submit" class="btn btn-outline btn-sm">追加</button>
-      </form>
-      <div class="stack-list" style="margin-bottom:12px;">
-        ${(prod.calendar || []).map(c => `
-          <div class="chat-item" style="display:flex; justify-content:space-between; align-items:center;">
-            <span><strong>${esc(c.date)}</strong> ${esc(c.title)}</span>
-            <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(c.title)}" target="_blank" rel="noopener" class="muted-text">Google ↗</a>
+      // ミニタブ3: グラフ風・原価＆粗利バー
+      const matCost = calcMatCost(prod);
+      const totalCost = Number(prod.costRaw) + Number(prod.costLabor) + matCost;
+      const profit = Number(prod.priceSell) - totalCost;
+      const rate = prod.priceSell > 0 ? Math.round((profit / prod.priceSell) * 100) : 0;
+      const costPct = prod.priceSell > 0 ? Math.min(100, Math.max(0, Math.round((totalCost / prod.priceSell) * 100))) : 100;
+      const profPct = Math.max(0, 100 - costPct);
+
+      document.getElementById('dev-pane-cost').innerHTML = `
+        <div class="profit-hero">
+          <div>
+            <span class="muted-text">1個あたりの予定粗利</span>
+            <div class="profit-big ${profit < 0 ? 'is-minus' : ''}">¥${profit.toLocaleString()}</div>
           </div>
-        `).join('') || '<p class="muted-text">予定はまだありません。</p>'}
-      </div>
-      <div class="btn-row">
-        <button type="button" class="btn btn-outline btn-sm" data-print="agreement">📄 簡易同意書</button>
-        <button type="button" class="btn btn-outline btn-sm" data-print="pop">🪧 A4店頭POP</button>
-        <button type="button" class="btn btn-outline btn-sm" data-print="cards">🪪 8枚名刺</button>
-      </div>
-    `;
+          <div style="text-align:right;">
+            <span class="tag-accent">粗利率 ${rate}%</span>
+            <div class="muted-text" style="margin-top:4px;">売価 ¥${Number(prod.priceSell).toLocaleString()} ／ 原価 ¥${totalCost.toLocaleString()}</div>
+          </div>
+        </div>
+        <div class="cost-graph-bar" title="原価 vs 粗利">
+          <div class="graph-seg-cost" style="width:${costPct}%;">原価 ${costPct}%</div>
+          <div class="graph-seg-profit" style="width:${profPct}%;">粗利 ${profPct}%</div>
+        </div>
+        <div class="cost-row-4">
+          <label class="muted-text">素材費<input type="number" id="c-raw" class="input" value="${prod.costRaw}" /></label>
+          <label class="muted-text">加工費<input type="number" id="c-lab" class="input" value="${prod.costLabor}" /></label>
+          <label class="muted-text">資材(自動)<input type="number" class="input" value="${matCost}" readonly /></label>
+          <label class="muted-text">売価<input type="number" id="c-sell" class="input" value="${prod.priceSell}" /></label>
+        </div>
+        <div class="btn-row">
+          ${(prod.adoptedMaterialIds || []).map(id => {
+            const m = window.ENJOY_MATERIALS.find(x => x.id === id);
+            return m ? `<span class="tag">${esc(m.name)} (¥${m.unitPrice}) <button type="button" style="border:none;background:none;cursor:pointer;" data-rem-mat="${esc(id)}">✕</button></span>` : '';
+          }).join('')}
+        </div>
+      `;
 
-    // ホーム下段1: プロフィール & 30秒診断
+      // ミニタブ4: 予定・印刷
+      document.getElementById('dev-pane-plan').innerHTML = `
+        <form id="form-dev-cal" style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+          <input type="date" id="cal-d" class="input input-compact" required />
+          <input type="text" id="cal-t" class="input" style="flex:1;" placeholder="予定（例：瓶詰めテスト）" required />
+          <button type="submit" class="btn btn-accent btn-sm">追加</button>
+        </form>
+        <div class="stack-list" style="margin-bottom:12px;">
+          ${(prod.calendar || []).map(c => `
+            <div class="chat-item" style="display:flex; justify-content:space-between; align-items:center;">
+              <span><strong>${esc(c.date)}</strong> ${esc(c.title)}</span>
+              <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(c.title)}" target="_blank" rel="noopener" class="muted-text">Google ↗</a>
+            </div>
+          `).join('') || '<p class="muted-text">⚠️ 予定が未設定です。次の試作日を入れましょう。</p>'}
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-outline btn-sm" data-print="agreement">📄 簡易同意書</button>
+          <button type="button" class="btn btn-outline btn-sm" data-print="pop">🪧 A4店頭POP</button>
+          <button type="button" class="btn btn-outline btn-sm" data-print="cards">🪪 8枚名刺</button>
+        </div>
+      `;
+    }
+
+    // 下段：プロフィール・年輪・設定（一覧画面のときだけ表示）
     const diagRes = state.profile.diagType ? window.ENJOY_DIAG_RES[state.profile.diagType] : null;
     let diagHtml = '';
     if (diagStep >= 0) {
@@ -669,12 +746,9 @@
       </form>
     `;
 
-    // ホーム下段2: 年輪ボード
     document.getElementById('home-ring').innerHTML = `
       <div class="card">
-        <div class="card-head">
-          <h3>✍️ ご縁の年輪ボード（${state.ringEntries.length}組）</h3>
-        </div>
+        <div class="card-head"><h3>✍️ ご縁の年輪ボード（${state.ringEntries.length}組）</h3></div>
         <form id="form-ring" style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
           <input type="text" id="ring-msg" class="input" style="flex:1;" placeholder="応援メッセージ・サインを刻む" required />
           <button type="submit" class="btn btn-accent btn-sm">刻む</button>
@@ -691,7 +765,6 @@
       </div>
     `;
 
-    // ホーム下段3: 設定・データ
     document.getElementById('home-ops').innerHTML = `
       <div class="card">
         <div class="card-head"><h3>⚙️ 表示・バックアップ設定</h3></div>
@@ -779,7 +852,27 @@
         document.body.classList.remove('subnav-open'); // 選んだら消す
         return;
       }
+// ルーム一覧カードをタップ → ルームの中へ入る
+      const enterRoom = e.target.closest('[data-enter-room]');
+      if (enterRoom) {
+        state.activeRoomId = enterRoom.dataset.enterRoom;
+        const r = getActiveRoom();
+        state.activeProductId = r && r.products[0] ? r.products[0].id : null;
+        isInsideRoom = true;
+        saveState();
+        renderHome();
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        return;
+      }
 
+      // 「← 一覧へ」ボタン → ルーム一覧へ戻る
+      if (e.target.closest('#btn-back-home-list')) {
+        isInsideRoom = false;
+        renderHome();
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        return;
+      }
+      
       const devTab = e.target.closest('[data-dev-tab]');
       if (devTab) {
         switchDevTab(devTab.dataset.devTab);

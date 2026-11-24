@@ -197,43 +197,69 @@
         <!-- ========================================================== -->
         <!-- 5. 右端：🏠 ホーム（最上段に開発ルーム＆チャット ／ 個人設定） -->
         <!-- ========================================================== -->
+        <!-- ========================================================== -->
+        <!-- 5. 右端：🏠 ホーム（一覧 ⇄ ルームの中へ入る2段階設計）      -->
+        <!-- ========================================================== -->
         <section id="tab-home" class="tab-panel active" aria-label="ホーム">
 
-          <!-- 最上段（一番目立つ場所）：進行中の開発ルーム -->
-          <section class="home-hero-dev">
+          <!-- 【画面A】ルーム一覧（普段のホーム） -->
+          <div id="home-list-view" class="home-view">
             <div class="section-head">
-              <h2>🛠️ 進行中の開発ルーム</h2>
-              <div class="btn-row">
-                <button type="button" id="btn-new-room" class="btn btn-outline btn-sm">＋ 新規ルーム</button>
-                <button type="button" id="btn-new-product" class="btn btn-outline btn-sm">＋ 商品追加</button>
+              <h2>🛠️ 開発ルーム一覧</h2>
+              <button type="button" id="btn-new-room" class="btn btn-accent btn-sm">＋ 新規ルーム</button>
+            </div>
+            <div id="home-room-cards" class="card-grid-2"></div>
+
+            <!-- 個人メニュー（一覧のときだけ表示） -->
+            <section class="home-my-area" style="margin-top:16px;">
+              <div class="seg-bar">
+                <button type="button" class="seg-btn active" data-seg-group="home" data-seg="profile">👤 プロフィール・診断</button>
+                <button type="button" class="seg-btn" data-seg-group="home" data-seg="ring">✍️ 年輪ボード</button>
+                <button type="button" class="seg-btn" data-seg-group="home" data-seg="ops">⚙️ 設定・データ</button>
               </div>
+              <div id="home-profile" class="seg-panel active"></div>
+              <div id="home-ring" class="seg-panel"></div>
+              <div id="home-ops" class="seg-panel"></div>
+            </section>
+          </div>
+
+          <!-- 【画面B】ルームの中（1案件に集中するコックピット） -->
+          <div id="home-room-view" class="home-view hidden">
+            <div class="room-topbar">
+              <button type="button" id="btn-back-home-list" class="btn btn-outline btn-sm">← 一覧へ</button>
+              <div class="room-topbar-title">
+                <span id="dev-room-name" class="muted-text">ルーム名</span>
+                <h2 id="dev-prod-title" class="dev-title">商品名</h2>
+              </div>
+              <select id="dev-phase-select" class="input input-compact">
+                <option value="企画中">企画中</option>
+                <option value="試作中">試作中</option>
+                <option value="準備OK">準備OK</option>
+                <option value="販売中">販売中</option>
+              </select>
             </div>
 
-            <!-- ルーム＆商品スイッチャー -->
-            <div id="dev-room-tabs" class="chip-scroll"></div>
-            <div id="dev-prod-tabs" class="chip-scroll"></div>
+            <!-- 同じルーム内の別商品（複数ある場合のみ表示） -->
+            <div id="dev-prod-switcher" class="room-prod-strip">
+              <div id="dev-prod-tabs" class="chip-scroll"></div>
+              <button type="button" id="btn-new-product" class="btn btn-ghost btn-sm">＋ 商品追加</button>
+            </div>
 
-            <!-- 開発ルーム本体（4ミニタブでスッキリ整理） -->
-            <div id="dev-workspace-box" class="dev-box">
-              <div class="dev-box-head">
-                <div>
-                  <span id="dev-phase-tag" class="tag-accent">試作中</span>
-                  <h3 id="dev-prod-title" class="dev-title">商品名</h3>
-                </div>
-                <select id="dev-phase-select" class="input input-compact">
-                  <option value="企画中">企画中</option>
-                  <option value="試作中">試作中</option>
-                  <option value="準備OK">準備OK</option>
-                  <option value="販売中">販売中</option>
-                </select>
-              </div>
-
-              <!-- 開発ルーム内 4ミニタブ -->
+            <!-- コックピット本体 -->
+            <div class="dev-box">
               <div class="mini-tab-bar">
-                <button type="button" class="mini-tab active" data-dev-tab="chat">💬 チャット</button>
-                <button type="button" class="mini-tab" data-dev-tab="media">📸 試作・写真</button>
-                <button type="button" class="mini-tab" data-dev-tab="cost">🧮 原価・資材</button>
-                <button type="button" class="mini-tab" data-dev-tab="plan">📅 予定・印刷</button>
+                <button type="button" class="mini-tab active" data-dev-tab="chat">
+                  💬 チャット<span id="dot-dev-chat" class="alert-dot hidden"></span>
+                </button>
+                <button type="button" class="mini-tab" data-dev-tab="media">
+                  📸 写真<span id="dot-dev-media" class="alert-dot hidden"></span>
+                </button>
+                <button type="button" class="mini-tab" data-dev-tab="cost">
+                  🧮 原価<span id="dot-dev-cost" class="alert-dot hidden"></span>
+                </button>
+                <button type="button" class="mini-tab" data-dev-tab="plan">
+                  📅 予定<span id="dot-dev-plan" class="alert-dot hidden"></span>
+                </button>
               </div>
 
               <div id="dev-pane-chat" class="dev-pane active"></div>
@@ -241,7 +267,9 @@
               <div id="dev-pane-cost" class="dev-pane"></div>
               <div id="dev-pane-plan" class="dev-pane"></div>
             </div>
-          </section>
+          </div>
+
+        </section>
 
           <!-- ホーム下段：個人メニュー（セグメント切替で縦長化を防止） -->
           <section class="home-my-area">
