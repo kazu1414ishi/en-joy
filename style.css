@@ -1108,7 +1108,7 @@ body.show-zones .future-zone {
 }
 .pieces-bar {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 6px;
   margin-bottom: 10px;
 }
@@ -1383,4 +1383,421 @@ body.show-zones .future-zone {
   .role-grid {
     grid-template-columns: 1fr;
   }
+}
+
+
+/* =========================================================
+   v2 追加スタイル：つぶやき＆動画 / フル画面EN開発室 / 固定メモ
+========================================================= */
+
+/* ボトムナビ5タブ微調整（スマホ幅でも文字が折り返さない） */
+.nav-item {
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+/* ==================== つぶやき ＆ 動画フィード ==================== */
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.feed-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 15px;
+  box-shadow: var(--shadow);
+}
+.feed-card.rescue-card {
+  border: 1.5px solid var(--orange);
+  background: #FFFBF7;
+}
+.feed-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.feed-author-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.feed-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--green-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.feed-author {
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+.feed-meta {
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+}
+.feed-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+}
+.feed-badge.rescue {
+  background: var(--orange);
+  color: #fff;
+}
+.feed-badge.general {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.feed-body {
+  font-size: 0.88rem;
+  margin: 0 0 10px;
+  white-space: pre-wrap;
+}
+.feed-media {
+  margin-bottom: 10px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #1C1E1C;
+}
+.feed-media img,
+.feed-media video {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+}
+.feed-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+.feed-action-left {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ==================== 企画カード・素材置き場拡張 ==================== */
+.proj-kind-tags,
+.offer-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+.kind-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--green-soft);
+  color: var(--green);
+}
+.kind-tag.rescue {
+  background: var(--orange-soft);
+  color: var(--orange);
+}
+.media-thumb-box {
+  margin-bottom: 10px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+}
+.media-thumb-box img,
+.media-thumb-box video {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+}
+.offer-card-v2 {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 15px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.offer-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+/* ==================== フル画面・専用EN開発ルーム ==================== */
+.room-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.room-hero-card {
+  padding: 16px;
+}
+.room-hero-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.room-title {
+  font-size: 1.18rem;
+  margin: 6px 0 4px;
+}
+.media-preview-row {
+  margin: 10px 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  max-width: 420px;
+}
+.media-preview-row img,
+.media-preview-row video {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+}
+
+.room-pieces-wrap {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.room-pieces-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.room-piece-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.room-piece-chip.filled {
+  background: var(--green-soft);
+  color: var(--green);
+  border-color: rgba(61, 102, 74, 0.25);
+}
+.room-piece-chip.open {
+  background: var(--orange-soft);
+  color: var(--orange);
+  border-color: var(--orange);
+}
+
+/* スクロール式 固定メモボード（3行制限なし・何件でもスクロール） */
+.pinned-board-card {
+  padding: 13px 14px;
+  border: 1.5px solid rgba(61, 102, 74, 0.25);
+}
+.pinned-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 0.86rem;
+}
+.pinned-scroll-area {
+  max-height: 170px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-right: 4px;
+}
+.pinned-item {
+  background: var(--surface);
+  border-left: 3px solid var(--green);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+.pinned-item-meta {
+  font-size: 0.7rem;
+  color: var(--ink-muted);
+  margin-top: 2px;
+}
+.unpin-btn {
+  border: none;
+  background: var(--surface-soft);
+  color: var(--ink-muted);
+  font-size: 0.7rem;
+  padding: 2px 7px;
+  border-radius: 999px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.unpin-btn:hover {
+  color: var(--orange);
+}
+
+/* ルーム内チャット */
+.room-chat-messages {
+  max-height: 360px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 4px 2px;
+}
+.chat-row {
+  display: flex;
+  flex-direction: column;
+  max-width: 88%;
+}
+.chat-row.me {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+.chat-row.other {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+.chat-row.sys {
+  align-self: center;
+  max-width: 96%;
+}
+.chat-sender {
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+  margin-bottom: 2px;
+}
+.chat-bubble {
+  padding: 9px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.chat-row.me .chat-bubble {
+  background: var(--green);
+  color: #fff;
+}
+.chat-row.other .chat-bubble {
+  background: var(--surface-soft);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.chat-row.sys .chat-bubble {
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 0.76rem;
+  text-align: center;
+}
+.chat-media {
+  margin-top: 6px;
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 240px;
+}
+.chat-media img,
+.chat-media video {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+}
+.chat-msg-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+}
+.pin-msg-btn {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-muted);
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.pin-msg-btn:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+.pin-msg-btn.pinned {
+  background: var(--green-soft);
+  color: var(--green);
+  border-color: var(--green);
+  font-weight: 700;
+}
+
+.room-chat-composer {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.composer-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* メンバー＆応募承認タブ */
+.applicant-card {
+  background: #FFFBF7;
+  border: 1.5px solid var(--orange);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.applicant-msg {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 11px;
+  font-size: 0.84rem;
+  margin: 8px 0 10px;
+  white-space: pre-wrap;
+}
+.applicant-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.room-members-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 14px;
 }

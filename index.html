@@ -22,6 +22,10 @@
           <button id="toggleMobileBtn" class="chip-btn desktop-only" type="button" title="PC上でスマホ幅プレビュー切替">
             📱 スマホ幅
           </button>
+          <!-- 開発用：本番公開時はこのボタン1つを消すだけ -->
+          <button id="resetToStartBtn" class="chip-btn" type="button" title="開発用：データを初期化して初回登録(Step 1)からやり直す">
+            🔄 最初に戻す
+          </button>
           <button id="openRegBtn" class="chip-btn chip-accent" type="button">
             名刺・登録編集
           </button>
@@ -416,6 +420,26 @@
         </div>
       </section>
 
+            <!-- ==================== つぶやき＆動画タブ（一般＆農家レスキュー） ==================== -->
+      <section id="view-feed" class="view-section">
+        <div class="en-header">
+          <div>
+            <p class="eyebrow">みんなの声・農家のレスキュー速報</p>
+            <h2>💬 つぶやき ＆ 動画</h2>
+          </div>
+          <button id="openFeedPostBtn" type="button" class="btn btn-accent">＋ 投稿する</button>
+        </div>
+
+        <div class="filter-bar" id="feedFilterBar">
+          <button type="button" class="filter-chip active" data-feedfilter="all">すべて</button>
+          <button type="button" class="filter-chip" data-feedfilter="rescue">🆘 農家レスキュー</button>
+          <button type="button" class="filter-chip" data-feedfilter="video">🎥 動画あり</button>
+          <button type="button" class="filter-chip" data-feedfilter="general">💬 一般・日常</button>
+        </div>
+
+        <div id="feedListContainer" class="feed-list"></div>
+      </section>
+
       <!-- ==================== EN（開発ルーム）タブ ==================== -->
       <section id="view-en" class="view-section">
         <div class="en-header">
@@ -434,7 +458,7 @@
         <!-- 切替：企画に参加 / 素材・スキルを置く -->
         <div class="en-mode-tabs" id="enModeTabs">
           <button type="button" class="active" data-enmode="projects">🧩 企画に参加する</button>
-          <button type="button" data-enmode="offers">🌱 素材・スキルを置く（1行逆オファー）</button>
+          <button type="button" data-enmode="offers">🌱 素材・困りごとを置く（企画化OK）</button>
         </div>
 
         <!-- 絞り込みチップ -->
@@ -450,6 +474,84 @@
 
         <!-- 素材・スキル1行置き場 -->
         <div id="enOffersContainer" class="offer-list hidden"></div>
+      </section>
+
+            <!-- ==================== フル画面・専用EN開発ルーム ==================== -->
+      <section id="view-en-room" class="view-section">
+        <div class="room-topbar">
+          <button id="backToEnListBtn" type="button" class="btn btn-outline btn-sm">← EN一覧へ</button>
+          <div class="card-mode-switch" id="roomViewModeSwitch">
+            <button type="button" class="active" data-roomview="inside">🛠️ 中の開発室</button>
+            <button type="button" data-roomview="outside">👀 外からの見え方</button>
+          </div>
+        </div>
+
+        <!-- ルーム概要ヘッダー -->
+        <div class="card room-hero-card">
+          <div class="room-hero-head">
+            <div>
+              <span id="roomStageBadge" class="stage-pill">Step 1：仲間あつめ</span>
+              <h2 id="roomTitle" class="room-title">企画タイトル</h2>
+              <p id="roomGoal" class="card-desc" style="margin-bottom:8px;"></p>
+            </div>
+            <div id="roomActionSlot"></div>
+          </div>
+
+          <!-- 添付写真・動画プレビュー -->
+          <div id="roomMediaPreview" class="media-preview-row hidden"></div>
+
+          <!-- 参加ピース一覧（2人から開始OK＋途中EN追加ボタン） -->
+          <div class="room-pieces-wrap">
+            <div id="roomPiecesList" class="room-pieces-list"></div>
+            <button id="openAddEnModalBtn" type="button" class="btn btn-outline btn-sm">＋ 必要なEN（企業・職種）を追加募集</button>
+          </div>
+        </div>
+
+        <!-- 将来ゾーン枠 -->
+        <div class="future-zone" data-zone="true">
+          <span class="zone-badge">🥚 将来ゾーン（卵デコ → 合体エンちゃん孵化 → 全画面巣立ち動画）</span>
+          <p>マッチ直後は卵にスタンプを貼ってアイスブレイク → 方向性決定で合体エンちゃん誕生 → 📌固定した公開ストーリーを吸って巣立ち！</p>
+        </div>
+
+        <!-- ルーム内 2タブ構成 -->
+        <div class="en-mode-tabs" id="roomInnerTabs">
+          <button type="button" class="active" data-roomtab="talk">💬 トーク ＆ 📌固定メモ</button>
+          <button type="button" data-roomtab="members">👥 メンバー ＆ 応募承認</button>
+        </div>
+
+        <!-- タブ①：トーク＆スクロール式固定メモ -->
+        <div id="roomTabTalk">
+          <div class="card card-soft pinned-board-card">
+            <div class="pinned-head">
+              <strong>📌 決まったこと・固定メモ（スクロール確認）</strong>
+              <span id="pinnedCountBadge" class="mini-note">0件</span>
+            </div>
+            <div id="pinnedScrollArea" class="pinned-scroll-area">
+              <p class="mini-note">トーク内の発言で「📌 固定」を押すと、流れないメモとしてここに何件でも残せます。</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div id="roomChatMessages" class="room-chat-messages"></div>
+            <div id="roomChatInputWrap" class="room-chat-composer">
+              <div class="composer-tools">
+                <label class="btn btn-outline btn-sm" for="roomMediaInput">📎 写真・動画</label>
+                <input id="roomMediaInput" type="file" accept="image/*,video/*" class="sr-only" />
+                <span id="roomPendingMediaName" class="mini-note"></span>
+              </div>
+              <div class="inline-add">
+                <input id="roomChatInput" class="text-input" type="text" placeholder="トークを送る（大事な決定は送信後に📌固定できます）" />
+                <button id="roomChatSendBtn" type="button" class="btn btn-primary">送信</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- タブ②：メンバー名刺＆応募承認 -->
+        <div id="roomTabMembers" class="hidden">
+          <div id="roomApplicantsArea"></div>
+          <div id="roomMembersList" class="room-members-grid"></div>
+        </div>
       </section>
 
       <!-- ==================== 役立ちタブ（ロック中） ==================== -->
@@ -496,6 +598,10 @@
       <button type="button" class="nav-item" data-tab="home">
         <span class="nav-icon">🏠</span>
         <span>ホーム</span>
+      </button>
+      <button type="button" class="nav-item" data-tab="feed">
+        <span class="nav-icon">💬</span>
+        <span>つぶやき</span>
       </button>
       <button type="button" class="nav-item" data-tab="en">
         <span class="nav-icon">🤝</span>
@@ -545,7 +651,20 @@
           </div>
         </div>
         <div class="field-group">
-          <label class="field-label">いま募集しているピース（複数選択）</label>
+          <label class="field-label">企画の種別タブ（複数選択OK）</label>
+          <div class="chip-group" id="projKindTabs">
+            <label class="check-chip"><input type="checkbox" value="新商品開発" checked /> ✨ 新商品開発</label>
+            <label class="check-chip"><input type="checkbox" value="規格外レスキュー" /> 🆘 規格外レスキュー</label>
+            <label class="check-chip"><input type="checkbox" value="イベント・マルシェ" /> 🎪 イベント・マルシェ</label>
+            <label class="check-chip"><input type="checkbox" value="パッケージ刷新" /> 🎨 パッケージ刷新</label>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="projMediaInput">📸 写真・動画を添える（任意）</label>
+          <input id="projMediaInput" class="text-input" type="file" accept="image/*,video/*" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">いま募集しているピース（2社から開始＆途中追加OK）</label>
           <div class="chip-group" id="projOpenPieces">
             <label class="check-chip"><input type="checkbox" value="material" /> 🌾 素材</label>
             <label class="check-chip"><input type="checkbox" value="make" checked /> 🍳 形にする</label>
@@ -556,17 +675,30 @@
         <button type="submit" class="btn btn-accent btn-full">この企画をEN開発ルームに出す</button>
       </form>
 
-      <!-- 1行逆オファーフォーム -->
+      <!-- 素材・困りごと置き場フォーム -->
       <form id="offerPostForm" class="modal-form hidden">
         <div class="field-group">
-          <label class="field-label" for="offerText">提供できる素材・スキル（1行でOK）</label>
-          <input id="offerText" class="text-input" type="text" required placeholder="例：来月、訳あり完熟いちごが30kg余ります。スイーツ試作に使いませんか？" />
+          <label class="field-label">種別タブ（複数選択OK）</label>
+          <div class="chip-group" id="offerKindTabs">
+            <label class="check-chip"><input type="checkbox" value="余剰素材" checked /> 🍊 素材が余る</label>
+            <label class="check-chip"><input type="checkbox" value="困りごと" /> 🆘 困りごと相談</label>
+            <label class="check-chip"><input type="checkbox" value="スキル・設備" /> 🛠️ 設備・スキル提供</label>
+            <label class="check-chip"><input type="checkbox" value="コラボ相手探し" /> 🤝 相手探し</label>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="offerText">内容（素材量や困りごとを気軽に）</label>
+          <textarea id="offerText" class="text-area" rows="2" required placeholder="例：来月、完熟みかんが50kg余ります！加工アイデアや引き取り先で困っています。"></textarea>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="offerMediaInput">📸 写真・動画を添える（任意）</label>
+          <input id="offerMediaInput" class="text-input" type="file" accept="image/*,video/*" />
         </div>
         <div class="field-group">
           <label class="field-label" for="offerArea">エリア</label>
           <input id="offerArea" class="text-input" type="text" placeholder="例：大阪府 高槻市" />
         </div>
-        <button type="submit" class="btn btn-accent btn-full">1行置き場に並べる</button>
+        <button type="submit" class="btn btn-accent btn-full">置き場に投稿する（企画化OK）</button>
       </form>
     </div>
   </div>
@@ -579,6 +711,94 @@
         <button type="button" class="icon-close" data-close-modal="detailModal">✕</button>
       </div>
       <div id="detailBody"></div>
+    </div>
+  </div>
+
+    <!-- ==================== モーダル：つぶやき＆動画・農家レスキュー投稿 ==================== -->
+  <div id="feedPostModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>💬 つぶやき ＆ 動画を投稿</h3>
+        <button type="button" class="icon-close" data-close-modal="feedPostModal">✕</button>
+      </div>
+      <form id="feedPostForm" class="modal-form">
+        <div class="field-group">
+          <label class="field-label">投稿タイプ</label>
+          <div class="segment-group" id="feedTypeSwitch">
+            <button type="button" class="seg-btn active" data-feedtype="general">💬 一般・日常つぶやき</button>
+            <button type="button" class="seg-btn" data-feedtype="rescue">🆘 農家のレスキュー</button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="feedTextInput">本文</label>
+          <textarea id="feedTextInput" class="text-area" rows="3" required placeholder="例：台風前の早摘みみかん50kg、どなたか試作や店頭販売で助けてください！／今日の試作ジャム最高でした！"></textarea>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="feedMediaInput">🎥 動画・写真を添付（任意）</label>
+          <input id="feedMediaInput" class="text-input" type="file" accept="image/*,video/*" />
+        </div>
+        <button type="submit" class="btn btn-accent btn-full">タイムラインに投稿する</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== モーダル：「興味あり」送信（ワンタップ＋熱意メッセージ両対応） ==================== -->
+  <div id="interestModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>👋 興味ありを送る</h3>
+        <button type="button" class="icon-close" data-close-modal="interestModal">✕</button>
+      </div>
+      <p id="interestTargetTitle" class="mini-note" style="margin-bottom:10px;"></p>
+      <form id="interestForm" class="modal-form">
+        <div class="field-group">
+          <label class="field-label">どの役割（EN）で関わりたいですか？</label>
+          <div id="interestRoleSelect" class="chip-group"></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">ワンタップ定型（複数タップで熱意文に追加もOK）</label>
+          <div id="interestQuickChips" class="chip-group chip-group-sm">
+            <button type="button" class="select-chip chip-quick" data-quickmsg="ぜひ一度お話ししてみたいです！">💬 話してみたい</button>
+            <button type="button" class="select-chip chip-quick" data-quickmsg="小ロット試作で力になれます！">🍳 試作できます</button>
+            <button type="button" class="select-chip chip-quick" data-quickmsg="まずはサンプルを見せてください！">👀 サンプル見たい</button>
+            <button type="button" class="select-chip chip-quick" data-quickmsg="販売・SNS拡散で応援したいです！">📣 届ける・応援</button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="interestFreeMsg">熱意メッセージ（自由入力・空のままワンタップ送信もOK）</label>
+          <textarea id="interestFreeMsg" class="text-area" rows="3" placeholder="例：うちの小ロット充填機なら50本から試作できます！ぜひ一緒に形にしたいです！"></textarea>
+        </div>
+        <button type="submit" class="btn btn-accent btn-full">👋 興味ありを送る（名刺ロック解除リクエスト）</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== モーダル：途中で他のEN（企業・職種）を追加募集 ==================== -->
+  <div id="addEnModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>＋ 必要なEN（企業・職種）を追加募集</h3>
+        <button type="button" class="icon-close" data-close-modal="addEnModal">✕</button>
+      </div>
+      <p class="card-desc">開発が進んで必要になったタイミングで、いつでも新しい職種や企業枠を追加できます。</p>
+      <form id="addEnForm" class="modal-form">
+        <div class="field-group">
+          <label class="field-label">追加したい職種・企業タイプ</label>
+          <div id="addEnRoleChips" class="chip-group">
+            <button type="button" class="select-chip" data-adden="🎨 デザイナー・パッケージ">🎨 デザイナー・パッケージ</button>
+            <button type="button" class="select-chip" data-adden="🖨️ 印刷・ラベル会社">🖨️ 印刷・ラベル会社</button>
+            <button type="button" class="select-chip" data-adden="🍳 加工工房・OEM企業">🍳 加工工房・OEM企業</button>
+            <button type="button" class="select-chip" data-adden="🏪 道の駅・小売バイヤー">🏪 道の駅・小売バイヤー</button>
+            <button type="button" class="select-chip" data-adden="📸 写真・動画クリエイター">📸 写真・動画クリエイター</button>
+            <button type="button" class="select-chip" data-adden="🚚 冷蔵・物流パートナー">🚚 冷蔵・物流パートナー</button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="addEnCustomInput">自由入力（その他・ピンポイントな職種や企業）</label>
+          <input id="addEnCustomInput" class="text-input" type="text" placeholder="例：京都の老舗和菓子店、木工什器職人、栄養士など" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">このEN枠を開発室に追加募集する</button>
+      </form>
     </div>
   </div>
 
