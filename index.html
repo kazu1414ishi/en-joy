@@ -2,373 +2,588 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#1A1A1A" />
-  <title>EN•joy v6.0 — 縁を仕立て、続ける</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EN•joy｜異業種コラボ開発プラットフォーム（Stage 1 テスト版）</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
-  <!-- ========== 初回UIモード選択モーダル（モダン / かんたん） ========== -->
-  <div id="modal-ui-select" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-backdrop"></div>
-    <div class="modal-sheet modal-sm">
-      <div class="modal-head">
-        <h2>EN•joy へようこそ</h2>
-      </div>
-      <div class="modal-body">
-        <p class="lead-text">使いやすい画面スタイルを選んでください（あとからいつでも切替できます）</p>
-        <div class="mode-pick-grid">
-          <button type="button" class="mode-card" data-pick-ui="modern">
-            <span class="mode-ico">⚡</span>
-            <strong>モダン（標準）</strong>
-            <span>写真中心・スッキリ高密度</span>
+  <div id="appShell" class="app-shell">
+    <!-- スクロール連動ヘッダー -->
+    <header id="topHeader" class="top-header">
+      <div class="header-inner">
+        <div class="brand-wrap">
+          <span class="brand-logo">EN<span class="brand-dot">•</span>joy</span>
+          <span class="stage-pill">Stage 1 テスト版</span>
+        </div>
+        <div class="header-controls">
+          <button id="toggleZoneBtn" class="chip-btn" type="button" title="将来の隠し玉ゾーン配置を表示/非表示">
+            ゾーン枠: <strong id="zoneStateText">OFF</strong>
           </button>
-          <button type="button" class="mode-card" data-pick-ui="simple">
-            <span class="mode-ico">🔰</span>
-            <strong>かんたん（大文字）</strong>
-            <span>大きな文字・1列・迷わない</span>
+          <button id="toggleMobileBtn" class="chip-btn desktop-only" type="button" title="PC上でスマホ幅プレビュー切替">
+            📱 スマホ幅
+          </button>
+          <button id="openRegBtn" class="chip-btn chip-accent" type="button">
+            名刺・登録編集
           </button>
         </div>
       </div>
-    </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="main-container">
+      <!-- ==================== 初回登録＆名刺作成ビュー ==================== -->
+      <section id="view-register" class="view-section active">
+        <div class="reg-hero">
+          <div>
+            <p class="eyebrow">最短45秒・戻らずに登録完了</p>
+            <h1>あなたの「できること」を<br />デジタル名刺にしよう</h1>
+          </div>
+          <div class="stepper" id="stepper">
+            <button type="button" class="step-pill active" data-step="1">1. 役割</button>
+            <button type="button" class="step-pill" data-step="2">2. 活動</button>
+            <button type="button" class="step-pill" data-step="3">3. 基本情報</button>
+            <button type="button" class="step-pill" data-step="4">4. 自慢・製品</button>
+          </div>
+        </div>
+
+        <!-- 将来ゾーン枠（OFF時は非表示） -->
+        <div class="future-zone" data-zone="true">
+          <span class="zone-badge">🥚 将来ゾーン（本番大公開）</span>
+          <p><strong>マイ・エンちゃん誕生エリア：</strong>Step 1の業種タイプ × 農作物/好きな物で、あなた専用のエンちゃんが1匹だけ誕生します（SVGレイヤー構造）。</p>
+        </div>
+
+        <div class="reg-grid">
+          <!-- 左：登録フォーム -->
+          <div class="reg-form-col">
+            <!-- STEP 1 -->
+            <div class="step-panel active" data-panel="1">
+              <div class="card">
+                <h2 class="card-title">Step 1｜メインの役割を1つ選ぶ</h2>
+                <p class="card-desc">まずは一番近いものをタップ。あとから兼業も追加できます。</p>
+                <div id="roleGrid" class="role-grid"></div>
+
+                <!-- 「その他」特別歓迎リアクション -->
+                <div id="otherRoleBox" class="other-role-box hidden">
+                  <div class="other-welcome">
+                    <span class="welcome-tag">✨ 新ジャンル大歓迎！</span>
+                    <p><strong>考えてませんでした‼️</strong> ぜひ新しい業種として登録させてください。あなたのような方が加わると企画の幅が一気に広がります！</p>
+                  </div>
+                  <label class="field-label" for="otherRoleInput">どんなお仕事・活動ですか？</label>
+                  <input id="otherRoleInput" class="text-input" type="text" placeholder="例：木工職人、カメラマン、地域の福祉事業所、発酵研究など" />
+                  <label class="check-row">
+                    <input id="otherPushOk" type="checkbox" checked />
+                    <span>運営からの「新ジャンル注目枠」プッシュ紹介を許可する</span>
+                  </label>
+                </div>
+
+                <div class="step-actions">
+                  <span></span>
+                  <button type="button" class="btn btn-primary" data-next="2">次へ：具体的な活動 →</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- STEP 2 -->
+            <div class="step-panel" data-panel="2">
+              <div class="card">
+                <h2 class="card-title">Step 2｜具体的な活動（任意・複数選択）</h2>
+                <p class="card-desc">当てはまるものをタップ。なければ自由に追加できます。</p>
+
+                <div id="activityChips" class="chip-group"></div>
+
+                <div class="inline-add">
+                  <input id="customActivityInput" class="text-input" type="text" placeholder="＋ その他（例：無農薬栽培、真空パック、イラスト制作）" />
+                  <button id="addActivityBtn" type="button" class="btn btn-outline">追加</button>
+                </div>
+
+                <hr class="divider" />
+
+                <!-- 戻らずに別ロールを追加 -->
+                <div class="subrole-box">
+                  <div class="subrole-head">
+                    <h3>「あ、これもやってるわ」兼業・追加の役割</h3>
+                    <span class="mini-note">最大2つまで・Step 1に戻らず追加OK</span>
+                  </div>
+                  <div id="subRoleChips" class="chip-group"></div>
+                </div>
+
+                <div class="step-actions">
+                  <button type="button" class="btn btn-ghost" data-prev="1">← 戻る</button>
+                  <button type="button" class="btn btn-primary" data-next="3">次へ：基本情報・エリア →</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- STEP 3 -->
+            <div class="step-panel" data-panel="3">
+              <!-- 担当者コードによる入力省略バー -->
+              <div class="card card-soft">
+                <div class="code-shortcut-head">
+                  <div>
+                    <p class="mini-title">⚡ 担当者コードをお持ちの方（入力省略）</p>
+                    <p class="mini-note">会社やチームの既存コードを入れると基本情報を自動入力できます</p>
+                  </div>
+                  <button id="demoCodeBtn" type="button" class="btn-link">サンプル「EN-TK88」を試す</button>
+                </div>
+                <div class="inline-add">
+                  <input id="importCodeInput" class="text-input" type="text" placeholder="例：EN-TK88" />
+                  <button id="applyCodeBtn" type="button" class="btn btn-outline">反映</button>
+                </div>
+                <p id="codeApplyMsg" class="feedback-msg"></p>
+              </div>
+
+              <!-- 小カード① プロフィール・立場 -->
+              <div class="card">
+                <h2 class="card-title">① プロフィール・立場</h2>
+
+                <div class="photo-row">
+                  <div class="photo-preview-wrap">
+                    <img id="photoPreviewImg" class="photo-preview hidden" alt="トップ写真プレビュー" />
+                    <div id="photoPlaceholder" class="photo-placeholder">🌱</div>
+                  </div>
+                  <div class="photo-meta">
+                    <label class="btn btn-outline btn-sm" for="photoInput">📷 トップ写真を選ぶ</label>
+                    <input id="photoInput" type="file" accept="image/*" class="sr-only" />
+                    <p id="photoReviewNote" class="mini-note">※登録後、運営審査（安全確認）が完了すると公開されます。</p>
+                  </div>
+                </div>
+
+                <div class="field-group">
+                  <label class="field-label" for="displayNameInput">このサイトでの活動名 <span class="req">必須</span></label>
+                  <input id="displayNameInput" class="text-input" type="text" placeholder="例：高槻みかん農園 たなか / 工房ハレ" />
+                </div>
+
+                <div class="field-group">
+                  <label class="field-label">年代（1タップ選択）</label>
+                  <div id="ageGroupChips" class="chip-group"></div>
+                  <div class="age-detail-row">
+                    <label class="mini-note" for="exactAgeInput">詳細な年齢（あとで記入・任意）：</label>
+                    <input id="exactAgeInput" class="text-input input-xs" type="number" min="15" max="100" placeholder="例：38" />
+                    <span class="mini-note">歳</span>
+                  </div>
+                </div>
+
+                <div class="field-group">
+                  <label class="field-label">参加の立場</label>
+                  <div id="positionChips" class="chip-group"></div>
+                </div>
+
+                <!-- 社長・担当者選択時のみ表示：担当者氏名＆専用コード自動発行 -->
+                <div id="staffBox" class="staff-box hidden">
+                  <label class="field-label" for="staffNameInput">担当者氏名（マッチ後に自動開示）</label>
+                  <input id="staffNameInput" class="text-input" type="text" placeholder="例：山田 太郎" />
+                  <div id="generatedCodeBox" class="generated-code hidden">
+                    <div>
+                      <span class="mini-note">あなた専用の入力省略コード：</span>
+                      <strong id="generatedCodeText" class="code-pill">EN-0000</strong>
+                    </div>
+                    <button id="copyStaffCodeBtn" type="button" class="btn-link">コピー</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 小カード② エリア・興味 -->
+              <div class="card">
+                <h2 class="card-title">② 主なエリア・興味があること</h2>
+
+                <div class="field-group">
+                  <label class="field-label" for="areaInput">主な活動エリア</label>
+                  <div class="inline-add">
+                    <input id="areaInput" class="text-input" type="text" placeholder="例：大阪府 高槻市 富田町" />
+                    <button id="geoBtn" type="button" class="btn btn-outline">📍 現在地取得</button>
+                  </div>
+                  <p id="geoStatus" class="mini-note"></p>
+                </div>
+
+                <div class="field-group">
+                  <label class="field-label">マッチ前の住所表示</label>
+                  <div class="segment-group" id="areaGranularityGroup">
+                    <button type="button" class="seg-btn active" data-granularity="broad">市町村まで（安心）</button>
+                    <button type="button" class="seg-btn" data-granularity="detail">町名まで（詳しく）</button>
+                  </div>
+                </div>
+
+                <div class="field-group">
+                  <label class="field-label">興味があること（複数選択）</label>
+                  <div id="interestChips" class="chip-group"></div>
+                </div>
+              </div>
+
+              <!-- 小カード③ ID・パスワード・紹介コード -->
+              <div class="card">
+                <h2 class="card-title">③ ログインID・紹介コード</h2>
+                <div class="two-col-fields">
+                  <div class="field-group">
+                    <label class="field-label" for="loginIdInput">ログインID</label>
+                    <input id="loginIdInput" class="text-input" type="text" placeholder="半角英数（例：tanaka_farm）" />
+                  </div>
+                  <div class="field-group">
+                    <label class="field-label" for="passwordInput">パスワード</label>
+                    <input id="passwordInput" class="text-input" type="password" placeholder="8文字以上" />
+                  </div>
+                </div>
+                <p class="mini-note">※10人テスト版ではこのブラウザ内にのみ安全に保存されます（外部送信なし）。</p>
+
+                <div class="referral-box">
+                  <label class="field-label" for="referralInput">🎁 紹介コード（お持ちの方）</label>
+                  <input id="referralInput" class="text-input" type="text" placeholder="招待URL経由なら自動入力されます" />
+                  <p class="mini-note">紹介したお仲間の企画が形（巣立ち）になると、行動に応じて運営から応援特典が届きます。</p>
+                </div>
+
+                <div class="step-actions">
+                  <button type="button" class="btn btn-ghost" data-prev="2">← 戻る</button>
+                  <button type="button" class="btn btn-primary" data-next="4">次へ：自慢・製品・連絡先 →</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- STEP 4 -->
+            <div class="step-panel" data-panel="4">
+              <!-- 資産NGガードレール -->
+              <div class="safety-banner">
+                <strong>🛡️ 安心・対等なモノづくりの約束</strong>
+                <p>年商・資本金・資産などの金額は<strong>絶対に書かないでください</strong>。規模ではなく「素材・技術・想い」で繋がる場所です。</p>
+              </div>
+
+              <!-- 仕事性格診断プレースホルダー -->
+              <div class="card card-soft">
+                <div class="diag-head">
+                  <div>
+                    <h2 class="card-title">🧠 仕事性格診断（UI完成後に実装予定）</h2>
+                    <p class="mini-note">「簡易（3問）」と「詳細（10問・相性絞り込み解放）」の2モードを用意予定</p>
+                  </div>
+                  <span class="status-tag">準備中</span>
+                </div>
+                <div class="diag-preview-btns">
+                  <button type="button" class="btn btn-outline btn-sm" disabled>⚡ 簡易診断（15秒）</button>
+                  <button type="button" class="btn btn-outline btn-sm" disabled>🔍 詳細診断（相性スコア解放）</button>
+                </div>
+              </div>
+
+              <!-- 生産能力・自慢 -->
+              <div class="card">
+                <h2 class="card-title">自慢ポイント・設備・生産能力（飛ばしてもOK）</h2>
+
+                <div class="field-group">
+                  <label class="field-label" for="capacityInput">設備・作れる量（生産能力）</label>
+                  <div id="capacityQuickChips" class="chip-group chip-group-sm"></div>
+                  <input id="capacityInput" class="text-input" type="text" placeholder="例：完熟みかん週50kgまで / 真空パック機・急速冷凍庫あり" />
+                </div>
+
+                <div class="field-group">
+                  <div class="label-with-toggle">
+                    <label class="field-label" for="prideInput">自慢ポイント（農作物・技術など）</label>
+                    <div class="mini-toggle" id="prideVisibilityToggle">
+                      <button type="button" class="active" data-vis="public">🌐 みんなに見せる</button>
+                      <button type="button" data-vis="match">🤝 マッチした相手だけ</button>
+                    </div>
+                  </div>
+                  <textarea id="prideInput" class="text-area" rows="2" placeholder="例：糖度14度以上の減農薬みかんを家族で丁寧に育てています。"></textarea>
+                </div>
+
+                <div class="field-group">
+                  <label class="field-label" for="secretPrideInput">🔒 マッチした相手だけに伝えたい条件・強み（任意）</label>
+                  <textarea id="secretPrideInput" class="text-area" rows="2" placeholder="例：規格外B品ならキロ単価の相談OK／未公開の試作レシピあり"></textarea>
+                </div>
+              </div>
+
+              <!-- 自社商品・HP（ビジュアルカード登録） -->
+              <div class="card">
+                <h2 class="card-title">📦 自社商品・公式HP（URLではなくカード表示）</h2>
+                <p class="card-desc">サイトや商品のURLを登録すると、ホームや名刺には見やすいビジュアルカードで表示されます。</p>
+
+                <div class="product-adder">
+                  <div class="two-col-fields">
+                    <input id="prodTitleInput" class="text-input" type="text" placeholder="商品名 or サイト名（例：完熟みかんジュース）" />
+                    <select id="prodIconSelect" class="text-input">
+                      <option value="🍊">🍊 農産物・フルーツ</option>
+                      <option value="🥬">🥬 野菜・ハーブ</option>
+                      <option value="🍯">🍯 加工品・瓶詰め</option>
+                      <option value="🍰">🍰 スイーツ・パン</option>
+                      <option value="📦">📦 パッケージ・雑貨</option>
+                      <option value="🌐">🌐 公式ホームページ</option>
+                    </select>
+                  </div>
+                  <div class="two-col-fields">
+                    <input id="prodNoteInput" class="text-input" type="text" placeholder="ひとこと特徴（例：無添加ストレート100%）" />
+                    <input id="prodUrlInput" class="text-input" type="url" placeholder="https://example.com（任意）" />
+                  </div>
+                  <button id="addProductBtn" type="button" class="btn btn-outline btn-sm">＋ 商品・HPカードを追加</button>
+                </div>
+
+                <div id="addedProductList" class="added-product-list"></div>
+              </div>
+
+              <!-- マッチ後に自動開示される連絡先 -->
+              <div class="card">
+                <h2 class="card-title">🤝 マッチ後に自動開示される連絡先</h2>
+                <p class="card-desc">マッチング成立ボタンを押すまで相手には絶対に表示されません。</p>
+
+                <div class="two-col-fields">
+                  <div class="field-group">
+                    <label class="field-label" for="companyNameInput">正式な会社名・屋号</label>
+                    <input id="companyNameInput" class="text-input" type="text" placeholder="例：株式会社たなか農園" />
+                  </div>
+                  <div class="field-group">
+                    <label class="field-label" for="phoneInput">電話番号（マッチ後ワンタップ発信）</label>
+                    <input id="phoneInput" class="text-input" type="tel" placeholder="例：090-1234-5678" />
+                  </div>
+                </div>
+
+                <p class="safe-tip">💬 <strong>LINE IDなどのSNS連絡先は危険防止のためここには書かず、マッチ後のチャット内で必要に応じて交換してください。</strong></p>
+
+                <div class="field-group">
+                  <label class="field-label" for="freeMemoInput">自由記載欄（飛ばしてもOK）</label>
+                  <textarea id="freeMemoInput" class="text-area" rows="2" placeholder="例：まずはオンライン15分の雑談からでも大歓迎です！"></textarea>
+                </div>
+
+                <div class="step-actions step-actions-finish">
+                  <button type="button" class="btn btn-ghost" data-prev="3">← 戻る</button>
+                  <div class="finish-btns">
+                    <button id="skipFinishBtn" type="button" class="btn btn-outline">あとで記入して始める</button>
+                    <button id="completeRegBtn" type="button" class="btn btn-accent">登録完了してEN開発へ →</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右：リアルタイム・デジタル名刺プレビュー -->
+          <aside class="card-preview-col">
+            <div class="sticky-card-wrap">
+              <div class="preview-header">
+                <span class="preview-label">リアルタイム・デジタル名刺</span>
+                <div class="card-mode-switch" id="cardModeSwitch">
+                  <button type="button" class="active" data-mode="pre">👀 マッチ前</button>
+                  <button type="button" data-mode="post">🤝 マッチ後</button>
+                </div>
+              </div>
+              <div id="liveBusinessCard" class="business-card"></div>
+              <p class="preview-caption">※上のスイッチで「マッチ前／マッチ後」の見え方をいつでも確認できます。</p>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ==================== ホームタブ ==================== -->
+      <section id="view-home" class="view-section">
+        <div class="future-zone" data-zone="true">
+          <span class="zone-badge">🪺 将来ゾーン（サイト全体の巣 ＆ マイ・エンちゃん）</span>
+          <p>登録者・開発数に応じて「空の巣 → 卵増加 → Stage解放」が連動し、あなたのマイ・エンちゃん（1匹限定）がここでお出迎えします。</p>
+        </div>
+
+        <div class="home-grid">
+          <div class="home-main">
+            <div class="card">
+              <div class="home-welcome-head">
+                <div>
+                  <p class="eyebrow">ようこそ EN•joy へ</p>
+                  <h2 id="homeGreeting">マイ名刺と活動ステータス</h2>
+                </div>
+                <button id="editProfileFromHomeBtn" type="button" class="btn btn-outline btn-sm">名刺を編集</button>
+              </div>
+              <div class="quick-stats">
+                <div class="stat-box">
+                  <span class="stat-num" id="statProjects">0</span>
+                  <span class="stat-lbl">進行中のEN企画</span>
+                </div>
+                <div class="stat-box">
+                  <span class="stat-num" id="statOffers">0</span>
+                  <span class="stat-lbl">素材・スキル置き場</span>
+                </div>
+                <div class="stat-box">
+                  <span class="stat-num" id="statMatches">0</span>
+                  <span class="stat-lbl">興味あり・マッチ</span>
+                </div>
+              </div>
+              <div class="home-cta-row">
+                <button type="button" class="btn btn-primary" data-goto-tab="en">🤝 EN開発ルームを見る</button>
+                <button id="quickPostFromHomeBtn" type="button" class="btn btn-accent">＋ 企画・素材を出してみる</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head-row">
+                <h3 class="card-title">自分のデジタル名刺プレビュー</h3>
+                <div class="card-mode-switch" id="homeCardModeSwitch">
+                  <button type="button" class="active" data-mode="pre">👀 マッチ前</button>
+                  <button type="button" data-mode="post">🤝 マッチ後</button>
+                </div>
+              </div>
+              <div id="homeBusinessCard" class="business-card"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== EN（開発ルーム）タブ ==================== -->
+      <section id="view-en" class="view-section">
+        <div class="en-header">
+          <div>
+            <p class="eyebrow">4ピースで形にする共創スペース</p>
+            <h2>EN（開発ルーム）</h2>
+          </div>
+          <button id="openPostModalBtn" type="button" class="btn btn-accent">＋ 出す</button>
+        </div>
+
+        <div class="future-zone" data-zone="true">
+          <span class="zone-badge">🥚 将来ゾーン（カテゴリ別の巣棚）</span>
+          <p>アイス・ジャム・焼き菓子などのカテゴリごとに「空の巣 → 開発卵 → 完成巣立ち」が横に並びます。</p>
+        </div>
+
+        <!-- 切替：企画に参加 / 素材・スキルを置く -->
+        <div class="en-mode-tabs" id="enModeTabs">
+          <button type="button" class="active" data-enmode="projects">🧩 企画に参加する</button>
+          <button type="button" data-enmode="offers">🌱 素材・スキルを置く（1行逆オファー）</button>
+        </div>
+
+        <!-- 絞り込みチップ -->
+        <div class="filter-bar" id="enFilterBar">
+          <button type="button" class="filter-chip active" data-filter="all">すべて</button>
+          <button type="button" class="filter-chip" data-filter="last1">🔥 あと1ピース</button>
+          <button type="button" class="filter-chip" data-filter="myrole">✨ あなたの出番</button>
+          <button type="button" class="filter-chip" data-filter="kansai">📍 大阪・京都</button>
+        </div>
+
+        <!-- 企画一覧 / 0件＋イメージ見本1個 -->
+        <div id="enProjectsContainer" class="en-grid"></div>
+
+        <!-- 素材・スキル1行置き場 -->
+        <div id="enOffersContainer" class="offer-list hidden"></div>
+      </section>
+
+      <!-- ==================== 役立ちタブ（ロック中） ==================== -->
+      <section id="view-tips" class="view-section">
+        <div class="lock-stage">
+          <div class="lock-overlay">
+            <span class="lock-pill">🔒 Stage 2 で解放</span>
+            <h2>🥬 役立ち（旬レシピ・小ロット加工知識）</h2>
+            <p>登録メンバーとEN企画が育つと、関西マルシェ日程・旬の加工ヒント・小ロットOEMの相場が解放されます。</p>
+            <button type="button" class="btn btn-accent want-btn" data-want="tips">
+              🔔 早く使いたい（<span id="wantTipsCount">0</span>）
+            </button>
+          </div>
+          <div class="frosted-preview">
+            <div class="frosted-card"><h4>🍊 冬〜春の規格外みかん・いちご活用レシピ12選</h4><p>小ロット試作で失敗しない糖度とペクチン比率まとめ…</p></div>
+            <div class="frosted-card"><h4>📍 大阪・京都 週末マルシェ出店カレンダー</h4><p>初出店でもハードルの低い関西の定期マルシェ一覧…</p></div>
+            <div class="frosted-card"><h4>📦 最小50個から作れるクラフト包材ガイド</h4><p>ラベル印刷と瓶の仕入れ先比較リスト…</p></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== ショップタブ（ロック中） ==================== -->
+      <section id="view-shop" class="view-section">
+        <div class="lock-stage">
+          <div class="lock-overlay">
+            <span class="lock-pill">🔒 Stage 3 で解放</span>
+            <h2>🛍️ ショップ（巣立ち商品 ＆ 50:50厳選ギア）</h2>
+            <p>開発ルームから生まれたコラボ商品の予約早割と、作り手が本当に愛用する厳選キッチン・農作業ギアが並びます。</p>
+            <button type="button" class="btn btn-accent want-btn" data-want="shop">
+              🔔 早く使いたい（<span id="wantShopCount">0</span>）
+            </button>
+          </div>
+          <div class="frosted-preview">
+            <div class="frosted-card"><h4>🎉 第1号巣立ちコラボ・予約早割枠</h4><p>開発ストーリーを見届けた応援者限定の先行販売…</p></div>
+            <div class="frosted-card"><h4>🔪 50:50 厳選ギア枠（作り手の愛用品）</h4><p>農家と菓子職人が現場で使い倒す道具だけを厳選…</p></div>
+            <div class="frosted-card"><h4>🏯 京都古民家EC（EN•dress）連動コーナー</h4><p>リアル店舗での試食イベントとオンライン限定セット…</p></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- スクロール連動ボトムナビ（非重複4タブ） -->
+    <nav id="bottomNav" class="bottom-nav">
+      <button type="button" class="nav-item" data-tab="home">
+        <span class="nav-icon">🏠</span>
+        <span>ホーム</span>
+      </button>
+      <button type="button" class="nav-item" data-tab="en">
+        <span class="nav-icon">🤝</span>
+        <span>EN開発</span>
+      </button>
+      <button type="button" class="nav-item" data-tab="tips">
+        <span class="nav-icon">🥬</span>
+        <span>役立ち🔒</span>
+      </button>
+      <button type="button" class="nav-item" data-tab="shop">
+        <span class="nav-icon">🛍️</span>
+        <span>ショップ🔒</span>
+      </button>
+    </nav>
   </div>
 
-  <!-- ========== アプリ全体シェル ========== -->
-  <div class="app-shell">
-
-    <!-- PC用 左サイドバー（新・5タブ固定） -->
-    <aside class="sidebar" aria-label="メインナビゲーション">
-      <div class="sidebar-brand">
-        <button type="button" class="brand-btn" data-tab="home">
-          <svg class="brand-mark" viewBox="0 0 64 64" width="30" height="30" aria-hidden="true">
-            <rect x="4" y="4" width="56" height="56" rx="4" fill="#1A1A1A" />
-            <line x1="23" y1="22" x2="23" y2="27" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="square" />
-            <line x1="41" y1="22" x2="41" y2="27" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="square" />
-            <path d="M23 44 V35 C23 30 41 30 41 35 V44" fill="none" stroke="#C65D3B" stroke-width="4" stroke-linecap="square" />
-          </svg>
-          <span class="brand-title">EN•joy</span>
-        </button>
-        <span class="ver-tag">v6.0</span>
-      </div>
-
-      <nav class="sidebar-nav">
-        <button type="button" class="nav-item" data-tab="useful">
-          <span class="nav-ico">🥬</span><span class="nav-label">役立ち</span>
-        </button>
-        <button type="button" class="nav-item" data-tab="plaza">
-          <span class="nav-ico">💬</span><span class="nav-label">広場</span>
-        </button>
-        <button type="button" class="nav-item nav-item-en" data-tab="en">
-          <span class="nav-ico">🤝</span><span class="nav-label">EN 出会い</span>
-        </button>
-        <button type="button" class="nav-item" data-tab="shop">
-          <span class="nav-ico">🛍️</span><span class="nav-label">通販</span>
-        </button>
-        <button type="button" class="nav-item active" data-tab="home">
-          <span class="nav-ico">🏠</span><span class="nav-label">ホーム</span>
-          <span id="badge-home-pc" class="nav-dot hidden"></span>
-        </button>
-      </nav>
-
-      <div class="sidebar-footer">
-        <button type="button" id="btn-ui-mode-pc" class="side-util-btn">⚡ モダン / 🔰 かんたん</button>
-        <button type="button" id="btn-focus-pc" class="side-util-btn">🚜 集中モード：OFF</button>
-      </div>
-    </aside>
-
-    <!-- メインカラム -->
-    <div class="main-wrap">
-
-      <!-- トップヘッダー（3色ミニマル） -->
-      <header class="top-header">
-        <div class="header-left">
-          <span class="brand-title mobile-only">EN•joy</span>
-          <h1 id="page-title" class="page-title">🏠 ホーム</h1>
-        </div>
-        <div class="header-right">
-          <button type="button" id="btn-ui-mode-mobile" class="icon-pill-btn mobile-only" title="UI切替">⚡/🔰</button>
-          <button type="button" id="btn-open-chat" class="icon-pill-btn" title="チャット・受信箱">
-            <span>💬</span><span id="badge-chat" class="pill-count">0</span>
-          </button>
-        </div>
-      </header>
-
-      <!-- メインコンテンツ -->
-      <main class="app-main">
-
-        <!-- ========================================================== -->
-        <!-- 1. 左端：🥬 役立ち（旬レシピ・AI栄養 ／ 資材・神道具・協賛） -->
-        <!-- ========================================================== -->
-        <section id="tab-useful" class="tab-panel" aria-label="役立ち">
-          <div class="seg-bar">
-            <button type="button" class="seg-btn active" data-seg-group="useful" data-seg="shun">🥬 旬・レシピ</button>
-            <button type="button" class="seg-btn" data-seg-group="useful" data-seg="plan">📅 1週間献立</button>
-            <button type="button" class="seg-btn" data-seg-group="useful" data-seg="tools">🛠️ 資材・協賛</button>
-          </div>
-
-          <div id="useful-shun" class="seg-panel active"></div>
-          <div id="useful-plan" class="seg-panel"></div>
-          <div id="useful-tools" class="seg-panel"></div>
-        </section>
-
-        <!-- ========================================================== -->
-        <!-- 2. 左2：💬 広場（SNS・小さい案件：画像付つぶやき ／ 動画）   -->
-        <!-- ========================================================== -->
-        <section id="tab-plaza" class="tab-panel" aria-label="広場">
-          <div class="seg-bar">
-            <button type="button" class="seg-btn active" data-seg-group="plaza" data-seg="feed">📝 つぶやき</button>
-            <button type="button" class="seg-btn" data-seg-group="plaza" data-seg="shorts">🎬 15秒動画</button>
-          </div>
-
-          <!-- つぶやき（画像添付対応） -->
-          <div id="plaza-feed" class="seg-panel active">
-            <form id="form-feed" class="composer-box">
-              <div class="composer-top">
-                <select id="feed-tag" class="input input-compact">
-                  <option value="余ってます">💡 余ってます</option>
-                  <option value="困りごと">🆘 困りごと</option>
-                  <option value="軽トラ便">🚚 軽トラ便</option>
-                  <option value="現場メモ">📸 現場メモ</option>
-                </select>
-                <input type="text" id="feed-area" class="input input-compact" placeholder="地域（例：高槻）" />
-              </div>
-              <textarea id="feed-text" class="input textarea" rows="2" placeholder="いまの現場や、ちょっとした困りごとを投稿"></textarea>
-              <div id="feed-img-preview" class="img-preview-wrap hidden"></div>
-              <div class="composer-actions">
-                <label class="btn btn-ghost btn-sm file-label">
-                  📷 写真を追加
-                  <input type="file" id="feed-img-input" accept="image/*" hidden />
-                </label>
-                <button type="submit" class="btn btn-accent btn-sm">投稿する</button>
-              </div>
-            </form>
-
-            <div class="search-strip">
-              <input type="search" id="feed-search" class="input" placeholder="🔍 キーワード・地域で検索" />
-            </div>
-            <div id="feed-list" class="feed-grid"></div>
-          </div>
-
-          <!-- 15秒動画 -->
-          <div id="plaza-shorts" class="seg-panel"></div>
-        </section>
-
-        <!-- ========================================================== -->
-        <!-- 3. 真ん中：🤝 EN（出会い・大きい案件：やりたいこと ／ 人・地図）-->
-        <!-- ========================================================== -->
-        <section id="tab-en" class="tab-panel" aria-label="EN 出会い">
-          <div class="seg-bar">
-            <button type="button" class="seg-btn active" data-seg-group="en" data-seg="ideas">🚀 やりたいこと募集</button>
-            <button type="button" class="seg-btn" data-seg-group="en" data-seg="people">🤝 おすすめの人</button>
-            <button type="button" class="seg-btn" data-seg-group="en" data-seg="map">🗺️ ご縁マップ</button>
-          </div>
-
-          <!-- やりたいこと・活用模索カード（大きい案件の起点） -->
-          <div id="en-ideas" class="seg-panel active">
-            <div class="action-bar">
-              <button type="button" id="btn-open-new-idea" class="btn btn-accent">＋ やりたいこと・活用相談を募集する</button>
-            </div>
-            <div id="en-ideas-list" class="card-grid-2"></div>
-          </div>
-
-          <!-- おすすめの人・マッチング -->
-          <div id="en-people" class="seg-panel"></div>
-
-          <!-- ご縁めぐりマップ -->
-          <div id="en-map" class="seg-panel"></div>
-        </section>
-
-        <!-- ========================================================== -->
-        <!-- 4. 右2：🛍️ 通販（開発中・予約 ／ 完成品EC ／ 買い物帳）      -->
-        <!-- ========================================================== -->
-        <section id="tab-shop" class="tab-panel" aria-label="通販">
-          <div class="seg-bar">
-            <button type="button" class="seg-btn active" data-seg-group="shop" data-seg="wip">🧪 開発中・早割</button>
-            <button type="button" class="seg-btn" data-seg-group="shop" data-seg="ec">🏮 EN•dress EC</button>
-            <button type="button" class="seg-btn" data-seg-group="shop" data-seg="book">❤️ 買い物帳</button>
-          </div>
-
-          <div id="shop-wip" class="seg-panel active"></div>
-          <div id="shop-ec" class="seg-panel"></div>
-          <div id="shop-book" class="seg-panel"></div>
-        </section>
-
-        <!-- ========================================================== -->
-        <!-- 5. 右端：🏠 ホーム（最上段に開発ルーム＆チャット ／ 個人設定） -->
-        <!-- ========================================================== -->
-        <!-- ========================================================== -->
-        <!-- 5. 右端：🏠 ホーム（一覧 ⇄ ルームの中へ入る2段階設計）      -->
-        <!-- ========================================================== -->
-        <section id="tab-home" class="tab-panel active" aria-label="ホーム">
-
-          <!-- 【画面A】ルーム一覧（普段のホーム） -->
-          <div id="home-list-view" class="home-view">
-            <div class="section-head">
-              <h2>🛠️ 開発ルーム一覧</h2>
-              <button type="button" id="btn-new-room" class="btn btn-accent btn-sm">＋ 新規ルーム</button>
-            </div>
-            <div id="home-room-cards" class="card-grid-2"></div>
-
-            <!-- 個人メニュー（一覧のときだけ表示） -->
-            <section class="home-my-area" style="margin-top:16px;">
-              <div class="seg-bar">
-                <button type="button" class="seg-btn active" data-seg-group="home" data-seg="profile">👤 プロフィール・診断</button>
-                <button type="button" class="seg-btn" data-seg-group="home" data-seg="ring">✍️ 年輪ボード</button>
-                <button type="button" class="seg-btn" data-seg-group="home" data-seg="ops">⚙️ 設定・データ</button>
-              </div>
-              <div id="home-profile" class="seg-panel active"></div>
-              <div id="home-ring" class="seg-panel"></div>
-              <div id="home-ops" class="seg-panel"></div>
-            </section>
-          </div>
-
-          <!-- 【画面B】ルームの中（1案件に集中するコックピット） -->
-          <div id="home-room-view" class="home-view hidden">
-            <div class="room-topbar">
-              <button type="button" id="btn-back-home-list" class="btn btn-outline btn-sm">← 一覧へ</button>
-              <div class="room-topbar-title">
-                <span id="dev-room-name" class="muted-text">ルーム名</span>
-                <h2 id="dev-prod-title" class="dev-title">商品名</h2>
-              </div>
-              <select id="dev-phase-select" class="input input-compact">
-                <option value="企画中">企画中</option>
-                <option value="試作中">試作中</option>
-                <option value="準備OK">準備OK</option>
-                <option value="販売中">販売中</option>
-              </select>
-            </div>
-
-            <!-- 同じルーム内の別商品（複数ある場合のみ表示） -->
-            <div id="dev-prod-switcher" class="room-prod-strip">
-              <div id="dev-prod-tabs" class="chip-scroll"></div>
-              <button type="button" id="btn-new-product" class="btn btn-ghost btn-sm">＋ 商品追加</button>
-            </div>
-
-            <!-- コックピット本体 -->
-            <div class="dev-box">
-              <div class="mini-tab-bar">
-                <button type="button" class="mini-tab active" data-dev-tab="chat">
-                  💬 チャット<span id="dot-dev-chat" class="alert-dot hidden"></span>
-                </button>
-                <button type="button" class="mini-tab" data-dev-tab="media">
-                  📸 写真<span id="dot-dev-media" class="alert-dot hidden"></span>
-                </button>
-                <button type="button" class="mini-tab" data-dev-tab="cost">
-                  🧮 原価<span id="dot-dev-cost" class="alert-dot hidden"></span>
-                </button>
-                <button type="button" class="mini-tab" data-dev-tab="plan">
-                  📅 予定<span id="dot-dev-plan" class="alert-dot hidden"></span>
-                </button>
-              </div>
-
-              <div id="dev-pane-chat" class="dev-pane active"></div>
-              <div id="dev-pane-media" class="dev-pane"></div>
-              <div id="dev-pane-cost" class="dev-pane"></div>
-              <div id="dev-pane-plan" class="dev-pane"></div>
-            </div>
-          </div>
-
-        </section>
-
-          <!-- ホーム下段：個人メニュー（セグメント切替で縦長化を防止） -->
-          <section class="home-my-area">
-            <div class="seg-bar">
-              <button type="button" class="seg-btn active" data-seg-group="home" data-seg="profile">👤 プロフィール・診断</button>
-              <button type="button" class="seg-btn" data-seg-group="home" data-seg="ring">✍️ 年輪ボード</button>
-              <button type="button" class="seg-btn" data-seg-group="home" data-seg="ops">⚙️ 設定・データ</button>
-            </div>
-            <div id="home-profile" class="seg-panel active"></div>
-            <div id="home-ring" class="seg-panel"></div>
-            <div id="home-ops" class="seg-panel"></div>
-          </section>
-
-        </section>
-
-      </main>
-    </div>
-  </div>
-
-  <!-- ========== スマホ用 下部5タブ固定ドック（新配置） ========== -->
-  <nav class="mobile-dock" aria-label="モバイルナビゲーション">
-    <button type="button" class="dock-item" data-tab="useful">
-      <span class="dock-ico">🥬</span><span class="dock-label">役立ち</span>
-    </button>
-    <button type="button" class="dock-item" data-tab="plaza">
-      <span class="dock-ico">💬</span><span class="dock-label">広場</span>
-    </button>
-    <button type="button" class="dock-item dock-center" data-tab="en">
-      <span class="dock-en-mark">EN</span><span class="dock-label">出会い</span>
-    </button>
-    <button type="button" class="dock-item" data-tab="shop">
-      <span class="dock-ico">🛍️</span><span class="dock-label">通販</span>
-    </button>
-    <button type="button" class="dock-item active" data-tab="home">
-      <span class="dock-ico">🏠</span><span class="dock-label">ホーム</span>
-      <span id="badge-home-mobile" class="dock-dot hidden"></span>
-    </button>
-  </nav>
-
-  <!-- ========== モーダル群 ========== -->
-
-  <!-- 1. やりたいこと・活用模索 新規募集モーダル -->
-  <div id="modal-new-idea" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-backdrop" data-close-modal="modal-new-idea"></div>
-    <div class="modal-sheet">
+  <!-- ==================== モーダル：企画・素材を出す ==================== -->
+  <div id="postModal" class="modal-backdrop hidden">
+    <div class="modal-card">
       <div class="modal-head">
-        <h2>🚀 やりたいこと・活用相談を募集</h2>
-        <button type="button" class="icon-close" data-close-modal="modal-new-idea">✕</button>
+        <h3>＋ 新しく出す</h3>
+        <button type="button" class="icon-close" data-close-modal="postModal">✕</button>
       </div>
-      <div class="modal-body">
-        <form id="form-new-idea" class="stack-form">
-          <input type="text" id="idea-title" class="input" placeholder="タイトル（例：間伐ヒノキ端材の新しい活用法を一緒に探したい）" required />
-          <div class="form-row-2">
-            <select id="idea-cat" class="input">
-              <option value="商品開発">🛠️ 商品開発</option>
-              <option value="活用模索">💡 素材・技術の活用模索</option>
-              <option value="イベント企画">🎪 イベント・販売企画</option>
-            </select>
-            <input type="text" id="idea-need" class="input" placeholder="組みたい相手（例：デザイナー・食品工房）" required />
-          </div>
-          <textarea id="idea-detail" class="input textarea" rows="4" placeholder="詳細（持っている素材・技術、実現したいイメージ、条件など）" required></textarea>
-          <div class="form-actions-right">
-            <button type="button" class="btn btn-outline" data-close-modal="modal-new-idea">閉じる</button>
-            <button type="submit" class="btn btn-accent">募集カードを公開</button>
-          </div>
-        </form>
+      <div class="segment-group" id="postTypeSwitch">
+        <button type="button" class="seg-btn active" data-posttype="project">🧩 開発企画を出す</button>
+        <button type="button" class="seg-btn" data-posttype="offer">🌱 素材・スキル1行置き場</button>
       </div>
-    </div>
-  </div>
 
-  <!-- 2. 一括チャット・受信箱モーダル -->
-  <div id="modal-chat" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-backdrop" data-close-modal="modal-chat"></div>
-    <div class="modal-sheet">
-      <div class="modal-head">
-        <h2>💬 やり取り・お知らせ</h2>
-        <button type="button" class="icon-close" data-close-modal="modal-chat">✕</button>
-      </div>
-      <div id="chat-modal-body" class="modal-body"></div>
-    </div>
-  </div>
-
-  <!-- 3. 印刷プレビューモーダル -->
-  <div id="modal-print" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-backdrop" data-close-modal="modal-print"></div>
-    <div class="modal-sheet modal-lg">
-      <div class="modal-head no-print">
-        <h2 id="print-title">🖨️ 印刷</h2>
-        <div class="btn-row">
-          <button type="button" id="btn-do-print" class="btn btn-accent btn-sm">印刷 / PDF</button>
-          <button type="button" class="icon-close" data-close-modal="modal-print">✕</button>
+      <!-- 企画投稿フォーム -->
+      <form id="projectPostForm" class="modal-form">
+        <div class="field-group">
+          <label class="field-label" for="projTitle">企画タイトル（15文字目安）</label>
+          <input id="projTitle" class="text-input" type="text" maxlength="28" required placeholder="例：完熟みかんの大人クラフトジャム" />
         </div>
-      </div>
-      <div id="print-body" class="modal-body print-area"></div>
+        <div class="field-group">
+          <label class="field-label" for="projGoal">作りたいもの・ゴール（2行まで）</label>
+          <textarea id="projGoal" class="text-area" rows="2" required placeholder="例：規格外みかんを活かして、京都の手土産になる小瓶ジャムをまず50個試作したい！"></textarea>
+        </div>
+        <div class="two-col-fields">
+          <div class="field-group">
+            <label class="field-label" for="projArea">エリア</label>
+            <input id="projArea" class="text-input" type="text" placeholder="例：大阪府 高槻市" />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="projTag">条件タグ</label>
+            <input id="projTag" class="text-input" type="text" placeholder="例：小ロット試作OK" />
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">いま募集しているピース（複数選択）</label>
+          <div class="chip-group" id="projOpenPieces">
+            <label class="check-chip"><input type="checkbox" value="material" /> 🌾 素材</label>
+            <label class="check-chip"><input type="checkbox" value="make" checked /> 🍳 形にする</label>
+            <label class="check-chip"><input type="checkbox" value="pack" checked /> 🎨 整える包む</label>
+            <label class="check-chip"><input type="checkbox" value="deliver" /> 🏪 届ける試す</label>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-accent btn-full">この企画をEN開発ルームに出す</button>
+      </form>
+
+      <!-- 1行逆オファーフォーム -->
+      <form id="offerPostForm" class="modal-form hidden">
+        <div class="field-group">
+          <label class="field-label" for="offerText">提供できる素材・スキル（1行でOK）</label>
+          <input id="offerText" class="text-input" type="text" required placeholder="例：来月、訳あり完熟いちごが30kg余ります。スイーツ試作に使いませんか？" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="offerArea">エリア</label>
+          <input id="offerArea" class="text-input" type="text" placeholder="例：大阪府 高槻市" />
+        </div>
+        <button type="submit" class="btn btn-accent btn-full">1行置き場に並べる</button>
+      </form>
     </div>
   </div>
 
-  <!-- トースト -->
-  <div id="toast" class="toast hidden" role="status"></div>
+  <!-- ==================== モーダル：企画詳細＆マッチング・簡易トーク ==================== -->
+  <div id="detailModal" class="modal-backdrop hidden">
+    <div class="modal-card modal-lg">
+      <div class="modal-head">
+        <h3 id="detailTitle">企画詳細</h3>
+        <button type="button" class="icon-close" data-close-modal="detailModal">✕</button>
+      </div>
+      <div id="detailBody"></div>
+    </div>
+  </div>
+
+  <!-- トースト通知 -->
+  <div id="toast" class="toast hidden"></div>
 
   <script src="data.js"></script>
   <script src="app.js"></script>

@@ -1,1251 +1,1095 @@
-/* ============================================================
-   EN•joy v6.0 — 統合アプリ本体 (app.js)
-   ============================================================ */
+/* =========================================================
+   EN•joy Stage 1 アプリ本体ロジック
+========================================================= */
 
-(function () {
-  'use strict';
+const defaultProfile = {
+  registered: false,
+  mainRole: "material",
+  otherRoleText: "",
+  otherPushOk: true,
+  activities: ["果樹・フルーツ", "規格外品の提供"],
+  subRoles: [],
+  photoDataUrl: "",
+  photoPendingReview: false,
+  displayName: "",
+  ageGroup: "30代",
+  exactAge: "",
+  position: "solo",
+  staffName: "",
+  staffCode: "",
+  area: "",
+  areaGranularity: "broad", // broad | detail
+  interests: ["規格外品の活用", "小ロット試作"],
+  loginId: "",
+  referralCode: "",
+  capacity: "",
+  pride: "",
+  prideVisibility: "public", // public | match
+  secretPride: "",
+  products: [],
+  companyName: "",
+  phone: "",
+  freeMemo: ""
+};
 
-  const TAB_TITLES = {
-    useful: '🥬 役立ち',
-    plaza: '💬 広場',
-    en: '🤝 EN 出会い',
-    shop: '🛍️ 通販',
-    home: '🏠 ホーム'
-  };
+let state = {
+  step: 1,
+  activeView: "register", // register | home | en | tips | shop
+  cardMode: "pre",        // pre | post
+  enMode: "projects",     // projects | offers
+  enFilter: "all",
+  profile: Object.assign({}, defaultProfile, EnjoyStore.load(STORAGE_KEYS.PROFILE, {})),
+  projects: EnjoyStore.load(STORAGE_KEYS.PROJECTS, []),
+  offers: EnjoyStore.load(STORAGE_KEYS.OFFERS, []),
+  matches: EnjoyStore.load(STORAGE_KEYS.MATCHES, {}),
+  wants: EnjoyStore.load(STORAGE_KEYS.WANTS, { tips: 0, shop: 0 })
+};
 
-  let state = loadState();
-  let currentTab = 'home';
-  let activeDevTab = 'chat';
-  let isInsideRoom = false; // false: ルーム一覧 / true: ルームの中
-  let selectedMonth = new Date().getMonth() + 1;
-  let pendingFeedImg = null;
-  let currentShortIdx = 0;
-  let diagStep = -1;
-  let diagScores = { spark: 0, craft: 0, bridge: 0, cheer: 0 };
-  let generatedPlan = null;
+/* ==================== 初期化 ==================== */
+document.addEventListener("DOMContentLoaded", () => {
+  checkReferralFromUrl();
+  initStaticRender();
+  bindEvents();
+  syncFormFromProfile();
+  renderAll();
+  initScrollResponsiveNav();
 
-  /* ---------- 状態管理 ---------- */
-  function loadState() {
-    try {
-      const raw = localStorage.getItem(window.ENJOY_V6_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && parsed.rooms) return parsed;
-      }
-    } catch (e) {}
-    return window.createDefaultV6State();
+  // すでに登録済みならホームへ
+  if (state.profile.registered) {
+    switchView("home");
+  }
+});
+
+function checkReferralFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const ref = params.get("ref");
+  if (ref && !state.profile.referralCode) {
+    state.profile.referralCode = ref;
+    saveProfile();
+  }
+}
+
+function saveProfile() {
+  EnjoyStore.save(STORAGE_KEYS.PROFILE, state.profile);
+}
+
+/* ==================== 静的選択肢の描画 ==================== */
+function initStaticRender() {
+  renderRoleTiles();
+  renderActivities();
+  renderSubRoles();
+  renderAgeGroups();
+  renderPositions();
+  renderInterests();
+  renderCapacityQuickChips();
+}
+
+function renderRoleTiles() {
+  const grid = document.getElementById("roleGrid");
+  grid.innerHTML = ENJOY_DATA.roles.map(r => `
+    <button type="button"
+      class="role-tile ${r.id === "other" ? "role-other" : ""} ${state.profile.mainRole === r.id ? "selected" : ""}"
+      data-role="${r.id}">
+      <span class="role-icon">${r.icon}</span>
+      <span class="role-title">${r.title}</span>
+      <span class="role-sub">${r.sub}</span>
+    </button>
+  `).join("");
+
+  const otherBox = document.getElementById("otherRoleBox");
+  otherBox.classList.toggle("hidden", state.profile.mainRole !== "other");
+}
+
+function renderActivities() {
+  const container = document.getElementById("activityChips");
+  const baseList = ENJOY_DATA.activitiesByRole[state.profile.mainRole] || [];
+  const merged = Array.from(new Set([...baseList, ...state.profile.activities]));
+
+  container.innerHTML = merged.map(act => `
+    <button type="button"
+      class="select-chip ${state.profile.activities.includes(act) ? "selected" : ""}"
+      data-activity="${escapeHtml(act)}">
+      ${escapeHtml(act)}
+    </button>
+  `).join("");
+}
+
+function renderSubRoles() {
+  const container = document.getElementById("subRoleChips");
+  const candidates = ENJOY_DATA.roles.filter(r => r.id !== state.profile.mainRole && r.id !== "other");
+  container.innerHTML = candidates.map(r => `
+    <button type="button"
+      class="select-chip ${state.profile.subRoles.includes(r.id) ? "selected" : ""}"
+      data-subrole="${r.id}">
+      ${r.icon} ${r.title}もOK
+    </button>
+  `).join("");
+}
+
+function renderAgeGroups() {
+  const container = document.getElementById("ageGroupChips");
+  container.innerHTML = ENJOY_DATA.ageGroups.map(age => `
+    <button type="button"
+      class="select-chip ${state.profile.ageGroup === age ? "selected" : ""}"
+      data-age="${age}">
+      ${age}
+    </button>
+  `).join("");
+}
+
+function renderPositions() {
+  const container = document.getElementById("positionChips");
+  container.innerHTML = ENJOY_DATA.positions.map(p => `
+    <button type="button"
+      class="select-chip ${state.profile.position === p.id ? "selected" : ""}"
+      data-pos="${p.id}">
+      ${p.label}
+    </button>
+  `).join("");
+
+  const staffBox = document.getElementById("staffBox");
+  staffBox.classList.toggle("hidden", state.profile.position === "solo");
+  updateGeneratedStaffCodeUI();
+}
+
+function renderInterests() {
+  const container = document.getElementById("interestChips");
+  container.innerHTML = ENJOY_DATA.interests.map(item => `
+    <button type="button"
+      class="select-chip ${state.profile.interests.includes(item) ? "selected" : ""}"
+      data-interest="${item}">
+      ${item}
+    </button>
+  `).join("");
+}
+
+function renderCapacityQuickChips() {
+  const container = document.getElementById("capacityQuickChips");
+  container.innerHTML = ENJOY_DATA.capacityQuickChips.map(text => `
+    <button type="button" class="select-chip chip-quick" data-capquick="${text}">＋ ${text}</button>
+  `).join("");
+}
+
+/* ==================== フォーム値同期 ==================== */
+function syncFormFromProfile() {
+  const p = state.profile;
+  setVal("otherRoleInput", p.otherRoleText);
+  document.getElementById("otherPushOk").checked = !!p.otherPushOk;
+  setVal("displayNameInput", p.displayName);
+  setVal("exactAgeInput", p.exactAge);
+  setVal("staffNameInput", p.staffName);
+  setVal("areaInput", p.area);
+  setVal("loginIdInput", p.loginId);
+  setVal("referralInput", p.referralCode);
+  setVal("capacityInput", p.capacity);
+  setVal("prideInput", p.pride);
+  setVal("secretPrideInput", p.secretPride);
+  setVal("companyNameInput", p.companyName);
+  setVal("phoneInput", p.phone);
+  setVal("freeMemoInput", p.freeMemo);
+
+  // エリア粒度
+  document.querySelectorAll("#areaGranularityGroup .seg-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.granularity === p.areaGranularity);
+  });
+  // 自慢公開範囲
+  document.querySelectorAll("#prideVisibilityToggle button").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.vis === p.prideVisibility);
+  });
+
+  // 写真
+  if (p.photoDataUrl) {
+    document.getElementById("photoPreviewImg").src = p.photoDataUrl;
+    document.getElementById("photoPreviewImg").classList.remove("hidden");
+    document.getElementById("photoPlaceholder").classList.add("hidden");
   }
 
-  function saveState() {
-    try {
-      localStorage.setItem(window.ENJOY_V6_KEY, JSON.stringify(state));
-    } catch (e) {
-      toast('保存容量がいっぱいです。不要な写真を削除してください。');
+  renderAddedProducts();
+}
+
+function setVal(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.value = val || "";
+}
+
+/* ==================== イベントバインド ==================== */
+function bindEvents() {
+  // ヘッダー制御
+  document.getElementById("toggleZoneBtn").addEventListener("click", () => {
+    const isOn = document.body.classList.toggle("show-zones");
+    document.getElementById("zoneStateText").textContent = isOn ? "ON" : "OFF";
+    document.getElementById("toggleZoneBtn").classList.toggle("active", isOn);
+  });
+
+  document.getElementById("toggleMobileBtn").addEventListener("click", (e) => {
+    const on = document.body.classList.toggle("mobile-preview");
+    e.currentTarget.classList.toggle("active", on);
+  });
+
+  document.getElementById("openRegBtn").addEventListener("click", () => switchView("register"));
+  document.getElementById("editProfileFromHomeBtn").addEventListener("click", () => switchView("register"));
+
+  // ステッパー＆前後ボタン
+  document.getElementById("stepper").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-step]");
+    if (btn) goStep(Number(btn.dataset.step));
+  });
+  document.querySelectorAll("[data-next]").forEach(btn => {
+    btn.addEventListener("click", () => goStep(Number(btn.dataset.next)));
+  });
+  document.querySelectorAll("[data-prev]").forEach(btn => {
+    btn.addEventListener("click", () => goStep(Number(btn.dataset.prev)));
+  });
+
+  // Step 1 ロール選択
+  document.getElementById("roleGrid").addEventListener("click", (e) => {
+    const tile = e.target.closest("[data-role]");
+    if (!tile) return;
+    state.profile.mainRole = tile.dataset.role;
+    state.profile.subRoles = state.profile.subRoles.filter(r => r !== state.profile.mainRole);
+    saveProfile();
+    renderRoleTiles();
+    renderActivities();
+    renderSubRoles();
+    renderBusinessCards();
+  });
+
+  bindInput("otherRoleInput", val => { state.profile.otherRoleText = val; });
+  document.getElementById("otherPushOk").addEventListener("change", (e) => {
+    state.profile.otherPushOk = e.target.checked;
+    saveProfile();
+    renderBusinessCards();
+  });
+
+  // Step 2 活動チップ＆自由追加＆兼業追加
+  document.getElementById("activityChips").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-activity]");
+    if (!btn) return;
+    const act = btn.dataset.activity;
+    toggleArrayItem(state.profile.activities, act);
+    saveProfile();
+    renderActivities();
+    renderBusinessCards();
+  });
+
+  document.getElementById("addActivityBtn").addEventListener("click", () => {
+    const input = document.getElementById("customActivityInput");
+    const val = input.value.trim();
+    if (!val) return;
+    if (!state.profile.activities.includes(val)) {
+      state.profile.activities.push(val);
     }
-  }
+    input.value = "";
+    saveProfile();
+    renderActivities();
+    renderBusinessCards();
+    showToast(`「${val}」を追加しました`);
+  });
 
-  function esc(str) {
-    return String(str ?? '')
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
+  document.getElementById("subRoleChips").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-subrole]");
+    if (!btn) return;
+    const rid = btn.dataset.subrole;
+    if (state.profile.subRoles.includes(rid)) {
+      state.profile.subRoles = state.profile.subRoles.filter(x => x !== rid);
+    } else {
+      if (state.profile.subRoles.length >= 2) {
+        showToast("兼業・追加の役割は最大2つまで選べます");
+        return;
+      }
+      state.profile.subRoles.push(rid);
+    }
+    saveProfile();
+    renderSubRoles();
+    renderBusinessCards();
+  });
 
-  function nowShort() {
-    const d = new Date();
-    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  }
+  // Step 3 担当者コード反映＆デモ
+  document.getElementById("demoCodeBtn").addEventListener("click", () => {
+    document.getElementById("importCodeInput").value = "EN-TK88";
+    applyStaffImportCode("EN-TK88");
+  });
+  document.getElementById("applyCodeBtn").addEventListener("click", () => {
+    applyStaffImportCode(document.getElementById("importCodeInput").value.trim().toUpperCase());
+  });
 
-  let toastTimer = null;
-  function toast(msg) {
-    const el = document.getElementById('toast');
-    if (!el) return;
-    el.textContent = msg;
-    el.classList.remove('hidden');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.add('hidden'), 2600);
-  }
-
-  function getActiveRoom() {
-    return state.rooms.find(r => r.id === state.activeRoomId) || state.rooms[0];
-  }
-
-  function getActiveProduct() {
-    const r = getActiveRoom();
-    if (!r) return null;
-    return r.products.find(p => p.id === state.activeProductId) || r.products[0];
-  }
-
-  function getAllProducts() {
-    const list = [];
-    state.rooms.forEach(room => {
-      room.products.forEach(prod => list.push({ room, prod }));
-    });
-    return list;
-  }
-
-  function calcMatCost(prod) {
-    return (prod.adoptedMaterialIds || []).reduce((sum, id) => {
-      const m = window.ENJOY_MATERIALS.find(x => x.id === id);
-      return sum + (m ? m.unitPrice : 0);
-    }, 0);
-  }
-
-  function resizeImage(file, maxW, cb) {
+  // 写真アップロード
+  document.getElementById("photoInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
     const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(1, maxW / img.width);
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        cb(canvas.toDataURL('image/jpeg', 0.72));
-      };
-      img.src = e.target.result;
+    reader.onload = () => {
+      state.profile.photoDataUrl = reader.result;
+      state.profile.photoPendingReview = true;
+      saveProfile();
+      syncFormFromProfile();
+      renderBusinessCards();
+      showToast("写真を選択しました（運営審査中ステータス）");
     };
     reader.readAsDataURL(file);
-  }
+  });
 
-  /* ---------- ナビ・UIモード・モーダル ---------- */
-  function applyUiMode() {
-    document.body.classList.toggle('ui-simple', state.uiMode === 'simple');
-    const pcBtn = document.getElementById('btn-ui-mode-pc');
-    if (pcBtn) pcBtn.textContent = state.uiMode === 'simple' ? '🔰 かんたん（切替）' : '⚡ モダン（切替）';
-    const focusBtn = document.getElementById('btn-focus-pc');
-    if (focusBtn) {
-      focusBtn.textContent = `🚜 集中モード：${state.focusMode ? 'ON' : 'OFF'}`;
-      focusBtn.classList.toggle('active', !!state.focusMode);
+  bindInput("displayNameInput", val => { state.profile.displayName = val; });
+  bindInput("exactAgeInput", val => { state.profile.exactAge = val; });
+  bindInput("areaInput", val => { state.profile.area = val; });
+  bindInput("loginIdInput", val => { state.profile.loginId = val; });
+  bindInput("referralInput", val => { state.profile.referralCode = val; });
+
+  // 担当者氏名 → 専用コード自動発行
+  document.getElementById("staffNameInput").addEventListener("input", (e) => {
+    state.profile.staffName = e.target.value;
+    state.profile.staffCode = generateStaffCode(e.target.value);
+    saveProfile();
+    updateGeneratedStaffCodeUI();
+    renderBusinessCards();
+  });
+
+  document.getElementById("copyStaffCodeBtn").addEventListener("click", () => {
+    if (!state.profile.staffCode) return;
+    navigator.clipboard?.writeText(state.profile.staffCode).catch(() => {});
+    showToast(`専用コード ${state.profile.staffCode} をコピーしました`);
+  });
+
+  // 年代・立場・興味・エリア粒度
+  document.getElementById("ageGroupChips").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-age]");
+    if (!btn) return;
+    state.profile.ageGroup = btn.dataset.age;
+    saveProfile();
+    renderAgeGroups();
+    renderBusinessCards();
+  });
+
+  document.getElementById("positionChips").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-pos]");
+    if (!btn) return;
+    state.profile.position = btn.dataset.pos;
+    saveProfile();
+    renderPositions();
+    renderBusinessCards();
+  });
+
+  document.getElementById("interestChips").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-interest]");
+    if (!btn) return;
+    toggleArrayItem(state.profile.interests, btn.dataset.interest);
+    saveProfile();
+    renderInterests();
+    renderBusinessCards();
+  });
+
+  document.getElementById("areaGranularityGroup").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-granularity]");
+    if (!btn) return;
+    state.profile.areaGranularity = btn.dataset.granularity;
+    saveProfile();
+    syncFormFromProfile();
+    renderBusinessCards();
+  });
+
+  // 現在地取得
+  document.getElementById("geoBtn").addEventListener("click", handleGeolocation);
+
+  // Step 4 設備・自慢・商品・連絡先
+  document.getElementById("capacityQuickChips").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-capquick]");
+    if (!btn) return;
+    const text = btn.dataset.capquick;
+    state.profile.capacity = state.profile.capacity ? `${state.profile.capacity} / ${text}` : text;
+    document.getElementById("capacityInput").value = state.profile.capacity;
+    saveProfile();
+    renderBusinessCards();
+  });
+
+  bindInput("capacityInput", val => { state.profile.capacity = val; });
+  bindInput("prideInput", val => { state.profile.pride = val; });
+  bindInput("secretPrideInput", val => { state.profile.secretPride = val; });
+  bindInput("companyNameInput", val => { state.profile.companyName = val; });
+  bindInput("phoneInput", val => { state.profile.phone = val; });
+  bindInput("freeMemoInput", val => { state.profile.freeMemo = val; });
+
+  document.getElementById("prideVisibilityToggle").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-vis]");
+    if (!btn) return;
+    state.profile.prideVisibility = btn.dataset.vis;
+    saveProfile();
+    syncFormFromProfile();
+    renderBusinessCards();
+  });
+
+  // 自社商品・HPカード追加
+  document.getElementById("addProductBtn").addEventListener("click", () => {
+    const title = document.getElementById("prodTitleInput").value.trim();
+    const icon = document.getElementById("prodIconSelect").value;
+    const note = document.getElementById("prodNoteInput").value.trim();
+    const url = document.getElementById("prodUrlInput").value.trim();
+    if (!title) {
+      showToast("商品名またはサイト名を入力してください");
+      return;
     }
-  }
+    state.profile.products.push({ id: Date.now(), title, icon, note: note || "詳細を見る", url });
+    document.getElementById("prodTitleInput").value = "";
+    document.getElementById("prodNoteInput").value = "";
+    document.getElementById("prodUrlInput").value = "";
+    saveProfile();
+    renderAddedProducts();
+    renderBusinessCards();
+    showToast("ビジュアルカードを追加しました");
+  });
 
-  function switchTab(tab) {
-    currentTab = tab;
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tab}`));
-    document.querySelectorAll('.nav-item, .dock-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-    const t = document.getElementById('page-title');
-    if (t) t.textContent = TAB_TITLES[tab] || 'EN•joy';
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  }
+  document.getElementById("addedProductList").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-delprod]");
+    if (!btn) return;
+    const id = Number(btn.dataset.delprod);
+    state.profile.products = state.profile.products.filter(x => x.id !== id);
+    saveProfile();
+    renderAddedProducts();
+    renderBusinessCards();
+  });
 
-  function switchSeg(group, seg) {
-    document.querySelectorAll(`[data-seg-group="${group}"]`).forEach(b => b.classList.toggle('active', b.dataset.seg === seg));
-    document.querySelectorAll(`#tab-${group} .seg-panel`).forEach(p => p.classList.toggle('active', p.id === `${group}-${seg}`));
-  }
+  // 登録完了・スキップ
+  document.getElementById("completeRegBtn").addEventListener("click", () => finishRegistration(false));
+  document.getElementById("skipFinishBtn").addEventListener("click", () => finishRegistration(true));
 
-  function switchDevTab(tab) {
-    activeDevTab = tab;
-    document.querySelectorAll('[data-dev-tab]').forEach(b => b.classList.toggle('active', b.dataset.devTab === tab));
-    document.querySelectorAll('.dev-pane').forEach(p => p.classList.toggle('active', p.id === `dev-pane-${tab}`));
-  }
-
-  function openModal(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if (id === 'modal-chat') renderChatModal();
-    el.classList.remove('hidden');
-  }
-
-  function closeModal(id) {
-    const el = document.getElementById(id);
-    if (el) el.classList.add('hidden');
-  }
-
-  /* ---------- 全体描画 ---------- */
-  function renderAll() {
-    applyUiMode();
-    renderBadges();
-    renderUseful();
-    renderPlaza();
-    renderEn();
-    renderShop();
-    renderHome();
-  }
-
-  function renderBadges() {
-    const unread = state.inbox.filter(m => m.unread).length;
-    document.getElementById('badge-chat').textContent = unread;
-    ['badge-home-pc', 'badge-home-mobile'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.classList.toggle('hidden', unread === 0);
+  // 名刺プレビュー（マッチ前／後切替）
+  ["cardModeSwitch", "homeCardModeSwitch"].forEach(id => {
+    document.getElementById(id).addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-mode]");
+      if (!btn) return;
+      state.cardMode = btn.dataset.mode;
+      syncCardModeButtons();
+      renderBusinessCards();
     });
-  }
+  });
 
-  /* ============================================================
-     1. 左端：🥬 役立ち（旬・レシピ / 1週間献立 / 資材・協賛）
-     ============================================================ */
-  function renderUseful() {
-    // 1-1: 旬＆レシピ
-    const inSeason = window.ENJOY_SHUN.filter(s => s.months.includes(selectedMonth));
-    document.getElementById('useful-shun').innerHTML = `
-      <div class="card">
-        <div class="card-head">
-          <h2>🥬 ${selectedMonth}月の旬・見分け方</h2>
-          <div class="chip-scroll">
-            ${[1,2,3,4,5,6,7,8,9,10,11,12].map(m => `
-              <button type="button" class="chip-btn ${m === selectedMonth ? 'active-accent' : ''}" data-month="${m}">${m}月</button>
-            `).join('')}
-          </div>
-        </div>
-        <div class="card-grid-2">
-          ${inSeason.map(s => `
-            <div class="card" style="background:var(--surface-sub);">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <strong>${s.icon} ${esc(s.name)}</strong>
-                <span class="tag">${s.nutrients.join('・')}</span>
-              </div>
-              <p class="muted-text"><strong>見分け方：</strong>${esc(s.tip)}</p>
-              <p class="muted-text" style="margin-top:4px;"><strong>保存：</strong>${esc(s.save)}</p>
-            </div>
-          `).join('')}
-        </div>
-      </div>
+  // ナビゲーション
+  document.getElementById("bottomNav").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-tab]");
+    if (btn) switchView(btn.dataset.tab);
+  });
+  document.querySelectorAll("[data-goto-tab]").forEach(btn => {
+    btn.addEventListener("click", () => switchView(btn.dataset.gotoTab));
+  });
 
-      <div class="card">
-        <div class="card-head">
-          <h2>🍳 大量消費レシピ ＆ 簡易PFC分析</h2>
-        </div>
-        <form id="form-recipe" class="stack-form" style="margin-bottom:12px;">
-          <div class="form-row-2">
-            <input type="text" id="rec-title" class="input" placeholder="レシピ名" required />
-            <input type="text" id="rec-ing" class="input" placeholder="材料（例：白菜、豚肉、みそ）" required />
-          </div>
-          <div class="form-actions-right">
-            <button type="submit" class="btn btn-accent btn-sm">レシピ追加</button>
-          </div>
-        </form>
-        <div class="card-grid-2">
-          ${state.recipes.map(r => {
-            const hasP = /豚|鶏|卵|豆腐|魚/.test(r.ingredients);
-            const pW = hasP ? 35 : 15, fW = hasP ? 25 : 15, cW = 100 - pW - fW;
-            return `
-              <div class="card" style="background:var(--surface-sub);">
-                <span class="tag-accent">${esc(r.tag)}</span>
-                <strong style="display:block; margin:4px 0;">${esc(r.title)}</strong>
-                <p class="muted-text">材料：${esc(r.ingredients)}</p>
-                <p style="font-size:0.82rem; margin:4px 0;">${esc(r.steps)}</p>
-                <div class="pfc-strip" title="P/F/Cバランス">
-                  <div class="pfc-p" style="width:${pW}%;"></div>
-                  <div class="pfc-f" style="width:${fW}%;"></div>
-                  <div class="pfc-c" style="width:${cW}%;"></div>
-                </div>
-                <span class="muted-text">${hasP ? 'バランス◎' : '＋タンパク質（豆腐・卵など）を足すと◎'}</span>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      </div>
-    `;
+  // EN開発ルーム操作
+  document.getElementById("enModeTabs").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-enmode]");
+    if (!btn) return;
+    state.enMode = btn.dataset.enmode;
+    document.querySelectorAll("#enModeTabs button").forEach(b => b.classList.toggle("active", b === btn));
+    renderEnRoom();
+  });
 
-    // 1-2: 1週間献立
-    document.getElementById('useful-plan').innerHTML = `
-      <div class="card">
-        <div class="card-head">
-          <h2>📅 旬めし 1週間献立コンシェルジュ</h2>
-          <span class="tag-dark">箱買い使い切り</span>
-        </div>
-        <div class="form-row-2" style="margin-bottom:10px;">
-          <select id="plan-item" class="input">
-            <option value="白菜＆大根">🥬 白菜＆大根</option>
-            <option value="りんご＆みかん">🍎 りんご＆みかん</option>
-          </select>
-          <button type="button" id="btn-gen-plan" class="btn btn-accent">1週間献立を作成</button>
-        </div>
-        ${generatedPlan ? `
-          <div class="stack-list">
-            ${generatedPlan.map(d => `
-              <div class="chat-item"><strong>${d.day}</strong>：${esc(d.menu)} <span class="muted-text">(${esc(d.note)})</span></div>
-            `).join('')}
-          </div>
-        ` : '<p class="muted-text">使い切りたい旬の食材を選んでボタンを押してください。</p>'}
-      </div>
-    `;
+  document.getElementById("enFilterBar").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-filter]");
+    if (!btn) return;
+    state.enFilter = btn.dataset.filter;
+    document.querySelectorAll("#enFilterBar button").forEach(b => b.classList.toggle("active", b === btn));
+    renderEnRoom();
+  });
 
-    // 1-3: 資材・協賛
-    const activeProd = getActiveProduct();
-    document.getElementById('useful-tools').innerHTML = `
-      <div class="card">
-        <div class="card-head">
-          <h2>🛠️ 開発資材（採用すると原価に自動加算）</h2>
-        </div>
-        <div class="card-grid-2">
-          ${window.ENJOY_MATERIALS.map(m => {
-            const adopted = activeProd && (activeProd.adoptedMaterialIds || []).includes(m.id);
-            return `
-              <div class="card" style="background:var(--surface-sub);">
-                <strong>${esc(m.name)}</strong>
-                <p class="muted-text" style="margin:4px 0;">単価目安：¥${m.unitPrice}/個</p>
-                <div class="btn-row">
-                  <button type="button" class="btn ${adopted ? 'btn-dark' : 'btn-accent'} btn-sm" data-adopt-mat="${esc(m.id)}">
-                    ${adopted ? '採用中' : '開発室で採用'}
-                  </button>
-                  <a href="${m.rakuten}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">楽天 ↗</a>
-                  <a href="${m.amazon}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Amazon ↗</a>
-                </div>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-head"><h2>🏢 協賛テストキッチン・試供品枠</h2></div>
-        <div class="card-grid-2">
-          ${window.ENJOY_SPONSORS.map(sp => `
-            <div class="card" style="background:var(--surface-sub);">
-              <span class="tag">${esc(sp.area)}</span>
-              <strong style="display:block; margin:4px 0;">${esc(sp.name)}</strong>
-              <p class="muted-text" style="margin-bottom:8px;">${esc(sp.offer)}</p>
-              <button type="button" class="btn btn-outline btn-sm" data-apply-sp="${esc(sp.id)}">協賛枠を申請</button>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }
-
-  /* ============================================================
-     2. 左2：💬 広場（画像付きつぶやき / 15秒動画）
-     ============================================================ */
-  function renderPlaza() {
-    const q = (document.getElementById('feed-search').value || '').toLowerCase();
-    const list = state.feeds.filter(f => !q || `${f.author} ${f.area} ${f.text} ${f.tag}`.toLowerCase().includes(q));
-
-    document.getElementById('feed-list').innerHTML = list.map(f => `
-      <article class="feed-card">
-        <div class="feed-meta">
-          <span class="tag-accent">${esc(f.tag)}</span>
-          <strong>${esc(f.author)}</strong>
-          <span>${esc(f.area)}</span>
-          <span>・${esc(f.createdAt)}</span>
-        </div>
-        ${f.image ? `<img class="feed-card-img" src="${f.image}" alt="投稿写真" />` : ''}
-        <p style="font-size:0.9rem;">${esc(f.text)}</p>
-        <div class="btn-row">
-          <button type="button" class="btn btn-outline btn-sm" data-like-feed="${esc(f.id)}">♥ ${f.likes}</button>
-          <button type="button" class="btn btn-ghost btn-sm" data-start-room="${esc(f.author)}|${esc(f.text.slice(0, 14))}">🤝 話してみる</button>
-        </div>
-      </article>
-    `).join('');
-
-    // 15秒動画
-    const v = state.shorts[currentShortIdx % state.shorts.length];
-    document.getElementById('plaza-shorts').innerHTML = `
-      <div class="card" style="background:var(--ink); color:#FFF;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <span class="tag-accent">${esc(v.tag)}</span>
-          <span style="font-size:0.78rem;">${currentShortIdx + 1} / ${state.shorts.length}</span>
-        </div>
-        <h2 style="font-size:1.1rem; margin-bottom:6px;">▶️ ${esc(v.title)}</h2>
-        <p style="font-size:0.82rem; color:#CCC; margin-bottom:14px;">${esc(v.author)}</p>
-        <div class="btn-row">
-          <a href="${esc(v.url)}" target="_blank" rel="noopener" class="btn btn-accent btn-sm">動画を再生 ↗</a>
-          <button type="button" id="btn-short-like" class="btn btn-outline btn-sm">♥ ${v.likes}</button>
-          <button type="button" id="btn-short-next" class="btn btn-outline btn-sm">次の動画 ⬇</button>
-        </div>
-      </div>
-    `;
-  }
-
-  /* ============================================================
-     3. 真ん中：🤝 EN 出会い（やりたいこと募集 / 人 / マップ）
-     ============================================================ */
-  function renderEn() {
-    // やりたいこと募集カード
-    document.getElementById('en-ideas-list').innerHTML = state.ideas.map(idea => `
-      <article class="card">
-        <div class="feed-meta" style="margin-bottom:6px;">
-          <span class="tag-accent">${esc(idea.cat)}</span>
-          <span class="tag">募集：${esc(idea.need)}</span>
-        </div>
-        <h3 style="font-size:0.98rem; margin-bottom:6px;">${esc(idea.title)}</h3>
-        <p class="muted-text" style="margin-bottom:8px;">${esc(idea.detail)}</p>
-        <div class="feed-meta" style="margin-bottom:10px;">
-          <strong>${esc(idea.author)}</strong>（${esc(idea.area)}）
-        </div>
-        <div class="btn-row">
-          <button type="button" class="btn btn-accent btn-sm" data-start-room="${esc(idea.author)}|${esc(idea.title.slice(0, 14))}">🤝 一緒に開発ルームを作る</button>
-          <button type="button" class="btn btn-outline btn-sm" data-like-idea="${esc(idea.id)}">気になる (${idea.likes})</button>
-        </div>
-      </article>
-    `).join('');
-
-    // おすすめの人
-    const sorted = [...state.people].sort((a, b) => b.heat - a.heat);
-    document.getElementById('en-people').innerHTML = `
-      <div class="card-grid-3">
-        ${sorted.map(p => `
-          <article class="card">
-            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-              <strong>${esc(p.name)}</strong>
-              <span class="tag-accent">熱量 ${p.heat}%</span>
-            </div>
-            <p class="muted-text">${esc(p.role)} ／ ${esc(p.area)}</p>
-            <p style="font-size:0.84rem; margin:6px 0 10px;">${esc(p.skills)}</p>
-            <button type="button" class="btn btn-outline btn-sm" data-start-room="${esc(p.name)}|コラボ相談">🤝 ご縁を結ぶ</button>
-          </article>
-        `).join('')}
-      </div>
-    `;
-
-    // ご縁マップ
-    const stampedCnt = state.spots.filter(s => s.stamped).length;
-    document.getElementById('en-map').innerHTML = `
-      <div class="card">
-        <div class="card-head">
-          <h2>🗺️ ご縁めぐりマップ</h2>
-          <span class="tag-dark">スタンプ ${stampedCnt} / ${state.spots.length}</span>
-        </div>
-        <div class="map-board">
-          ${state.spots.map(s => `
-            <button type="button" class="map-pin ${s.stamped ? 'stamped' : ''}" style="left:${s.x}%; top:${s.y}%;" data-stamp-spot="${esc(s.id)}" title="${esc(s.name)}">
-              ${s.icon}
-            </button>
-          `).join('')}
-        </div>
-        <div class="card-grid-3">
-          ${state.spots.map(s => `
-            <div class="card" style="background:var(--surface-sub);">
-              <div style="display:flex; justify-content:space-between;">
-                <strong>${s.icon} ${esc(s.name)}</strong>
-                ${s.stamped ? '<span class="tag-accent">済</span>' : ''}
-              </div>
-              <p class="muted-text" style="margin:4px 0;">${esc(s.memo)}</p>
-              <div class="btn-row">
-                <button type="button" class="btn btn-outline btn-sm" data-stamp-spot="${esc(s.id)}">${s.stamped ? 'スタンプ済' : '訪問スタンプ'}</button>
-                <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.area)}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">経路 ↗</a>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }
-
-  /* ============================================================
-     4. 右2：🛍️ 通販（開発中・早割 / EC / 買い物帳）
-     ============================================================ */
-  function renderShop() {
-    const all = getAllProducts();
-    const wip = all.filter(({ prod }) => prod.phase !== '販売中');
-    const ec = all.filter(({ prod }) => prod.phase === '販売中');
-
-    // 開発中・早割
-    document.getElementById('shop-wip').innerHTML = `
-      <div class="card" style="background:var(--accent-soft); border-color:var(--accent);">
-        <strong>👑 ご縁株主優待：保有 ${state.myShares}株</strong>
-        <span class="muted-text">（5株以上で試食モニター優先・10株で古民家EC 10%OFF）</span>
-      </div>
-      <div class="card-grid-2">
-        ${wip.map(({ room, prod }) => `
-          <article class="card">
-            <div class="feed-meta" style="margin-bottom:4px;">
-              <span class="tag-accent">${esc(prod.phase)}</span>
-              <span>${esc(room.name)}</span>
-            </div>
-            <h3>${esc(prod.title)}</h3>
-            <p style="margin:6px 0;"><strong>早割 ¥${prod.earlyPrice}</strong> <span class="muted-text">（通常 ¥${prod.priceSell}）</span></p>
-            <div class="bar-track" style="margin-bottom:8px;">
-              <div class="bar-fill" style="width:${Math.min(100, Math.round((prod.ticketsBought / prod.ticketsLimit) * 100))}%;"></div>
-            </div>
-            <div class="btn-row">
-              <button type="button" class="btn btn-accent btn-sm" data-buy-tkt="${esc(prod.id)}">🎟️ 早割予約 (+2株)</button>
-              <button type="button" class="btn btn-outline btn-sm" data-fav-prod="${esc(prod.id)}">
-                ${state.shoppingBook.favorites.includes(prod.id) ? '♥ お気に入り済' : '♡ 保存'}
-              </button>
-            </div>
-          </article>
-        `).join('')}
-      </div>
-    `;
-
-    // EN•dress EC
-    document.getElementById('shop-ec').innerHTML = `
-      <div class="card-grid-3">
-        ${ec.length ? ec.map(({ room, prod }) => `
-          <article class="card">
-            <span class="tag-dark">EN•dress 販売中</span>
-            <h3 style="margin:6px 0 4px;">${esc(prod.title)}</h3>
-            <p class="muted-text">${esc(room.name)}</p>
-            <p style="font-size:1.1rem; font-weight:900; margin:8px 0;">¥${prod.priceSell}</p>
-            <div class="btn-row">
-              <button type="button" class="btn btn-dark btn-sm" data-buy-ec="${esc(prod.title)}">購入する（デモ）</button>
-              <button type="button" class="btn btn-outline btn-sm" data-fav-prod="${esc(prod.id)}">♡</button>
-            </div>
-          </article>
-        `).join('') : '<div class="card">販売中の商品はまだありません。</div>'}
-      </div>
-    `;
-
-    // 買い物帳
-    const favProds = all.filter(({ prod }) => state.shoppingBook.favorites.includes(prod.id));
-    document.getElementById('shop-book').innerHTML = `
-      <div class="card">
-        <div class="card-head"><h2>❤️ お気に入り</h2></div>
-        <div class="stack-list">
-          ${favProds.length ? favProds.map(({ prod }) => `
-            <div class="chat-item" style="display:flex; justify-content:space-between;">
-              <strong>${esc(prod.title)}（¥${prod.priceSell}）</strong>
-              <button type="button" class="btn btn-ghost btn-sm" data-fav-prod="${esc(prod.id)}">解除</button>
-            </div>
-          `).join('') : '<p class="muted-text">お気に入りはまだありません。</p>'}
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-head"><h2>🛍️ 購入・リピートメモ</h2></div>
-        <div class="stack-list">
-          ${state.shoppingBook.purchases.map(p => `
-            <div class="chat-item">
-              <strong>${'★'.repeat(p.rating)} ${esc(p.title)}</strong> <span class="muted-text">(${esc(p.date)})</span>
-              <p class="muted-text">${esc(p.memo)}</p>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }
-
-  /* ============================================================
-     5. 右端：🏠 ホーム（最上段：開発ルーム4ミニタブ ／ 下段：個人）
-     ============================================================ */
-  /* ---------- 要更新チェック（色を変えて目立たせる判定） ---------- */
-  function getProductAlerts(prod) {
-    const alerts = [];
-    if (!prod.images || prod.images.length === 0) alerts.push({ tab: 'media', label: '📸 写真未登録' });
-    if (!prod.calendar || prod.calendar.length === 0) alerts.push({ tab: 'plan', label: '📅 予定未設定' });
-    if (!prod.priceSell || prod.priceSell <= 0) alerts.push({ tab: 'cost', label: '🧮 売価未設定' });
-    const lastChat = (prod.chats || [])[prod.chats.length - 1];
-    if (lastChat && lastChat.author !== state.profile.name && lastChat.author !== 'あなた') {
-      alerts.push({ tab: 'chat', label: '💬 返信待ち' });
-    }
-    return alerts;
-  }
-
-  /* ============================================================
-     5. 右端：🏠 ホーム（一覧 ⇄ ルームの中へ入る2段階設計）
-     ============================================================ */
-  function renderHome() {
-    const listView = document.getElementById('home-list-view');
-    const roomView = document.getElementById('home-room-view');
-    if (listView && roomView) {
-      listView.classList.toggle('hidden', isInsideRoom);
-      roomView.classList.toggle('hidden', !isInsideRoom);
-    }
-
-    // 【画面A】ルーム一覧カード描画
-    const cardsEl = document.getElementById('home-room-cards');
-    if (cardsEl) {
-      cardsEl.innerHTML = state.rooms.map(r => {
-        const mainProd = r.products[0];
-        const allAlerts = [];
-        r.products.forEach(p => allAlerts.push(...getProductAlerts(p)));
-        const needsAction = allAlerts.length > 0;
-        const uniqueLabels = [...new Set(allAlerts.map(a => a.label))].slice(0, 2);
-
-        return `
-          <article class="room-entry-card ${needsAction ? 'needs-action' : ''}" data-enter-room="${esc(r.id)}">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
-              <span class="tag-dark">${esc(mainProd ? mainProd.phase : '企画中')}</span>
-              <span class="muted-text">商品 ${r.products.length}件</span>
-            </div>
-            <div>
-              <h3 style="font-size:1rem; margin-bottom:2px;">${esc(r.name)}</h3>
-              <p class="muted-text">${esc(mainProd ? mainProd.title : '')}</p>
-            </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-top:auto;">
-              <div class="btn-row">
-                ${needsAction
-                  ? uniqueLabels.map(l => `<span class="action-pill">${l}</span>`).join('')
-                  : '<span class="tag">✅ 最新</span>'}
-              </div>
-              <span style="font-size:0.8rem; font-weight:800; color:var(--accent);">入る →</span>
-            </div>
-          </article>
-        `;
-      }).join('');
-    }
-
-    // 【画面B】ルームの中（コックピット）
-    const room = getActiveRoom();
-    const prod = getActiveProduct();
-    if (room && prod) {
-      document.getElementById('dev-room-name').textContent = room.name;
-      document.getElementById('dev-prod-title').textContent = prod.title;
-      document.getElementById('dev-phase-select').value = prod.phase;
-
-      // 商品スイッチャー
-      document.getElementById('dev-prod-tabs').innerHTML = room.products.map(p => {
-        const hasAlert = getProductAlerts(p).length > 0;
-        return `
-          <button type="button" class="chip-btn ${p.id === prod.id ? 'active-accent' : ''}" data-sel-prod="${esc(p.id)}">
-            ${esc(p.title)}${hasAlert ? ' ●' : ''}
-          </button>
-        `;
-      }).join('');
-
-      // 4ミニタブの要更新ドット制御
-      const alerts = getProductAlerts(prod);
-      ['chat', 'media', 'cost', 'plan'].forEach(t => {
-        const dot = document.getElementById(`dot-dev-${t}`);
-        if (dot) dot.classList.toggle('hidden', !alerts.some(a => a.tab === t));
-      });
-
-      // ミニタブ1: LINE風左右吹き出しチャット
-      document.getElementById('dev-pane-chat').innerHTML = `
-        <div class="line-chat-stream">
-          ${(prod.chats || []).length ? prod.chats.map(c => {
-            const isMe = c.author === state.profile.name || c.author === 'あなた';
-            return `
-              <div class="bubble-row ${isMe ? 'is-me' : 'is-other'} ${c.isPrivate ? 'is-priv' : ''}">
-                <div class="bubble-meta">
-                  <span>${esc(c.author)} ・ ${esc(c.date)}</span>
-                  <button type="button" style="border:none;background:none;padding:0;cursor:pointer;font-size:0.7rem;color:var(--ink-sub);" data-toggle-priv="${esc(c.id)}">
-                    ${c.isPrivate ? '🔒限定' : '🌐公開'}
-                  </button>
-                </div>
-                <div class="bubble-body">${esc(c.text)}</div>
-              </div>
-            `;
-          }).join('') : '<p class="muted-text" style="text-align:center; padding:20px 0;">まだメッセージはありません。最初のひとことを送りましょう！</p>'}
-        </div>
-        <form id="form-dev-chat" class="stack-form">
-          <div style="display:flex; gap:6px;">
-            <input type="text" id="dev-chat-input" class="input" placeholder="メッセージ（例：12/6 試作2回目やります）" required />
-            <button type="submit" class="btn btn-accent btn-sm">送信</button>
-          </div>
-          <label style="font-size:0.76rem; color:var(--ink-sub);">
-            <input type="checkbox" id="dev-chat-priv" /> 🔒 メンバー限定メモにする
-          </label>
-        </form>
-      `;
-
-      // ミニタブ2: 試作・写真
-      document.getElementById('dev-pane-media').innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span class="muted-text">${(prod.images || []).length ? `登録済み ${prod.images.length}/6枚` : '⚠️ まだ写真がありません（追加すると通販棚に映えます）'}</span>
-          <label class="btn btn-accent btn-sm file-label">
-            ＋ 写真を追加
-            <input type="file" id="dev-img-input" accept="image/*" hidden />
-          </label>
-        </div>
-        <div class="photo-strip">
-          ${(prod.images || []).map((src, i) => `
-            <div class="photo-cell">
-              <img src="${src}" alt="試作写真" />
-              <button type="button" class="img-preview-del" data-del-dev-img="${i}">✕</button>
-            </div>
-          `).join('')}
-        </div>
-      `;
-
-      // ミニタブ3: グラフ風・原価＆粗利バー
-      const matCost = calcMatCost(prod);
-      const totalCost = Number(prod.costRaw) + Number(prod.costLabor) + matCost;
-      const profit = Number(prod.priceSell) - totalCost;
-      const rate = prod.priceSell > 0 ? Math.round((profit / prod.priceSell) * 100) : 0;
-      const costPct = prod.priceSell > 0 ? Math.min(100, Math.max(0, Math.round((totalCost / prod.priceSell) * 100))) : 100;
-      const profPct = Math.max(0, 100 - costPct);
-
-      document.getElementById('dev-pane-cost').innerHTML = `
-        <div class="profit-hero">
-          <div>
-            <span class="muted-text">1個あたりの予定粗利</span>
-            <div class="profit-big ${profit < 0 ? 'is-minus' : ''}">¥${profit.toLocaleString()}</div>
-          </div>
-          <div style="text-align:right;">
-            <span class="tag-accent">粗利率 ${rate}%</span>
-            <div class="muted-text" style="margin-top:4px;">売価 ¥${Number(prod.priceSell).toLocaleString()} ／ 原価 ¥${totalCost.toLocaleString()}</div>
-          </div>
-        </div>
-        <div class="cost-graph-bar" title="原価 vs 粗利">
-          <div class="graph-seg-cost" style="width:${costPct}%;">原価 ${costPct}%</div>
-          <div class="graph-seg-profit" style="width:${profPct}%;">粗利 ${profPct}%</div>
-        </div>
-        <div class="cost-row-4">
-          <label class="muted-text">素材費<input type="number" id="c-raw" class="input" value="${prod.costRaw}" /></label>
-          <label class="muted-text">加工費<input type="number" id="c-lab" class="input" value="${prod.costLabor}" /></label>
-          <label class="muted-text">資材(自動)<input type="number" class="input" value="${matCost}" readonly /></label>
-          <label class="muted-text">売価<input type="number" id="c-sell" class="input" value="${prod.priceSell}" /></label>
-        </div>
-        <div class="btn-row">
-          ${(prod.adoptedMaterialIds || []).map(id => {
-            const m = window.ENJOY_MATERIALS.find(x => x.id === id);
-            return m ? `<span class="tag">${esc(m.name)} (¥${m.unitPrice}) <button type="button" style="border:none;background:none;cursor:pointer;" data-rem-mat="${esc(id)}">✕</button></span>` : '';
-          }).join('')}
-        </div>
-      `;
-
-      // ミニタブ4: 予定・印刷
-      document.getElementById('dev-pane-plan').innerHTML = `
-        <form id="form-dev-cal" style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
-          <input type="date" id="cal-d" class="input input-compact" required />
-          <input type="text" id="cal-t" class="input" style="flex:1;" placeholder="予定（例：瓶詰めテスト）" required />
-          <button type="submit" class="btn btn-accent btn-sm">追加</button>
-        </form>
-        <div class="stack-list" style="margin-bottom:12px;">
-          ${(prod.calendar || []).map(c => `
-            <div class="chat-item" style="display:flex; justify-content:space-between; align-items:center;">
-              <span><strong>${esc(c.date)}</strong> ${esc(c.title)}</span>
-              <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(c.title)}" target="_blank" rel="noopener" class="muted-text">Google ↗</a>
-            </div>
-          `).join('') || '<p class="muted-text">⚠️ 予定が未設定です。次の試作日を入れましょう。</p>'}
-        </div>
-        <div class="btn-row">
-          <button type="button" class="btn btn-outline btn-sm" data-print="agreement">📄 簡易同意書</button>
-          <button type="button" class="btn btn-outline btn-sm" data-print="pop">🪧 A4店頭POP</button>
-          <button type="button" class="btn btn-outline btn-sm" data-print="cards">🪪 8枚名刺</button>
-        </div>
-      `;
-    }
-
-    // 下段：プロフィール・年輪・設定（一覧画面のときだけ表示）
-    const diagRes = state.profile.diagType ? window.ENJOY_DIAG_RES[state.profile.diagType] : null;
-    let diagHtml = '';
-    if (diagStep >= 0) {
-      const q = window.ENJOY_DIAG_Q[diagStep];
-      diagHtml = `
-        <div class="card">
-          <div class="card-head"><h3>🔮 ${q.q}</h3><span>${diagStep + 1}/${window.ENJOY_DIAG_Q.length}</span></div>
-          <div class="stack-list">
-            ${q.opts.map(o => `<button type="button" class="btn btn-outline" style="justify-content:flex-start;" data-diag-ans="${o.type}">${o.label}</button>`).join('')}
-          </div>
-        </div>
-      `;
-    } else if (diagRes) {
-      diagHtml = `
-        <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-          <div>
-            <span class="tag-accent">診断結果</span>
-            <strong style="margin-left:6px;">${diagRes.icon} ${diagRes.title}</strong>
-            <span class="muted-text">（相性◎：${diagRes.match}）</span>
-          </div>
-          <button type="button" id="btn-start-diag" class="btn btn-outline btn-sm">再診断</button>
-        </div>
-      `;
-    } else {
-      diagHtml = `
-        <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-          <strong>🔮 30秒ご縁タイプ診断</strong>
-          <button type="button" id="btn-start-diag" class="btn btn-accent btn-sm">診断する</button>
-        </div>
-      `;
-    }
-
-    document.getElementById('home-profile').innerHTML = `
-      ${diagHtml}
-      <form id="form-profile" class="card stack-form">
-        <div class="form-row-2">
-          <input type="text" id="p-name" class="input" value="${esc(state.profile.name)}" placeholder="名前・屋号" />
-          <input type="text" id="p-area" class="input" value="${esc(state.profile.area)}" placeholder="活動エリア" />
-        </div>
-        <input type="text" id="p-skills" class="input" value="${esc(state.profile.skills)}" placeholder="得意なこと・設備" />
-        <textarea id="p-bio" class="input textarea" rows="2">${esc(state.profile.bio)}</textarea>
-        <div class="form-actions-right">
-          <button type="submit" class="btn btn-dark btn-sm">プロフィール保存</button>
-        </div>
-      </form>
-    `;
-
-    document.getElementById('home-ring').innerHTML = `
-      <div class="card">
-        <div class="card-head"><h3>✍️ ご縁の年輪ボード（${state.ringEntries.length}組）</h3></div>
-        <form id="form-ring" style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
-          <input type="text" id="ring-msg" class="input" style="flex:1;" placeholder="応援メッセージ・サインを刻む" required />
-          <button type="submit" class="btn btn-accent btn-sm">刻む</button>
-        </form>
-        <div class="card-grid-3">
-          ${state.ringEntries.map(r => `
-            <div class="card" style="background:var(--surface-sub);">
-              <span class="tag">${esc(r.role)}</span>
-              <strong style="display:block; margin:4px 0;">${esc(r.name)}</strong>
-              <p class="muted-text">${esc(r.message)}</p>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-
-    document.getElementById('home-ops').innerHTML = `
-      <div class="card">
-        <div class="card-head"><h3>⚙️ 表示・バックアップ設定</h3></div>
-        <div class="btn-row">
-          <button type="button" id="btn-switch-ui" class="btn btn-outline btn-sm">⚡ モダン / 🔰 かんたん切替</button>
-          <button type="button" id="btn-export" class="btn btn-outline btn-sm">⬇️ JSON保存</button>
-          <button type="button" id="btn-reset" class="btn btn-outline btn-sm">🔄 初期デモに戻す</button>
-        </div>
-      </div>
-    `;
-  }
-
-  /* ---------- チャット受信箱モーダル ---------- */
-  function renderChatModal() {
-    document.getElementById('chat-modal-body').innerHTML = `
-      <div class="stack-list">
-        ${state.inbox.map(m => `
-          <div class="chat-item ${m.unread ? 'is-priv' : ''}">
-            <div style="display:flex; justify-content:space-between; font-size:0.75rem;">
-              <strong>${esc(m.from)}</strong>
-              <span>${esc(m.date)}</span>
-            </div>
-            <p style="font-size:0.86rem; margin:4px 0;">${esc(m.text)}</p>
-            ${m.unread ? `<button type="button" class="btn btn-outline btn-sm" data-read-msg="${esc(m.id)}">既読</button>` : ''}
-          </div>
-        `).join('')}
-      </div>
-    `;
-  }
-
-  /* ---------- 印刷プレビュー ---------- */
-  function openPrint(mode) {
-    const room = getActiveRoom();
-    const prod = getActiveProduct();
-    if (!room || !prod) return;
-    const body = document.getElementById('print-body');
-    if (mode === 'agreement') {
-      document.getElementById('print-title').textContent = '📄 簡易コラボ確認書';
-      body.innerHTML = `<h2>EN•joy 簡易コラボ確認書</h2><p>ルーム：${esc(room.name)} ／ 商品：${esc(prod.title)} ／ 売価目安：¥${prod.priceSell}</p><p style="margin-top:16px;">確認サイン：__________________</p>`;
-    } else if (mode === 'pop') {
-      document.getElementById('print-title').textContent = '🪧 A4店頭POP';
-      body.innerHTML = `<div style="text-align:center; border:3px solid #1A1A1A; padding:24px;"><p>EN•joy × EN•dress</p><h1 style="margin:12px 0;">${esc(prod.title)}</h1><p>${esc(room.name)}</p><h2 style="color:#C65D3B; margin-top:14px;">¥${prod.priceSell}</h2></div>`;
-    } else {
-      document.getElementById('print-title').textContent = '🪪 8枚名刺シート';
-      const c = `<div style="border:1px dashed #999; padding:10px;"><strong>${esc(state.profile.name)}</strong><br><span style="font-size:0.78rem;">${esc(state.profile.area)} / EN•joy</span></div>`;
-      body.innerHTML = `<div class="form-row-2">${Array(8).fill(c).join('')}</div>`;
-    }
-    openModal('modal-print');
-  }
-
-  /* ---------- イベント委譲 ---------- */
-  function bindEvents() {
-    document.addEventListener('click', e => {
-      const pickUi = e.target.closest('[data-pick-ui]');
-      if (pickUi) {
-        state.uiMode = pickUi.dataset.pickUi;
-        saveState();
-        applyUiMode();
-        closeModal('modal-ui-select');
-        toast(state.uiMode === 'simple' ? '🔰 かんたんモードに設定しました' : '⚡ モダンモードに設定しました');
-        return;
-      }
-      const tabBtn = e.target.closest('[data-tab]');
-      if (tabBtn) {
-        const nextTab = tabBtn.dataset.tab;
-        const isMobileDock = tabBtn.classList.contains('dock-item');
-        if (isMobileDock) {
-          if (currentTab === nextTab) {
-            // 同じ常設タブをもう一度押したら開閉トグル
-            document.body.classList.toggle('subnav-open');
-          } else {
-            // 別の常設タブを押したら切替＋次の選択タブを表示
-            switchTab(nextTab);
-            document.body.classList.add('subnav-open');
-          }
-        } else {
-          switchTab(nextTab);
-        }
-        return;
-      }
-
-      const segBtn = e.target.closest('[data-seg]');
-      if (segBtn) {
-        switchSeg(segBtn.dataset.segGroup, segBtn.dataset.seg);
-        document.body.classList.remove('subnav-open'); // 選んだら消す
-        return;
-      }
-// ルーム一覧カードをタップ → ルームの中へ入る
-      const enterRoom = e.target.closest('[data-enter-room]');
-      if (enterRoom) {
-        state.activeRoomId = enterRoom.dataset.enterRoom;
-        const r = getActiveRoom();
-        state.activeProductId = r && r.products[0] ? r.products[0].id : null;
-        isInsideRoom = true;
-        saveState();
-        renderHome();
-        window.scrollTo({ top: 0, behavior: 'instant' });
-        return;
-      }
-
-      // 「← 一覧へ」ボタン → ルーム一覧へ戻る
-      if (e.target.closest('#btn-back-home-list')) {
-        isInsideRoom = false;
-        renderHome();
-        window.scrollTo({ top: 0, behavior: 'instant' });
-        return;
-      }
-      
-      const devTab = e.target.closest('[data-dev-tab]');
-      if (devTab) {
-        switchDevTab(devTab.dataset.devTab);
-        document.body.classList.remove('subnav-open'); // 選んだら消す
-        return;
-      }
-      const closeBtn = e.target.closest('[data-close-modal]');
-      if (closeBtn) { closeModal(closeBtn.dataset.closeModal); return; }
-
-      const mBtn = e.target.closest('[data-month]');
-      if (mBtn) { selectedMonth = Number(mBtn.dataset.month); renderUseful(); return; }
-
-      const adoptMat = e.target.closest('[data-adopt-mat]');
-      if (adoptMat) {
-        const prod = getActiveProduct();
-        const id = adoptMat.dataset.adoptMat;
-        if (prod && !prod.adoptedMaterialIds.includes(id)) {
-          prod.adoptedMaterialIds.push(id);
-          saveState(); renderAll(); toast('資材を採用し、原価に加算しました');
-        }
-        return;
-      }
-
-      const remMat = e.target.closest('[data-rem-mat]');
-      if (remMat) {
-        const prod = getActiveProduct();
-        prod.adoptedMaterialIds = prod.adoptedMaterialIds.filter(x => x !== remMat.dataset.remMat);
-        saveState(); renderAll(); return;
-      }
-
-      const spBtn = e.target.closest('[data-apply-sp]');
-      if (spBtn) { toast('🏢 協賛枠へ申請しました！'); return; }
-
-      const likeFeed = e.target.closest('[data-like-feed]');
-      if (likeFeed) {
-        const f = state.feeds.find(x => x.id === likeFeed.dataset.likeFeed);
-        if (f) { f.likes += 1; saveState(); renderPlaza(); }
-        return;
-      }
-
-      const likeIdea = e.target.closest('[data-like-idea]');
-      if (likeIdea) {
-        const i = state.ideas.find(x => x.id === likeIdea.dataset.likeIdea);
-        if (i) { i.likes += 1; saveState(); renderEn(); }
-        return;
-      }
-
-      const startRoom = e.target.closest('[data-start-room]');
-      if (startRoom) {
-        const [partner, title] = startRoom.dataset.startRoom.split('|');
-        const rid = 'room-' + Date.now();
-        const pid = 'prod-' + Date.now();
-        state.rooms.unshift({
-          id: rid, name: `${partner} とのご縁`, members: [state.profile.name, partner],
-          products: [{
-            id: pid, title: title || '新規コラボ案', phase: '企画中',
-            priceSell: 550, earlyPrice: 480, ticketsBought: 0, ticketsLimit: 20,
-            costRaw: 100, costLabor: 100, adoptedMaterialIds: [], images: [],
-            chats: [{ id: 'c-' + Date.now(), author: state.profile.name, text: `${partner}さんとの開発ルームを作成しました！`, date: nowShort(), isPrivate: false }],
-            calendar: [], reactions: { cheer: 1, eat: 0 }
-          }]
-        });
-        state.activeRoomId = rid;
-        state.activeProductId = pid;
-        saveState(); renderAll(); switchTab('home');
-        toast(`🤝 ${partner}さんとの開発ルームをホームに作成しました！`);
-        return;
-      }
-
-      const stampSpot = e.target.closest('[data-stamp-spot]');
-      if (stampSpot) {
-        const s = state.spots.find(x => x.id === stampSpot.dataset.stampSpot);
-        if (s) { s.stamped = !s.stamped; saveState(); renderEn(); }
-        return;
-      }
-
-      const buyTkt = e.target.closest('[data-buy-tkt]');
-      if (buyTkt) {
-        const found = getAllProducts().find(({ prod }) => prod.id === buyTkt.dataset.buyTkt);
-        if (found) {
-          found.prod.ticketsBought += 1;
-          state.myShares += 2;
-          saveState(); renderShop(); toast('🎟️ 早割予約完了！＋2ご縁株を獲得');
-        }
-        return;
-      }
-
-      const buyEc = e.target.closest('[data-buy-ec]');
-      if (buyEc) {
-        state.shoppingBook.purchases.unshift({ id: 'pur-' + Date.now(), title: buyEc.dataset.buyEc, rating: 5, memo: 'ECで購入', date: nowShort().split(' ')[0] });
-        saveState(); renderShop(); toast('🛍️ 買い物帳に購入履歴を記録しました');
-        return;
-      }
-
-      const favProd = e.target.closest('[data-fav-prod]');
-      if (favProd) {
-        const id = favProd.dataset.favProd;
-        const idx = state.shoppingBook.favorites.indexOf(id);
-        if (idx >= 0) state.shoppingBook.favorites.splice(idx, 1);
-        else state.shoppingBook.favorites.push(id);
-        saveState(); renderShop(); return;
-      }
-
-      const selRoom = e.target.closest('[data-sel-room]');
-      if (selRoom) {
-        state.activeRoomId = selRoom.dataset.selRoom;
-        const r = getActiveRoom();
-        state.activeProductId = r && r.products[0] ? r.products[0].id : null;
-        saveState(); renderHome(); return;
-      }
-
-      const selProd = e.target.closest('[data-sel-prod]');
-      if (selProd) { state.activeProductId = selProd.dataset.selProd; saveState(); renderHome(); return; }
-
-      const togPriv = e.target.closest('[data-toggle-priv]');
-      if (togPriv) {
-        const c = getActiveProduct().chats.find(x => x.id === togPriv.dataset.togglePriv);
-        if (c) { c.isPrivate = !c.isPrivate; saveState(); renderHome(); }
-        return;
-      }
-
-      const delDevImg = e.target.closest('[data-del-dev-img]');
-      if (delDevImg) {
-        getActiveProduct().images.splice(Number(delDevImg.dataset.delDevImg), 1);
-        saveState(); renderHome(); return;
-      }
-
-      const prBtn = e.target.closest('[data-print]');
-      if (prBtn) { openPrint(prBtn.dataset.print); return; }
-
-      const readMsg = e.target.closest('[data-read-msg]');
-      if (readMsg) {
-        const m = state.inbox.find(x => x.id === readMsg.dataset.readMsg);
-        if (m) { m.unread = false; saveState(); renderBadges(); renderChatModal(); }
-        return;
-      }
-
-      const diagAns = e.target.closest('[data-diag-ans]');
-      if (diagAns) {
-        diagScores[diagAns.dataset.diagAns] += 1;
-        diagStep += 1;
-        if (diagStep >= window.ENJOY_DIAG_Q.length) {
-          state.profile.diagType = Object.entries(diagScores).sort((a, b) => b[1] - a[1])[0][0];
-          diagStep = -1;
-          saveState();
-        }
-        renderHome(); return;
-      }
-
-      if (e.target.id === 'btn-start-diag') {
-        diagStep = 0; diagScores = { spark: 0, craft: 0, bridge: 0, cheer: 0 }; renderHome(); return;
-      }
-      if (e.target.id === 'btn-short-like') {
-        state.shorts[currentShortIdx % state.shorts.length].likes += 1; saveState(); renderPlaza(); return;
-      }
-      if (e.target.id === 'btn-short-next') {
-        currentShortIdx = (currentShortIdx + 1) % state.shorts.length; renderPlaza(); return;
-      }
-      if (e.target.id === 'btn-gen-plan') {
-        const item = document.getElementById('plan-item').value;
-        generatedPlan = item === '白菜＆大根'
-          ? [
-              { day: '月', menu: '白菜と豚バラのみそ重ね蒸し', note: '疲労回復' },
-              { day: '水', menu: '冷凍大根と鶏むねの時短煮', note: '高タンパク' },
-              { day: '金', menu: '白菜の無限コールスロー', note: '5分で完成' },
-              { day: '日', menu: 'ほうれん草と大根のみぞれ鍋', note: '鉄分プラス' }
-            ]
-          : [
-              { day: '月', menu: '皮ごとレンジりんごコンポート', note: '朝の腸活' },
-              { day: '水', menu: 'すりおろしりんごの生姜焼き', note: 'お肉が柔らか' },
-              { day: '金', menu: 'みかんとほうれん草のサラダ', note: 'ビタミンC' },
-              { day: '日', menu: '焼きりんごとシナモンのおやつ', note: '廃棄ゼロ' }
-            ];
-        renderUseful(); return;
-      }
-      if (e.target.id === 'btn-switch-ui') {
-        state.uiMode = state.uiMode === 'simple' ? 'modern' : 'simple';
-        saveState(); applyUiMode(); toast(state.uiMode === 'simple' ? '🔰 かんたんモード' : '⚡ モダンモード'); return;
-      }
-      if (e.target.id === 'btn-export') {
-        const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'enjoy_v6_backup.json'; a.click(); return;
-      }
-      if (e.target.id === 'btn-reset') {
-        if (confirm('初期デモに戻しますか？')) { state = window.createDefaultV6State(); state.uiMode = 'modern'; saveState(); renderAll(); }
-        return;
-      }
+  // モーダル開閉
+  document.getElementById("openPostModalBtn").addEventListener("click", () => openPostModal("project"));
+  document.getElementById("quickPostFromHomeBtn").addEventListener("click", () => {
+    switchView("en");
+    openPostModal();
+  });
+  document.querySelectorAll("[data-close-modal]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.getElementById(btn.dataset.closeModal).classList.add("hidden");
     });
-
-    // フォーム送信委譲
-    document.addEventListener('submit', e => {
-      if (e.target.id === 'form-feed') {
-        e.preventDefault();
-        const text = document.getElementById('feed-text').value.trim();
-        if (!text && !pendingFeedImg) return;
-        state.feeds.unshift({
-          id: 'f-' + Date.now(),
-          tag: document.getElementById('feed-tag').value,
-          area: document.getElementById('feed-area').value.trim() || state.profile.area,
-          author: state.profile.name,
-          text,
-          image: pendingFeedImg,
-          likes: 0,
-          createdAt: 'たった今'
-        });
-        pendingFeedImg = null;
-        document.getElementById('feed-text').value = '';
-        document.getElementById('feed-img-preview').classList.add('hidden');
-        saveState(); renderPlaza(); toast('投稿しました');
-      }
-      if (e.target.id === 'form-new-idea') {
-        e.preventDefault();
-        state.ideas.unshift({
-          id: 'idea-' + Date.now(),
-          cat: document.getElementById('idea-cat').value,
-          title: document.getElementById('idea-title').value.trim(),
-          need: document.getElementById('idea-need').value.trim(),
-          detail: document.getElementById('idea-detail').value.trim(),
-          author: state.profile.name,
-          area: state.profile.area,
-          likes: 1
-        });
-        e.target.reset();
-        closeModal('modal-new-idea');
-        saveState(); renderEn(); toast('🚀 募集カードを公開しました');
-      }
-      if (e.target.id === 'form-recipe') {
-        e.preventDefault();
-        state.recipes.unshift({
-          id: 'rec-' + Date.now(),
-          title: document.getElementById('rec-title').value.trim(),
-          ingredients: document.getElementById('rec-ing').value.trim(),
-          tag: 'みんな投稿', author: state.profile.name, steps: '材料を合わせて美味しく調理！'
-        });
-        saveState(); renderUseful(); toast('🍳 レシピを追加しました');
-      }
-      if (e.target.id === 'form-dev-chat') {
-        e.preventDefault();
-        const prod = getActiveProduct();
-        const txt = document.getElementById('dev-chat-input').value.trim();
-        const priv = document.getElementById('dev-chat-priv').checked;
-        if (!txt) return;
-        prod.chats.push({ id: 'c-' + Date.now(), author: state.profile.name, text: txt, date: nowShort(), isPrivate: priv });
-        const m = txt.match(/(\d{1,2})\/(\d{1,2})/);
-        if (m) {
-          prod.calendar.push({ id: 'cal-' + Date.now(), date: `2026-${String(m[1]).padStart(2,'0')}-${String(m[2]).padStart(2,'0')}`, title: txt.slice(0, 24) });
-          toast('📅 日付を検知し予定にも自動追加しました');
-        }
-        saveState(); renderHome();
-      }
-      if (e.target.id === 'form-dev-cal') {
-        e.preventDefault();
-        getActiveProduct().calendar.push({ id: 'cal-' + Date.now(), date: document.getElementById('cal-d').value, title: document.getElementById('cal-t').value.trim() });
-        saveState(); renderHome();
-      }
-      if (e.target.id === 'form-profile') {
-        e.preventDefault();
-        state.profile.name = document.getElementById('p-name').value.trim();
-        state.profile.area = document.getElementById('p-area').value.trim();
-        state.profile.skills = document.getElementById('p-skills').value.trim();
-        state.profile.bio = document.getElementById('p-bio').value.trim();
-        saveState(); toast('プロフィールを保存しました');
-      }
-      if (e.target.id === 'form-ring') {
-        e.preventDefault();
-        state.ringEntries.unshift({ id: 'r-' + Date.now(), name: state.profile.name, role: 'メンバー', message: document.getElementById('ring-msg').value.trim(), rank: 'S' });
-        saveState(); renderHome(); toast('✍️ 年輪ボードに刻みました');
-      }
+  });
+  document.querySelectorAll(".modal-backdrop").forEach(backdrop => {
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) backdrop.classList.add("hidden");
     });
+  });
 
-    // 入力・変更イベント
-    document.addEventListener('change', e => {
-      if (e.target.id === 'feed-img-input' && e.target.files[0]) {
-        resizeImage(e.target.files[0], 720, url => {
-          pendingFeedImg = url;
-          const prev = document.getElementById('feed-img-preview');
-          prev.innerHTML = `<img src="${url}" alt="プレビュー" /><button type="button" class="img-preview-del" id="btn-del-feed-img">✕</button>`;
-          prev.classList.remove('hidden');
-          document.getElementById('btn-del-feed-img').onclick = () => {
-            pendingFeedImg = null;
-            prev.classList.add('hidden');
-          };
-        });
-        e.target.value = '';
-      }
-      if (e.target.id === 'dev-img-input' && e.target.files[0]) {
-        const prod = getActiveProduct();
-        if ((prod.images || []).length >= 6) { toast('写真は最大6枚までです'); return; }
-        resizeImage(e.target.files[0], 640, url => {
-          prod.images.push(url); saveState(); renderHome(); toast('📸 写真を追加しました');
-        });
-        e.target.value = '';
-      }
-      if (e.target.id === 'dev-phase-select') {
-        getActiveProduct().phase = e.target.value;
-        saveState(); renderAll(); toast(`フェーズを「${e.target.value}」に更新`);
-      }
+  // 投稿モーダル切替＆送信
+  document.getElementById("postTypeSwitch").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-posttype]");
+    if (!btn) return;
+    const isProj = btn.dataset.posttype === "project";
+    document.querySelectorAll("#postTypeSwitch .seg-btn").forEach(b => b.classList.toggle("active", b === btn));
+    document.getElementById("projectPostForm").classList.toggle("hidden", !isProj);
+    document.getElementById("offerPostForm").classList.toggle("hidden", isProj);
+  });
+
+  document.getElementById("projectPostForm").addEventListener("submit", handleProjectSubmit);
+  document.getElementById("offerPostForm").addEventListener("submit", handleOfferSubmit);
+
+  // ロック中タブ「早く使いたい」
+  document.querySelectorAll(".want-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.want;
+      state.wants[key] = (state.wants[key] || 0) + 1;
+      EnjoyStore.save(STORAGE_KEYS.WANTS, state.wants);
+      renderWants();
+      showToast("🔔 解放リクエストを記録しました！");
     });
+  });
+}
 
-    document.addEventListener('input', e => {
-      if (e.target.id === 'feed-search') renderPlaza();
-      if (['c-raw', 'c-lab', 'c-sell'].includes(e.target.id)) {
-        const prod = getActiveProduct();
-        prod.costRaw = Number(document.getElementById('c-raw').value || 0);
-        prod.costLabor = Number(document.getElementById('c-lab').value || 0);
-        prod.priceSell = Number(document.getElementById('c-sell').value || 0);
-        saveState(); renderHome();
-      }
-    });
+function bindInput(id, updater) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener("input", (e) => {
+    updater(e.target.value);
+    saveProfile();
+    renderBusinessCards();
+  });
+}
 
-    // 固定ボタン
-    const toggleUi = () => {
-      state.uiMode = state.uiMode === 'simple' ? 'modern' : 'simple';
-      saveState(); applyUiMode(); toast(state.uiMode === 'simple' ? '🔰 かんたんモード' : '⚡ モダンモード');
-    };
-    document.getElementById('btn-ui-mode-pc').onclick = toggleUi;
-    document.getElementById('btn-ui-mode-mobile').onclick = toggleUi;
-    document.getElementById('btn-focus-pc').onclick = () => {
-      state.focusMode = !state.focusMode; saveState(); applyUiMode();
-      toast(state.focusMode ? '🚜 本業集中モードON' : '通常モードに戻しました');
-    };
-    document.getElementById('btn-open-chat').onclick = () => openModal('modal-chat');
-    document.getElementById('btn-open-new-idea').onclick = () => openModal('modal-new-idea');
-    document.getElementById('btn-do-print').onclick = () => window.print();
+/* ==================== ステップ・画面切替 ==================== */
+function goStep(stepNum) {
+  state.step = stepNum;
+  document.querySelectorAll(".step-panel").forEach(p => {
+    p.classList.toggle("active", Number(p.dataset.panel) === stepNum);
+  });
+  document.querySelectorAll("#stepper .step-pill").forEach(pill => {
+    const n = Number(pill.dataset.step);
+    pill.classList.toggle("active", n === stepNum);
+    pill.classList.toggle("done", n < stepNum);
+  });
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
 
-    document.getElementById('btn-new-room').onclick = () => {
-      const name = prompt('新しい開発ルーム名（例：〇〇農園 × △△工房）');
-      if (!name) return;
-      const rid = 'room-' + Date.now(), pid = 'prod-' + Date.now();
-      state.rooms.unshift({
-        id: rid, name: name.trim(), members: [state.profile.name, name.trim()],
-        products: [{ id: pid, title: '第1弾商品', phase: '企画中', priceSell: 500, earlyPrice: 450, ticketsBought: 0, ticketsLimit: 20, costRaw: 100, costLabor: 100, adoptedMaterialIds: [], images: [], chats: [], calendar: [], reactions: { cheer: 0, eat: 0 } }]
-      });
-      state.activeRoomId = rid; state.activeProductId = pid; saveState(); renderAll();
-    };
-
-    document.getElementById('btn-new-product').onclick = () => {
-      const title = prompt('追加する新商品名');
-      if (!title) return;
-      const pid = 'prod-' + Date.now();
-      getActiveRoom().products.push({
-        id: pid, title: title.trim(), phase: '企画中', priceSell: 550, earlyPrice: 480, ticketsBought: 0, ticketsLimit: 20, costRaw: 100, costLabor: 100, adoptedMaterialIds: [], images: [], chats: [], calendar: [], reactions: { cheer: 0, eat: 0 }
-      });
-      state.activeProductId = pid; saveState(); renderAll();
-    };
-  }
-
-  /* ---------- スクロール連動：下スクロールで常設タブを隠す / 上で再表示 ---------- */
-  function bindScrollHideDock() {
-    let lastY = window.scrollY;
-    window.addEventListener('scroll', () => {
-      const y = window.scrollY;
-      // 画面最上部付近は常に表示
-      if (y <= 40) {
-        document.body.classList.remove('dock-hidden');
-        lastY = y;
-        return;
-      }
-      // 12px以上下にスクロール → 隠す（サブタブも閉じる）
-      if (y > lastY + 12) {
-        document.body.classList.add('dock-hidden');
-        document.body.classList.remove('subnav-open');
-      }
-      // 8px以上上にスクロール → 再表示
-      else if (y < lastY - 8) {
-        document.body.classList.remove('dock-hidden');
-      }
-      lastY = y;
-    }, { passive: true });
-  }
-  /* ---------- 起動 ---------- */
-bindEvents();
-  bindScrollHideDock();
+function switchView(viewName) {
+  state.activeView = viewName;
+  document.querySelectorAll(".view-section").forEach(sec => {
+    sec.classList.toggle("active", sec.id === `view-${viewName}`);
+  });
+  document.querySelectorAll("#bottomNav .nav-item").forEach(item => {
+    item.classList.toggle("active", item.dataset.tab === viewName);
+  });
   renderAll();
-  if (!state.uiMode) openModal('modal-ui-select');
-})();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function finishRegistration(skipped) {
+  if (!state.profile.displayName.trim()) {
+    state.profile.displayName = "新しいつくり手さん";
+  }
+  state.profile.registered = true;
+  saveProfile();
+  showToast(skipped ? "まずはこの内容でスタートします！" : "🎉 登録完了！あなただけのデジタル名刺ができました");
+  switchView("en");
+}
+
+/* ==================== 補助機能 ==================== */
+function applyStaffImportCode(code) {
+  const msg = document.getElementById("codeApplyMsg");
+  const hit = ENJOY_DATA.sampleStaffCodes[code];
+  if (!hit) {
+    msg.textContent = "コードが見つかりませんでした（テスト用は EN-TK88 をお試しください）";
+    return;
+  }
+  Object.assign(state.profile, hit, { staffCode: code });
+  saveProfile();
+  syncFormFromProfile();
+  renderAgeGroups();
+  renderPositions();
+  renderBusinessCards();
+  msg.textContent = `✅ コード「${code}」から基本情報・会社情報を自動入力しました！`;
+  showToast("担当者コードで入力を省略しました");
+}
+
+function generateStaffCode(name) {
+  const clean = (name || "").trim();
+  if (!clean) return "";
+  let hash = 0;
+  for (let i = 0; i < clean.length; i++) {
+    hash = (hash * 31 + clean.charCodeAt(i)) % 900;
+  }
+  return `EN-ST${100 + hash}`;
+}
+
+function updateGeneratedStaffCodeUI() {
+  const box = document.getElementById("generatedCodeBox");
+  const txt = document.getElementById("generatedCodeText");
+  if (state.profile.staffCode) {
+    box.classList.remove("hidden");
+    txt.textContent = state.profile.staffCode;
+  } else {
+    box.classList.add("hidden");
+  }
+}
+
+function handleGeolocation() {
+  const status = document.getElementById("geoStatus");
+  status.textContent = "現在地を確認しています…";
+  if (!navigator.geolocation) {
+    applyDemoGeo("位置情報に未対応のため、サンプルエリアをセットしました");
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    () => {
+      // 外部APIキー不要でテストが止まらないよう取得成功後にエリア補完（本番は逆ジオコーディング接続）
+      applyDemoGeo("📍 現在地を取得しました（必要に応じて町名まで微調整してください）");
+    },
+    () => {
+      applyDemoGeo("📍 位置情報の許可がオフだったため、サンプル（大阪府 高槻市 富田町）を仮入力しました");
+    },
+    { timeout: 4000 }
+  );
+}
+
+function applyDemoGeo(message) {
+  state.profile.area = "大阪府 高槻市 富田町";
+  document.getElementById("areaInput").value = state.profile.area;
+  document.getElementById("geoStatus").textContent = message;
+  saveProfile();
+  renderBusinessCards();
+}
+
+function renderAddedProducts() {
+  const list = document.getElementById("addedProductList");
+  if (!state.profile.products.length) {
+    list.innerHTML = "";
+    return;
+  }
+  list.innerHTML = state.profile.products.map(prod => `
+    <div class="added-prod-item">
+      <span>${prod.icon} <strong>${escapeHtml(prod.title)}</strong>（${escapeHtml(prod.note)}）</span>
+      <button type="button" class="btn-link" data-delprod="${prod.id}">削除</button>
+    </div>
+  `).join("");
+}
+
+/* ==================== デジタル名刺レンダリング ==================== */
+function renderAll() {
+  renderBusinessCards();
+  renderHomeStats();
+  renderEnRoom();
+  renderWants();
+}
+
+function syncCardModeButtons() {
+  document.querySelectorAll(".card-mode-switch button").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.mode === state.cardMode);
+  });
+}
+
+function renderBusinessCards() {
+  const html = buildBusinessCardHTML(state.profile, state.cardMode);
+  document.getElementById("liveBusinessCard").innerHTML = html;
+  document.getElementById("homeBusinessCard").innerHTML = html;
+}
+
+function formatAreaForMode(area, granularity, mode) {
+  const raw = (area || "").trim();
+  if (!raw) return "エリア未設定";
+  if (mode === "post" || granularity === "detail") return raw;
+  // 大雑把（市町村まで）表示
+  const parts = raw.split(/[\s　]+/);
+  return parts.length >= 2 ? `${parts[0]} ${parts[1]}（マッチ後詳細）` : `${raw}（市町村まで）`;
+}
+
+function buildBusinessCardHTML(p, mode) {
+  const isPost = mode === "post";
+  const mainRoleObj = ENJOY_DATA.roles.find(r => r.id === p.mainRole) || ENJOY_DATA.roles[0];
+  const mainRoleLabel = p.mainRole === "other" && p.otherRoleText
+    ? `✨ ${p.otherRoleText}`
+    : `${mainRoleObj.icon} ${mainRoleObj.title}`;
+
+  const subBadges = (p.subRoles || []).map(rid => {
+    const r = ENJOY_DATA.roles.find(x => x.id === rid);
+    return r ? `<span class="bc-role-sub">${r.icon} ${r.title}もOK</span>` : "";
+  }).join("");
+
+  const posObj = ENJOY_DATA.positions.find(x => x.id === p.position);
+  const ageText = p.exactAge ? `${p.ageGroup}（${p.exactAge}歳）` : (p.ageGroup || "");
+  const areaText = formatAreaForMode(p.area, p.areaGranularity, mode);
+
+  const avatarHtml = p.photoDataUrl
+    ? `<img src="${p.photoDataUrl}" alt="プロフィール写真" />`
+    : mainRoleObj.icon;
+
+  const reviewBadge = p.photoPendingReview
+    ? `<span class="bc-review-pill">🕒 写真審査中</span>`
+    : "";
+
+  const activityTags = (p.activities || []).slice(0, 5).map(a => `<span class="bc-tag">#${escapeHtml(a)}</span>`).join("");
+
+  const prideVisible = p.pride && (p.prideVisibility === "public" || isPost);
+  const prideLockedNote = p.pride && p.prideVisibility === "match" && !isPost
+    ? `<p class="mini-note">🔒 自慢ポイントはマッチ後に公開されます</p>`
+    : "";
+
+  const productsHtml = (p.products && p.products.length)
+    ? `<div class="bc-section">
+         <div class="bc-sec-title">📦 自社商品・公式HP</div>
+         <div class="bc-prod-grid">
+           ${p.products.map(pr => `
+             <a class="bc-prod-card" href="${pr.url ? escapeHtml(pr.url) : "javascript:void(0)"}" ${pr.url ? 'target="_blank" rel="noopener"' : ""}>
+               <div class="bc-prod-icon">${pr.icon}</div>
+               <div class="bc-prod-title">${escapeHtml(pr.title)}</div>
+               <div class="bc-prod-note">${escapeHtml(pr.note)}</div>
+             </a>
+           `).join("")}
+         </div>
+       </div>`
+    : "";
+
+  const secretHtml = isPost
+    ? `<div class="bc-secret-box unlocked">
+         <strong>🤝 マッチ成立により自動公開中</strong>
+         <ul class="bc-secret-list">
+           <li>正式社名・屋号：<strong>${escapeHtml(p.companyName || "（未記入）")}</strong></li>
+           ${p.position !== "solo" ? `<li>担当者：<strong>${escapeHtml(p.staffName || "（未記入）")}</strong> ${p.staffCode ? `（${p.staffCode}）` : ""}</li>` : ""}
+           <li>電話番号：${p.phone ? `<a class="tel-link" href="tel:${escapeHtml(p.phone)}">${escapeHtml(p.phone)}</a>` : "（未記入）"}</li>
+           ${p.secretPride ? `<li>秘密の条件・強み：${escapeHtml(p.secretPride)}</li>` : ""}
+         </ul>
+         <p class="mini-note">💬 LINE等の交換は安全のためトーク欄で行えます</p>
+       </div>`
+    : `<div class="bc-secret-box locked">
+         <strong>🔒 マッチ後に自動公開される情報</strong>
+         <ul class="bc-secret-list">
+           <li>正式な会社名・屋号（ロック中）</li>
+           <li>電話番号・ワンタップ発信（ロック中）</li>
+           ${p.secretPride ? "<li>マッチ限定の強み・条件 1件（ロック中）</li>" : "<li>秘密の条件・強み（マッチで開示）</li>"}
+         </ul>
+       </div>`;
+
+  return `
+    <div class="bc-top-strip ${isPost ? "mode-post" : "mode-pre"}">
+      <span>${isPost ? "🤝 マッチ後の見え方（全情報解放）" : "👀 マッチ前の見え方（安心ガード中）"}</span>
+      <span>EN•joy 名刺</span>
+    </div>
+    <div class="bc-body">
+      <div class="bc-profile">
+        <div class="bc-avatar">${avatarHtml}</div>
+        <div>
+          <div class="bc-name-row">
+            <span class="bc-name">${escapeHtml(p.displayName || "活動名（未入力）")}</span>
+            <span class="bc-age">${escapeHtml(ageText)}</span>
+            ${posObj ? `<span class="bc-pos-badge">${posObj.label}</span>` : ""}
+          </div>
+          <div class="bc-area">📍 ${escapeHtml(areaText)}</div>
+          ${reviewBadge}
+        </div>
+      </div>
+
+      <div class="bc-roles">
+        <span class="bc-role-main">メイン：${escapeHtml(mainRoleLabel)}</span>
+        ${subBadges}
+      </div>
+
+      ${activityTags ? `<div class="bc-tags">${activityTags}</div>` : ""}
+
+      ${(p.capacity || prideVisible || prideLockedNote) ? `
+        <div class="bc-section">
+          ${p.capacity ? `<div><span class="bc-sec-title">🏭 設備・作れる量</span><br/>${escapeHtml(p.capacity)}</div>` : ""}
+          ${prideVisible ? `<div style="margin-top:8px;"><span class="bc-sec-title">✨ 自慢ポイント</span><br/>${escapeHtml(p.pride)}</div>` : ""}
+          ${prideLockedNote}
+        </div>
+      ` : ""}
+
+      ${productsHtml}
+      ${secretHtml}
+    </div>
+  `;
+}
+
+/* ==================== ホーム統計 ==================== */
+function renderHomeStats() {
+  document.getElementById("homeGreeting").textContent = state.profile.displayName
+    ? `${state.profile.displayName} さんのマイページ`
+    : "マイ名刺と活動ステータス";
+  document.getElementById("statProjects").textContent = state.projects.length;
+  document.getElementById("statOffers").textContent = state.offers.length;
+  document.getElementById("statMatches").textContent = Object.keys(state.matches).length;
+}
+
+/* ==================== EN 開発ルーム ==================== */
+function renderEnRoom() {
+  const projWrap = document.getElementById("enProjectsContainer");
+  const offerWrap = document.getElementById("enOffersContainer");
+  const isProjects = state.enMode === "projects";
+
+  projWrap.classList.toggle("hidden", !isProjects);
+  offerWrap.classList.toggle("hidden", isProjects);
+
+  if (isProjects) {
+    renderProjectCards(projWrap);
+  } else {
+    renderOfferCards(offerWrap);
+  }
+}
+
+function renderProjectCards(container) {
+  let list = [...state.projects];
+  const isZero = list.length === 0;
+
+  if (isZero) {
+    list = [ENJOY_DATA.sampleProjectTemplate];
+  } else {
+    list = list.filter(p => matchesFilter(p));
+  }
+
+  let html = "";
+  if (isZero) {
+    html += `
+      <div class="empty-callout">
+        <strong>🌱 まだ第1号の企画は生まれていません</strong>
+        <p>下の点線カードはイメージ見本です。あなたが最初の企画を出してみませんか？</p>
+        <button type="button" class="btn btn-accent btn-sm" onclick="openPostModal()">＋ 第1号の企画を出す</button>
+      </div>
+    `;
+  }
+
+  if (!list.length) {
+    html += `<div class="empty-callout"><p>この条件に合う企画はまだありません。「すべて」に戻すか新しく出してみてください。</p></div>`;
+  } else {
+    html += list.map(p => {
+      const pieceOrder = ["material", "make", "pack", "deliver"];
+      const icons = { material: "🌾", make: "🍳", pack: "🎨", deliver: "🏪" };
+      const matched = !!state.matches[p.id];
+      return `
+        <article class="project-card ${p.isSample ? "sample-card" : ""}" data-open-proj="${p.id}">
+          ${p.isSample ? `<span class="sample-badge">イメージ見本（タップで体験できます）</span>` : ""}
+          ${matched ? `<span class="sample-badge" style="background:var(--orange-soft);color:var(--orange);">🤝 マッチ中・トーク可</span>` : ""}
+          <h3 class="proj-title">${escapeHtml(p.title)}</h3>
+          <p class="proj-goal">${escapeHtml(p.goal)}</p>
+          <div class="pieces-bar">
+            ${pieceOrder.map(k => {
+              const pc = p.pieces[k];
+              return `<div class="piece-pill ${pc.status}">${icons[k]} ${pc.status === "open" ? "募集中" : "決定"}</div>`;
+            }).join("")}
+          </div>
+          <div class="proj-meta">
+            <span>📍 ${escapeHtml(p.area || "関西")}</span>
+            <span>🏷️ ${escapeHtml(p.tag || "コラボ募集")}</span>
+          </div>
+        </article>
+      `;
+    }).join("");
+  }
+
+  container.innerHTML = html;
+  container.querySelectorAll("[data-open-proj]").forEach(card => {
+    card.addEventListener("click", () => openProjectDetail(card.dataset.openProj));
+  });
+}
+
+function matchesFilter(p) {
+  const openKeys = Object.keys(p.pieces).filter(k => p.pieces[k].status === "open");
+  if (state.enFilter === "last1") return openKeys.length === 1;
+  if (state.enFilter === "myrole") {
+    const myRoles = [state.profile.mainRole, ...(state.profile.subRoles || [])];
+    return openKeys.some(k => myRoles.includes(k));
+  }
+  if (state.enFilter === "kansai") {
+    return /大阪|京都|兵庫|滋賀|奈良|和歌山|高槻/.test(p.area || "");
+  }
+  return true;
+}
+
+function renderOfferCards(container) {
+  if (!state.offers.length) {
+    container.innerHTML = `
+      <div class="empty-callout">
+        <strong>🌱 素材・スキル1行置き場（まだ0件）</strong>
+        <p>「来月みかんが30kg余る」「小ロットのラベル作れます」など、企画になる前の1行を気軽に置けます。</p>
+        <button type="button" class="btn btn-accent btn-sm" onclick="openPostModal('offer')">＋ 1行だけ置いてみる</button>
+      </div>
+    `;
+    return;
+  }
+  container.innerHTML = state.offers.map(o => `
+    <div class="offer-card">
+      <div>
+        <div style="font-weight:700;font-size:0.92rem;">${escapeHtml(o.text)}</div>
+        <div class="mini-note">📍 ${escapeHtml(o.area || "関西")} ／ 👤 ${escapeHtml(o.author)}</div>
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" onclick="showToast('👋 興味ありを送りました！')">👋 興味あり</button>
+    </div>
+  `).join("");
+}
+
+/* ==================== 投稿・詳細・マッチング ==================== */
+function openPostModal(defaultType = "project") {
+  document.getElementById("postModal").classList.remove("hidden");
+  document.getElementById("projArea").value = state.profile.area || "大阪府 高槻市";
+  document.getElementById("offerArea").value = state.profile.area || "大阪府 高槻市";
+  const btn = document.querySelector(`#postTypeSwitch [data-posttype="${defaultType}"]`);
+  if (btn) btn.click();
+}
+
+function handleProjectSubmit(e) {
+  e.preventDefault();
+  const title = document.getElementById("projTitle").value.trim();
+  const goal = document.getElementById("projGoal").value.trim();
+  const area = document.getElementById("projArea").value.trim();
+  const tag = document.getElementById("projTag").value.trim() || "コラボ募集";
+  const openSet = new Set(
+    Array.from(document.querySelectorAll("#projOpenPieces input:checked")).map(c => c.value)
+  );
+
+  const wasEmpty = state.projects.length === 0;
+  const newProj = {
+    id: "proj-" + Date.now(),
+    isSample: false,
+    title,
+    goal,
+    area,
+    tag,
+    pieces: {
+      material: { status: openSet.has("material") ? "open" : "filled", label: "素材" },
+      make: { status: openSet.has("make") ? "open" : "filled", label: "形にする" },
+      pack: { status: openSet.has("pack") ? "open" : "filled", label: "整える包む" },
+      deliver: { status: openSet.has("deliver") ? "open" : "filled", label: "届ける試す" }
+    },
+    ownerCard: Object.assign({}, state.profile)
+  };
+
+  state.projects.unshift(newProj);
+  EnjoyStore.save(STORAGE_KEYS.PROJECTS, state.projects);
+  e.target.reset();
+  document.getElementById("postModal").classList.add("hidden");
+  renderAll();
+  showToast(wasEmpty ? "🎉 初めての取り組みが生まれました‼️（第1号バッジ獲得）" : "企画を公開しました！");
+}
+
+function handleOfferSubmit(e) {
+  e.preventDefault();
+  const text = document.getElementById("offerText").value.trim();
+  const area = document.getElementById("offerArea").value.trim();
+  state.offers.unshift({
+    id: "offer-" + Date.now(),
+    text,
+    area,
+    author: state.profile.displayName || "つくり手さん"
+  });
+  EnjoyStore.save(STORAGE_KEYS.OFFERS, state.offers);
+  e.target.reset();
+  document.getElementById("postModal").classList.add("hidden");
+  state.enMode = "offers";
+  document.querySelectorAll("#enModeTabs button").forEach(b => b.classList.toggle("active", b.dataset.enmode === "offers"));
+  renderAll();
+  showToast("🌱 1行置き場に追加しました！");
+}
+
+function openProjectDetail(projId) {
+  const proj = projId === ENJOY_DATA.sampleProjectTemplate.id
+    ? ENJOY_DATA.sampleProjectTemplate
+    : state.projects.find(p => p.id === projId);
+  if (!proj) return;
+
+  const matched = state.matches[proj.id];
+  document.getElementById("detailTitle").textContent = proj.title;
+
+  const owner = proj.ownerCard || {};
+  const body = document.getElementById("detailBody");
+  body.innerHTML = `
+    <p style="margin:0 0 12px;font-size:0.88rem;">${escapeHtml(proj.goal)}</p>
+
+    <div class="future-zone" data-zone="true" style="display:${document.body.classList.contains("show-zones") ? "block" : "none"};">
+      <span class="zone-badge">🥚 将来ゾーン（卵デコ → 合体エンちゃん孵化 → 全画面巣立ち動画）</span>
+      <p>マッチ直後は卵にスタンプを貼ってアイスブレイク → 方向性決定で合体エンちゃん誕生 → 完成時に公開記憶を吸って巣立ち！</p>
+    </div>
+
+    ${!matched ? `
+      <div class="card card-soft" style="margin-bottom:12px;">
+        <p class="mini-title">🔒 マッチ前のオーナー情報</p>
+        <p class="mini-note">活動名：${escapeHtml(owner.displayName || "企画オーナー")} ／ エリア：${escapeHtml(proj.area || "関西")}</p>
+        <p class="mini-note">※「興味あり」でマッチ成立すると、正式社名・電話番号・秘密の条件が自動開示されます。</p>
+      </div>
+      <button type="button" class="btn btn-accent btn-full" id="sendInterestBtn">
+        👋 この企画に「興味あり」を送ってマッチ体験する
+      </button>
+    ` : `
+      <div class="bc-secret-box unlocked" style="margin-top:0;">
+        <strong>🤝 マッチ成立！相手の詳細名刺がロック解除されました</strong>
+        <ul class="bc-secret-list">
+          <li>正式社名・屋号：<strong>${escapeHtml(owner.companyName || "株式会社たなか農園")}</strong></li>
+          <li>担当者：<strong>${escapeHtml(owner.staffName || "担当者")}</strong></li>
+          <li>電話番号：<a class="tel-link" href="tel:${escapeHtml(owner.phone || "090-1234-5678")}">${escapeHtml(owner.phone || "090-1234-5678")}</a></li>
+          ${owner.secretPride ? `<li>秘密の条件：${escapeHtml(owner.secretPride)}</li>` : ""}
+        </ul>
+      </div>
+
+      <div class="chat-box">
+        <div class="mini-title" style="margin-bottom:8px;">💬 簡易トーク（LINE交換などはこちらから）</div>
+        <div id="chatMessages" class="chat-messages">
+          ${matched.messages.map(m => `<div class="chat-msg ${m.who}">${escapeHtml(m.text)}</div>`).join("")}
+        </div>
+        <div class="inline-add">
+          <input id="chatInput" class="text-input" type="text" placeholder="ひとこと挨拶を送ってみよう…" />
+          <button id="sendChatBtn" type="button" class="btn btn-primary btn-sm">送信</button>
+        </div>
+      </div>
+    `}
+  `;
+
+  if (!matched) {
+    document.getElementById("sendInterestBtn").addEventListener("click", () => {
+      state.matches[proj.id] = {
+        matchedAt: Date.now(),
+        messages: [
+          { who: "sys", text: "🎉 マッチング成立！お互いの正式社名・電話番号が開示されました。" },
+          { who: "other", text: "興味ありありがとうございます！まずは気軽に試作のイメージをお話しできたら嬉しいです。" }
+        ]
+      };
+      EnjoyStore.save(STORAGE_KEYS.MATCHES, state.matches);
+      renderAll();
+      openProjectDetail(proj.id);
+      showToast("🤝 マッチ成立！詳細名刺がロック解除されました");
+    });
+  } else {
+    document.getElementById("sendChatBtn").addEventListener("click", () => {
+      const inp = document.getElementById("chatInput");
+      const text = inp.value.trim();
+      if (!text) return;
+      state.matches[proj.id].messages.push({ who: "me", text });
+      EnjoyStore.save(STORAGE_KEYS.MATCHES, state.matches);
+      openProjectDetail(proj.id);
+    });
+  }
+
+  document.getElementById("detailModal").classList.remove("hidden");
+}
+
+function renderWants() {
+  document.getElementById("wantTipsCount").textContent = state.wants.tips || 0;
+  document.getElementById("wantShopCount").textContent = state.wants.shop || 0;
+}
+
+/* ==================== スクロール連動ナビ ==================== */
+function initScrollResponsiveNav() {
+  let lastY = window.scrollY;
+  const header = document.getElementById("topHeader");
+  const bottomNav = document.getElementById("bottomNav");
+
+  window.addEventListener("scroll", () => {
+    const currentY = window.scrollY;
+    const goingDown = currentY > lastY && currentY > 70;
+    header.classList.toggle("nav-hidden", goingDown);
+    bottomNav.classList.toggle("nav-hidden", goingDown);
+    lastY = currentY;
+  }, { passive: true });
+}
+
+/* ==================== ユーティリティ ==================== */
+function toggleArrayItem(arr, item) {
+  const idx = arr.indexOf(item);
+  if (idx >= 0) arr.splice(idx, 1);
+  else arr.push(item);
+}
+
+function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.remove("hidden");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.add("hidden"), 2800);
+}
