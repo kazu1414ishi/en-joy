@@ -7,8 +7,15 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- 開発用フローティングバー（PCでスマホ幅プレビュー中＋登録集中モード中でもリセット＆PC復帰できる） -->
+  <div id="devFloatingBar" class="dev-floating-bar">
+    <span class="dev-badge">開発ツール</span>
+    <button id="devExitMobileBtn" class="chip-btn" type="button">💻 PC幅に戻す</button>
+    <button id="devResetBtn" class="chip-btn" type="button">🔄 最初に戻す</button>
+  </div>
+
   <div id="appShell" class="app-shell">
-    <!-- スクロール連動ヘッダー -->
+    <!-- スクロール連動ヘッダー（スマホ登録集中モード時は非表示） -->
     <header id="topHeader" class="top-header">
       <div class="header-inner">
         <div class="brand-wrap">
@@ -35,251 +42,174 @@
 
     <!-- メインコンテンツ -->
     <main class="main-container">
-      <!-- ==================== 初回登録＆名刺作成ビュー ==================== -->
+      <!-- ==================== 初回登録ビュー（4ステップ集中設計・名刺は完了時にお披露目） ==================== -->
       <section id="view-register" class="view-section active">
-        <div class="reg-hero">
-          <div>
-            <p class="eyebrow">最短45秒・戻らずに登録完了</p>
-            <h1>あなたの「できること」を<br />デジタル名刺にしよう</h1>
+        <div class="reg-shell">
+          <!-- 上部：押せない細い進捗バーのみ（視線が散らず上から順番に操作） -->
+          <div class="reg-progress-wrap">
+            <div class="reg-progress-top">
+              <span class="reg-brand-mini">EN<span class="brand-dot">•</span>joy 登録</span>
+              <span id="regProgressLabel" class="reg-step-count">ステップ 1 / 4</span>
+            </div>
+            <div class="reg-progress-track">
+              <div id="regProgressFill" class="reg-progress-fill" style="width: 25%;"></div>
+            </div>
           </div>
-          <div class="stepper" id="stepper">
-            <button type="button" class="step-pill active" data-step="1">1. 役割</button>
-            <button type="button" class="step-pill" data-step="2">2. 活動</button>
-            <button type="button" class="step-pill" data-step="3">3. 基本情報</button>
-            <button type="button" class="step-pill" data-step="4">4. 自慢・製品</button>
+
+          <!-- 将来ゾーン枠（OFF時は非表示） -->
+          <div class="future-zone" data-zone="true">
+            <span class="zone-badge">🥚 将来ゾーン（本番大公開）</span>
+            <p><strong>マイ・エンちゃん誕生エリア：</strong>Step 1の業種タイプ × 農作物/好きな物で、あなた専用のエンちゃんが1匹だけ誕生します。</p>
           </div>
-        </div>
 
-        <!-- 将来ゾーン枠（OFF時は非表示） -->
-        <div class="future-zone" data-zone="true">
-          <span class="zone-badge">🥚 将来ゾーン（本番大公開）</span>
-          <p><strong>マイ・エンちゃん誕生エリア：</strong>Step 1の業種タイプ × 農作物/好きな物で、あなた専用のエンちゃんが1匹だけ誕生します（SVGレイヤー構造）。</p>
-        </div>
+          <!-- ==================== STEP 1：役割選択（スマホでも2列×3行・未選択赤エラー） ==================== -->
+          <div class="step-panel active" data-panel="1">
+            <div class="card reg-card">
+              <div class="reg-step-head">
+                <h1 class="reg-title-oneline">どんな立場で参加する？</h1>
+                <p class="reg-subtitle">つくる人・届ける人・応援する人、どの立場でもOKです。</p>
+              </div>
 
-        <div class="reg-grid">
-          <!-- 左：登録フォーム -->
-          <div class="reg-form-col">
-            <!-- STEP 1 -->
-            <div class="step-panel active" data-panel="1">
-              <div class="card">
-                <h2 class="card-title">Step 1｜メインの役割を1つ選ぶ</h2>
-                <p class="card-desc">まずは一番近いものをタップ。あとから兼業も追加できます。</p>
-                <div id="roleGrid" class="role-grid"></div>
+              <!-- 未選択エラーメッセージ（赤文字） -->
+              <p id="step1ErrorMsg" class="field-error hidden">⚠️ いちばん近い立場を1つ選んでから「次へ」を押してください。</p>
 
-                <!-- 「その他」特別歓迎リアクション -->
-                <div id="otherRoleBox" class="other-role-box hidden">
-                  <div class="other-welcome">
-                    <span class="welcome-tag">✨ 新ジャンル大歓迎！</span>
-                    <p><strong>考えてませんでした‼️</strong> ぜひ新しい業種として登録させてください。あなたのような方が加わると企画の幅が一気に広がります！</p>
-                  </div>
-                  <label class="field-label" for="otherRoleInput">どんなお仕事・活動ですか？</label>
-                  <input id="otherRoleInput" class="text-input" type="text" placeholder="例：木工職人、カメラマン、地域の福祉事業所、発酵研究など" />
-                  <label class="check-row">
-                    <input id="otherPushOk" type="checkbox" checked />
-                    <span>運営からの「新ジャンル注目枠」プッシュ紹介を許可する</span>
-                  </label>
+              <!-- スマホでも必ず2列×3行で1画面に収まる役割タイル -->
+              <div id="roleGrid" class="role-grid role-grid-compact"></div>
+
+              <!-- 「その他」特別歓迎リアクション -->
+              <div id="otherRoleBox" class="other-role-box hidden">
+                <div class="other-welcome">
+                  <span class="welcome-tag">✨ 新ジャンル大歓迎！</span>
+                  <p><strong>考えてませんでした‼️</strong> ぜひ新しい業種として登録させてください。あなたのような方が加わると企画の幅が一気に広がります！</p>
                 </div>
+                <label class="field-label" for="otherRoleInput">どんなお仕事・活動ですか？</label>
+                <input id="otherRoleInput" class="text-input" type="text" placeholder="例：木工職人、カメラマン、地域の福祉事業所、発酵研究など" />
+                <label class="check-row">
+                  <input id="otherPushOk" type="checkbox" checked />
+                  <span>運営からの「新ジャンル注目枠」プッシュ紹介を許可する</span>
+                </label>
+              </div>
 
-                <div class="step-actions">
-                  <span></span>
-                  <button type="button" class="btn btn-primary" data-next="2">次へ：具体的な活動 →</button>
-                </div>
+              <div class="step-actions step-actions-single">
+                <button id="step1NextBtn" type="button" class="btn btn-accent btn-full btn-muted">次へ</button>
               </div>
             </div>
+          </div>
 
-            <!-- STEP 2 -->
-            <div class="step-panel" data-panel="2">
-              <div class="card">
-                <h2 class="card-title">Step 2｜具体的な活動（任意・複数選択）</h2>
-                <p class="card-desc">当てはまるものをタップ。なければ自由に追加できます。</p>
+          <!-- ==================== STEP 2：活動選択 ＋ 兼業展開 ＋ 今のあなたに一番近いのは？ ==================== -->
+          <div class="step-panel" data-panel="2">
+            <div class="card reg-card">
+              <div class="reg-step-head">
+                <h2 class="reg-title-oneline">具体的な活動を選ぼう</h2>
+                <p class="reg-subtitle">当てはまるものをタップ（複数OK・まだ決まってなくてもOK）</p>
+              </div>
 
-                <div id="activityChips" class="chip-group"></div>
+              <!-- メイン役割の活動チップ（＋「まだ模索中」チップ） -->
+              <div id="activityChips" class="chip-group"></div>
 
+              <!-- 案1＋全タブ検索ボタン -->
+              <div class="activity-helper-btns">
+                <button id="toggleCustomActivityBtn" type="button" class="btn btn-outline btn-sm">＋ リストにない活動</button>
+                <button id="openAllActivitiesBtn" type="button" class="btn btn-outline btn-sm">🔍 すべてのタブを見る</button>
+              </div>
+
+              <!-- 案1＋2：ボタンを押した人だけ開く役割別ガイド付き入力欄 -->
+              <div id="customActivityBox" class="custom-activity-box hidden">
+                <label id="customActivityLabel" class="field-label" for="customActivityInput">活動名を追加</label>
                 <div class="inline-add">
-                  <input id="customActivityInput" class="text-input" type="text" placeholder="＋ その他（例：無農薬栽培、真空パック、イラスト制作）" />
-                  <button id="addActivityBtn" type="button" class="btn btn-outline">追加</button>
-                </div>
-
-                <hr class="divider" />
-
-                <!-- 戻らずに別ロールを追加 -->
-                <div class="subrole-box">
-                  <div class="subrole-head">
-                    <h3>「あ、これもやってるわ」兼業・追加の役割</h3>
-                    <span class="mini-note">最大2つまで・Step 1に戻らず追加OK</span>
-                  </div>
-                  <div id="subRoleChips" class="chip-group"></div>
-                </div>
-
-                <div class="step-actions">
-                  <button type="button" class="btn btn-ghost" data-prev="1">← 戻る</button>
-                  <button type="button" class="btn btn-primary" data-next="3">次へ：基本情報・エリア →</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- STEP 3 -->
-            <div class="step-panel" data-panel="3">
-              <!-- 担当者コードによる入力省略バー -->
-              <div class="card card-soft">
-                <div class="code-shortcut-head">
-                  <div>
-                    <p class="mini-title">⚡ 担当者コードをお持ちの方（入力省略）</p>
-                    <p class="mini-note">会社やチームの既存コードを入れると基本情報を自動入力できます</p>
-                  </div>
-                  <button id="demoCodeBtn" type="button" class="btn-link">サンプル「EN-TK88」を試す</button>
-                </div>
-                <div class="inline-add">
-                  <input id="importCodeInput" class="text-input" type="text" placeholder="例：EN-TK88" />
-                  <button id="applyCodeBtn" type="button" class="btn btn-outline">反映</button>
-                </div>
-                <p id="codeApplyMsg" class="feedback-msg"></p>
-              </div>
-
-              <!-- 小カード① プロフィール・立場 -->
-              <div class="card">
-                <h2 class="card-title">① プロフィール・立場</h2>
-
-                <div class="photo-row">
-                  <div class="photo-preview-wrap">
-                    <img id="photoPreviewImg" class="photo-preview hidden" alt="トップ写真プレビュー" />
-                    <div id="photoPlaceholder" class="photo-placeholder">🌱</div>
-                  </div>
-                  <div class="photo-meta">
-                    <label class="btn btn-outline btn-sm" for="photoInput">📷 トップ写真を選ぶ</label>
-                    <input id="photoInput" type="file" accept="image/*" class="sr-only" />
-                    <p id="photoReviewNote" class="mini-note">※登録後、運営審査（安全確認）が完了すると公開されます。</p>
-                  </div>
-                </div>
-
-                <div class="field-group">
-                  <label class="field-label" for="displayNameInput">このサイトでの活動名 <span class="req">必須</span></label>
-                  <input id="displayNameInput" class="text-input" type="text" placeholder="例：高槻みかん農園 たなか / 工房ハレ" />
-                </div>
-
-                <div class="field-group">
-                  <label class="field-label">年代（1タップ選択）</label>
-                  <div id="ageGroupChips" class="chip-group"></div>
-                  <div class="age-detail-row">
-                    <label class="mini-note" for="exactAgeInput">詳細な年齢（あとで記入・任意）：</label>
-                    <input id="exactAgeInput" class="text-input input-xs" type="number" min="15" max="100" placeholder="例：38" />
-                    <span class="mini-note">歳</span>
-                  </div>
-                </div>
-
-                <div class="field-group">
-                  <label class="field-label">参加の立場</label>
-                  <div id="positionChips" class="chip-group"></div>
-                </div>
-
-                <!-- 社長・担当者選択時のみ表示：担当者氏名＆専用コード自動発行 -->
-                <div id="staffBox" class="staff-box hidden">
-                  <label class="field-label" for="staffNameInput">担当者氏名（マッチ後に自動開示）</label>
-                  <input id="staffNameInput" class="text-input" type="text" placeholder="例：山田 太郎" />
-                  <div id="generatedCodeBox" class="generated-code hidden">
-                    <div>
-                      <span class="mini-note">あなた専用の入力省略コード：</span>
-                      <strong id="generatedCodeText" class="code-pill">EN-0000</strong>
-                    </div>
-                    <button id="copyStaffCodeBtn" type="button" class="btn-link">コピー</button>
-                  </div>
+                  <input id="customActivityInput" class="text-input" type="text" placeholder="例：完熟いちご、小ロット試作" />
+                  <button id="addActivityBtn" type="button" class="btn btn-primary btn-sm">追加</button>
                 </div>
               </div>
 
-              <!-- 小カード② エリア・興味 -->
-              <div class="card">
-                <h2 class="card-title">② 主なエリア・興味があること</h2>
+              <hr class="divider" />
 
-                <div class="field-group">
-                  <label class="field-label" for="areaInput">主な活動エリア</label>
+              <!-- 親階層：掛け持ち・兼業を追加（役割・業種の大分類） -->
+              <div class="subrole-box">
+                <div class="subrole-head">
+                  <div class="hierarchy-title-row">
+                    <h3 class="subrole-title-oneline">掛け持ち 兼業を追加</h3>
+                    <span class="hierarchy-pill parent-pill">役割・業種</span>
+                  </div>
+                  <span class="mini-note">最大2つまで・前の画面に戻らず追加OK</span>
+                </div>
+                <div id="subRoleChips" class="chip-group"></div>
+                <div class="activity-helper-btns" style="margin-bottom:6px;">
+                  <button id="toggleCustomSubRoleBtn" type="button" class="btn btn-outline btn-sm">＋ リストにない兼業</button>
+                  <button id="openAllSubRolesBtn" type="button" class="btn btn-outline btn-sm">🔍 すべてのタブを見る</button>
+                </div>
+                <div id="customSubRoleBox" class="custom-activity-box hidden" style="margin-bottom:8px;">
+                  <label class="field-label" for="customSubRoleInput">リストにない兼業・業種（役割の大分類）</label>
                   <div class="inline-add">
-                    <input id="areaInput" class="text-input" type="text" placeholder="例：大阪府 高槻市 富田町" />
-                    <button id="geoBtn" type="button" class="btn btn-outline">📍 現在地取得</button>
-                  </div>
-                  <p id="geoStatus" class="mini-note"></p>
-                </div>
-
-                <div class="field-group">
-                  <label class="field-label">マッチ前の住所表示</label>
-                  <div class="segment-group" id="areaGranularityGroup">
-                    <button type="button" class="seg-btn active" data-granularity="broad">市町村まで（安心）</button>
-                    <button type="button" class="seg-btn" data-granularity="detail">町名まで（詳しく）</button>
+                    <input id="customSubRoleInput" class="text-input" type="text" placeholder="例：カメラマン、木工職人、カフェ経営、栄養士" />
+                    <button id="addSubRoleCustomBtn" type="button" class="btn btn-primary btn-sm">追加</button>
                   </div>
                 </div>
-
-                <div class="field-group">
-                  <label class="field-label">興味があること（複数選択）</label>
-                  <div id="interestChips" class="chip-group"></div>
-                </div>
-              </div>
-
-              <!-- 小カード③ ID・パスワード・紹介コード -->
-              <div class="card">
-                <h2 class="card-title">③ ログインID・紹介コード</h2>
-                <div class="two-col-fields">
-                  <div class="field-group">
-                    <label class="field-label" for="loginIdInput">ログインID</label>
-                    <input id="loginIdInput" class="text-input" type="text" placeholder="半角英数（例：tanaka_farm）" />
-                  </div>
-                  <div class="field-group">
-                    <label class="field-label" for="passwordInput">パスワード</label>
-                    <input id="passwordInput" class="text-input" type="password" placeholder="8文字以上" />
-                  </div>
-                </div>
-                <p class="mini-note">※10人テスト版ではこのブラウザ内にのみ安全に保存されます（外部送信なし）。</p>
-
-                <div class="referral-box">
-                  <label class="field-label" for="referralInput">🎁 紹介コード（お持ちの方）</label>
-                  <input id="referralInput" class="text-input" type="text" placeholder="招待URL経由なら自動入力されます" />
-                  <p class="mini-note">紹介したお仲間の企画が形（巣立ち）になると、行動に応じて運営から応援特典が届きます。</p>
-                </div>
-
-                <div class="step-actions">
-                  <button type="button" class="btn btn-ghost" data-prev="2">← 戻る</button>
-                  <button type="button" class="btn btn-primary" data-next="4">次へ：自慢・製品・連絡先 →</button>
-                </div>
+                <!-- 子階層：上で選んだ兼業ロールにぶら下がる具体的な活動 -->
+                <div id="subRoleActivitiesWrap" class="subrole-activities-wrap"></div>
               </div>
             </div>
 
-            <!-- STEP 4 -->
-            <div class="step-panel" data-panel="4">
-              <!-- 資産NGガードレール -->
-              <div class="safety-banner">
+            <!-- 今のあなたに一番近いのは？（Step 3の入力内容を自動で最適化） -->
+            <div class="card reg-card">
+              <div class="reg-step-head" style="margin-bottom:10px;">
+                <h2 class="reg-title-oneline">今のあなたに一番近いのは？</h2>
+                <p class="reg-subtitle">選んだタイプに合わせて、次の入力項目をピッタリ整理します。</p>
+              </div>
+              <p id="step2StageErrorMsg" class="field-error hidden">⚠️ いちばん近いものを1つ選んでください。</p>
+              <div id="userStageList" class="stage-choice-list"></div>
+
+              <div class="step-actions">
+                <button type="button" class="btn btn-ghost" data-prev="1">← 戻る</button>
+                <button id="step2NextBtn" type="button" class="btn btn-accent">次へ</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==================== STEP 3：熱量ゾーン（タイプ別にフォームを出し分け） ==================== -->
+          <div class="step-panel" data-panel="3">
+            <div class="card reg-card">
+              <div class="reg-step-head">
+                <span id="step3TypeBadge" class="stage-pill">🏭 すでに作っている</span>
+                <h2 id="step3Heading" class="card-title" style="margin-top:6px;">自慢の素材・商品を教えてください</h2>
+                <p id="step3Desc" class="reg-subtitle">熱量が高いうちにサクッと入力（飛ばしてあとで書いてもOK）</p>
+              </div>
+
+              <!-- 安心ガードレール（事業者・企画・スキル向けのみ表示） -->
+              <div id="step3SafetyBanner" class="safety-banner">
                 <strong>🛡️ 安心・対等なモノづくりの約束</strong>
-                <p>年商・資本金・資産などの金額は<strong>絶対に書かないでください</strong>。規模ではなく「素材・技術・想い」で繋がる場所です。</p>
+                <p>年商・資本金・資産などの金額は<strong>書かないでください</strong>。規模ではなく「素材・技術・想い」で繋がる場所です。</p>
               </div>
 
-              <!-- 仕事性格診断プレースホルダー -->
-              <div class="card card-soft">
-                <div class="diag-head">
-                  <div>
-                    <h2 class="card-title">🧠 仕事性格診断（UI完成後に実装予定）</h2>
-                    <p class="mini-note">「簡易（3問）」と「詳細（10問・相性絞り込み解放）」の2モードを用意予定</p>
-                  </div>
-                  <span class="status-tag">準備中</span>
-                </div>
-                <div class="diag-preview-btns">
-                  <button type="button" class="btn btn-outline btn-sm" disabled>⚡ 簡易診断（15秒）</button>
-                  <button type="button" class="btn btn-outline btn-sm" disabled>🔍 詳細診断（相性スコア解放）</button>
-                </div>
-              </div>
-
-              <!-- 生産能力・自慢 -->
-              <div class="card">
-                <h2 class="card-title">自慢ポイント・設備・生産能力（飛ばしてもOK）</h2>
-
+              <!-- 【タイプA：すでに作っている】＆【タイプC：技術・販路】共通エリア -->
+              <div id="stageBlockMakerSkill" class="stage-block">
                 <div class="field-group">
-                  <label class="field-label" for="capacityInput">設備・作れる量（生産能力）</label>
+                  <label id="capacityLabel" class="field-label" for="capacityInput">設備・作れる量（生産能力）</label>
+                  <p class="mini-note" style="margin:0 0 8px;">当てはまるものをタップ（複数OK・まだ模索中でもOK）</p>
                   <div id="capacityQuickChips" class="chip-group chip-group-sm"></div>
-                  <input id="capacityInput" class="text-input" type="text" placeholder="例：完熟みかん週50kgまで / 真空パック機・急速冷凍庫あり" />
+
+                  <div class="activity-helper-btns" style="margin-bottom:8px;">
+                    <button id="toggleCustomCapacityBtn" type="button" class="btn btn-outline btn-sm">＋ リストにない項目</button>
+                    <button id="openAllCapacitiesBtn" type="button" class="btn btn-outline btn-sm">🔍 すべてのタブを見る</button>
+                  </div>
+
+                  <div id="customCapacityBox" class="custom-activity-box hidden" style="margin-bottom:10px;">
+                    <label id="customCapacityLabel" class="field-label" for="customCapacityInput">リストにない設備・対応規模を追加</label>
+                    <div class="inline-add">
+                      <input id="customCapacityInput" class="text-input" type="text" placeholder="例：最小20個から試作OK、乾燥機あり、英語対応OK" />
+                      <button id="addCapacityTagBtn" type="button" class="btn btn-primary btn-sm">追加</button>
+                    </div>
+                  </div>
+
+                  <input id="capacityInput" class="text-input" type="text" placeholder="補足メモ（任意：例 週50kgまで、詳しい条件など）" />
                 </div>
 
                 <div class="field-group">
                   <div class="label-with-toggle">
-                    <label class="field-label" for="prideInput">自慢ポイント（農作物・技術など）</label>
+                    <label id="prideLabel" class="field-label" for="prideInput">自慢ポイント（農作物・技術など）</label>
                     <div class="mini-toggle" id="prideVisibilityToggle">
                       <button type="button" class="active" data-vis="public">🌐 みんなに見せる</button>
-                      <button type="button" data-vis="match">🤝 マッチした相手だけ</button>
+                      <button type="button" data-vis="match">🤝 マッチ後だけ</button>
                     </div>
                   </div>
                   <textarea id="prideInput" class="text-area" rows="2" placeholder="例：糖度14度以上の減農薬みかんを家族で丁寧に育てています。"></textarea>
@@ -287,85 +217,281 @@
 
                 <div class="field-group">
                   <label class="field-label" for="secretPrideInput">🔒 マッチした相手だけに伝えたい条件・強み（任意）</label>
-                  <textarea id="secretPrideInput" class="text-area" rows="2" placeholder="例：規格外B品ならキロ単価の相談OK／未公開の試作レシピあり"></textarea>
-                </div>
-              </div>
-
-              <!-- 自社商品・HP（ビジュアルカード登録） -->
-              <div class="card">
-                <h2 class="card-title">📦 自社商品・公式HP（URLではなくカード表示）</h2>
-                <p class="card-desc">サイトや商品のURLを登録すると、ホームや名刺には見やすいビジュアルカードで表示されます。</p>
-
-                <div class="product-adder">
-                  <div class="two-col-fields">
-                    <input id="prodTitleInput" class="text-input" type="text" placeholder="商品名 or サイト名（例：完熟みかんジュース）" />
-                    <select id="prodIconSelect" class="text-input">
-                      <option value="🍊">🍊 農産物・フルーツ</option>
-                      <option value="🥬">🥬 野菜・ハーブ</option>
-                      <option value="🍯">🍯 加工品・瓶詰め</option>
-                      <option value="🍰">🍰 スイーツ・パン</option>
-                      <option value="📦">📦 パッケージ・雑貨</option>
-                      <option value="🌐">🌐 公式ホームページ</option>
-                    </select>
-                  </div>
-                  <div class="two-col-fields">
-                    <input id="prodNoteInput" class="text-input" type="text" placeholder="ひとこと特徴（例：無添加ストレート100%）" />
-                    <input id="prodUrlInput" class="text-input" type="url" placeholder="https://example.com（任意）" />
-                  </div>
-                  <button id="addProductBtn" type="button" class="btn btn-outline btn-sm">＋ 商品・HPカードを追加</button>
+                  <textarea id="secretPrideInput" class="text-area" rows="2" placeholder="例：規格外B品ならキロ単価の相談OK／初回試作の特別対応あり"></textarea>
                 </div>
 
-                <div id="addedProductList" class="added-product-list"></div>
-              </div>
+                <hr class="divider" />
 
-              <!-- マッチ後に自動開示される連絡先 -->
-              <div class="card">
-                <h2 class="card-title">🤝 マッチ後に自動開示される連絡先</h2>
-                <p class="card-desc">マッチング成立ボタンを押すまで相手には絶対に表示されません。</p>
-
-                <div class="two-col-fields">
-                  <div class="field-group">
-                    <label class="field-label" for="companyNameInput">正式な会社名・屋号</label>
-                    <input id="companyNameInput" class="text-input" type="text" placeholder="例：株式会社たなか農園" />
-                  </div>
-                  <div class="field-group">
-                    <label class="field-label" for="phoneInput">電話番号（マッチ後ワンタップ発信）</label>
-                    <input id="phoneInput" class="text-input" type="tel" placeholder="例：090-1234-5678" />
-                  </div>
-                </div>
-
-                <p class="safe-tip">💬 <strong>LINE IDなどのSNS連絡先は危険防止のためここには書かず、マッチ後のチャット内で必要に応じて交換してください。</strong></p>
-
+                <!-- 自社商品・HP・実績（ビジュアルカード登録） -->
                 <div class="field-group">
-                  <label class="field-label" for="freeMemoInput">自由記載欄（飛ばしてもOK）</label>
-                  <textarea id="freeMemoInput" class="text-area" rows="2" placeholder="例：まずはオンライン15分の雑談からでも大歓迎です！"></textarea>
-                </div>
-
-                <div class="step-actions step-actions-finish">
-                  <button type="button" class="btn btn-ghost" data-prev="3">← 戻る</button>
-                  <div class="finish-btns">
-                    <button id="skipFinishBtn" type="button" class="btn btn-outline">あとで記入して始める</button>
-                    <button id="completeRegBtn" type="button" class="btn btn-accent">登録完了してEN開発へ →</button>
+                  <label id="productSectionLabel" class="field-label">📦 自社商品・公式HP（URLではなくカード表示）</label>
+                  <p class="mini-note" style="margin-bottom:8px;">サイトや商品のURLを登録すると、名刺に見やすいカードで表示されます。</p>
+                  <div class="product-adder">
+                    <div class="two-col-fields">
+                      <input id="prodTitleInput" class="text-input" type="text" placeholder="商品名 or サイト名" />
+                      <select id="prodIconSelect" class="text-input">
+                        <option value="🍊">🍊 農産物・フルーツ</option>
+                        <option value="🥬">🥬 野菜・ハーブ</option>
+                        <option value="🍯">🍯 加工品・瓶詰め</option>
+                        <option value="🍰">🍰 スイーツ・パン</option>
+                        <option value="🎨">🎨 デザイン・制作実績</option>
+                        <option value="🌐">🌐 公式ホームページ</option>
+                      </select>
+                    </div>
+                    <div class="two-col-fields">
+                      <input id="prodNoteInput" class="text-input" type="text" placeholder="ひとこと特徴（例：無添加100%）" />
+                      <input id="prodUrlInput" class="text-input" type="url" placeholder="https://example.com（任意）" />
+                    </div>
+                    <button id="addProductBtn" type="button" class="btn btn-outline btn-sm">＋ カードを追加</button>
                   </div>
+                  <div id="addedProductList" class="added-product-list"></div>
+                </div>
+              </div>
+
+              <!-- 【タイプB：作りたい・アイデアあり】専用エリア -->
+              <div id="stageBlockIdea" class="stage-block hidden">
+                <div class="field-group">
+                  <label class="field-label" for="ideaMemoInput">💡 作りたいもの・アイデアメモ</label>
+                  <textarea id="ideaMemoInput" class="text-area" rows="3" placeholder="例：地元の規格外みかんを使った、甘すぎない大人向けのクラフトシロップを作ってみたい！"></textarea>
+                </div>
+                <div class="field-group">
+                  <label class="field-label">🤝 いま探している仲間（複数選択OK）</label>
+                  <div id="seekingPartnerChips" class="chip-group"></div>
+                </div>
+                <div class="field-group">
+                  <label class="field-label" for="ideaNoteInput">いま悩んでいること・相談したいこと（任意）</label>
+                  <textarea id="ideaNoteInput" class="text-area" rows="2" placeholder="例：小ロットで試作してくれる加工所が見つからず困っています。"></textarea>
+                </div>
+              </div>
+
+              <!-- 【タイプD：まずは面白い人と出会いたい】専用エリア -->
+              <div id="stageBlockConnect" class="stage-block hidden">
+                <div class="field-group">
+                  <label class="field-label">✨ 興味があるテーマ（複数選択OK）</label>
+                  <div id="interestChips" class="chip-group"></div>
+                </div>
+                <div class="field-group">
+                  <label class="field-label" for="connectBioInput">💬 ひとこと自己紹介（任意）</label>
+                  <textarea id="connectBioInput" class="text-area" rows="3" placeholder="例：まだ具体案はないですが、関西のモノづくり仲間とまずは雑談から繋がれたら嬉しいです！"></textarea>
+                </div>
+              </div>
+
+              <!-- 【タイプE：応援したい・買いたい】専用エリア -->
+              <div id="stageBlockFan" class="stage-block hidden">
+                <div class="field-group">
+                  <label class="field-label">🍽️ 好きな食べ物・応援したいジャンル（複数選択OK）</label>
+                  <div id="fanGenreChips" class="chip-group"></div>
+                </div>
+                <label class="check-row fan-check-box">
+                  <input id="fanMonitorCheck" type="checkbox" checked />
+                  <span>🎁 新商品の試食モニターや予約早割の情報を受け取りたい</span>
+                </label>
+                <div class="field-group" style="margin-top:12px;">
+                  <label class="field-label" for="fanMessageInput">📣 作り手さんへのひとこと（任意）</label>
+                  <textarea id="fanMessageInput" class="text-area" rows="2" placeholder="例：美味しい無添加スイーツや農家さんのレスキュー商品を楽しみにしています！"></textarea>
+                </div>
+              </div>
+
+              <!-- 仕事性格診断（将来実装枠・控えめに1行配置） -->
+              <div class="diag-mini-bar">
+                <span>🧠 仕事性格診断（簡易3問／詳細10問）</span>
+                <span class="status-tag">UI完成後に実装予定</span>
+              </div>
+
+              <div class="step-actions">
+                <button type="button" class="btn btn-ghost" data-prev="2">← 戻る</button>
+                <div class="finish-btns">
+                  <button type="button" class="btn btn-outline btn-sm" data-next="4">あとで書く</button>
+                  <button type="button" class="btn btn-accent" data-next="4">次へ</button>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- 右：リアルタイム・デジタル名刺プレビュー -->
-          <aside class="card-preview-col">
-            <div class="sticky-card-wrap">
-              <div class="preview-header">
-                <span class="preview-label">リアルタイム・デジタル名刺</span>
-                <div class="card-mode-switch" id="cardModeSwitch">
-                  <button type="button" class="active" data-mode="pre">👀 マッチ前</button>
-                  <button type="button" data-mode="post">🤝 マッチ後</button>
+          <!-- ==================== STEP 4：基本情報（1人で使う vs 複数人チーム ＋ パスワードなし注釈） ==================== -->
+          <div class="step-panel" data-panel="4">
+            <!-- パスワード不要ログイン認証の注釈 -->
+            <div class="auth-note-banner">
+              <strong>🔐 ログイン認証について</strong>
+              <p>本番では <strong>LINE / Google / メールコード認証（パスワード不要）</strong> で安全にログインできます。<br /><span class="auth-test-note">（現在はテスト版のためログイン入力を省略中です）</span></p>
+            </div>
+
+            <!-- 使い方の2択（人数ベース・応援タイプは自動で1人モード） -->
+            <div id="accountTypeCard" class="card reg-card">
+              <div class="reg-step-head" style="margin-bottom:10px;">
+                <h2 class="reg-title-oneline">このアカウントの使い方は？</h2>
+                <p class="reg-subtitle">法人格ではなく「何人で使うか」で選んでください。</p>
+              </div>
+              <div class="account-type-grid" id="accountTypeGroup">
+                <button type="button" class="account-tile active" data-acctype="solo">
+                  <span class="role-icon">👤</span>
+                  <span class="role-title">1人で使う</span>
+                  <span class="role-sub">個人・フリー・1人農家・1人代表</span>
+                </button>
+                <button type="button" class="account-tile" data-acctype="team">
+                  <span class="role-icon">🏢</span>
+                  <span class="role-title">複数人・チームで使う</span>
+                  <span class="role-sub">会社・家族経営（最大5名まで登録）</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 共通プロフィール（写真・活動名・年代・エリア） -->
+            <div class="card reg-card">
+              <h2 class="card-title">基本プロフィール</h2>
+
+              <div class="photo-row">
+                <div class="photo-preview-wrap">
+                  <img id="photoPreviewImg" class="photo-preview hidden" alt="トップ写真プレビュー" />
+                  <div id="photoPlaceholder" class="photo-placeholder">🌱</div>
+                </div>
+                <div class="photo-meta">
+                  <label class="btn btn-outline btn-sm" for="photoInput">📷 トップ写真を選ぶ</label>
+                  <input id="photoInput" type="file" accept="image/*" class="sr-only" />
+                  <p id="photoReviewNote" class="mini-note">※登録後、運営審査（安全確認）が完了すると公開されます。</p>
                 </div>
               </div>
-              <div id="liveBusinessCard" class="business-card"></div>
-              <p class="preview-caption">※上のスイッチで「マッチ前／マッチ後」の見え方をいつでも確認できます。</p>
+
+              <!-- 好きなこと・雰囲気の写真（最大5枚・任意） -->
+              <div class="field-group fav-photos-box">
+                <div class="fav-photos-head">
+                  <label class="field-label" style="margin:0;">📸 好きなこと・雰囲気の写真（任意・最大5枚）</label>
+                  <span id="favPhotosCountText" class="mini-note">0 / 5 枚</span>
+                </div>
+                <p class="mini-note" style="margin:2px 0 8px;">畑の風景・作品・趣味・愛用品など、人柄が伝わる写真を最大5枚まで載せられます。</p>
+                <div id="favPhotosGrid" class="fav-photos-grid"></div>
+                <div style="margin-top:8px;">
+                  <label id="favPhotosUploadLabel" class="btn btn-outline btn-sm" for="favoritePhotosInput">＋ 好きなこと写真を追加</label>
+                  <input id="favoritePhotosInput" type="file" accept="image/*" multiple class="sr-only" />
+                </div>
+              </div>
+
+              <div class="field-group">
+                <label class="field-label" for="displayNameInput">このサイトでの活動名 <span class="req">必須</span></label>
+                <p id="displayNameErrorMsg" class="field-error hidden">⚠️ このサイトでの活動名を入力してください。</p>
+                <input id="displayNameInput" class="text-input" type="text" placeholder="例：高槻みかん農園 たなか / 工房ハレ / ゆうこ" />
+              </div>
+
+              <div class="field-group">
+                <label class="field-label">年代（1タップ選択）</label>
+                <div id="ageGroupChips" class="chip-group"></div>
+                <div class="age-detail-row">
+                  <label class="mini-note" for="exactAgeInput">詳細な年齢（あとで記入・任意）：</label>
+                  <input id="exactAgeInput" class="text-input input-xs" type="number" min="15" max="100" placeholder="例：38" />
+                  <span class="mini-note">歳</span>
+                </div>
+              </div>
+
+              <div class="field-group">
+                <label class="field-label" for="areaInput">主な活動エリア</label>
+                <div class="inline-add">
+                  <input id="areaInput" class="text-input" type="text" placeholder="例：大阪府 高槻市 富田町" />
+                  <button id="geoBtn" type="button" class="btn btn-outline btn-sm">📍 現在地</button>
+                </div>
+                <p id="geoStatus" class="mini-note"></p>
+              </div>
+
+              <div class="field-group">
+                <label class="field-label">マッチ前の住所表示</label>
+                <div class="segment-group" id="areaGranularityGroup">
+                  <button type="button" class="seg-btn active" data-granularity="broad">市町村まで（安心）</button>
+                  <button type="button" class="seg-btn" data-granularity="detail">町名まで（詳しく）</button>
+                </div>
+              </div>
+
+              <div class="field-group" style="margin-bottom:0;">
+                <label class="field-label" for="profileBioInput">✍️ 自己紹介文（任意）</label>
+                <textarea id="profileBioInput" class="text-area" rows="3" placeholder="例：大阪・高槻で家族とフルーツを育てています！異業種の方とワクワクするコラボができたら嬉しいです。まずは気軽に話しかけてください！"></textarea>
+              </div>
             </div>
-          </aside>
+
+            <!-- 【1人で使う】連絡先ブロック（応援・買いたいタイプは自動で非表示） -->
+            <div id="soloContactCard" class="card reg-card">
+              <h2 class="card-title">🤝 マッチ後に自動開示される連絡先（任意）</h2>
+              <p class="card-desc">マッチ成立まで相手には絶対に表示されません。</p>
+
+              <div class="two-col-fields">
+                <div class="field-group">
+                  <label class="field-label" for="companyNameInput">正式な屋号・会社名</label>
+                  <input id="companyNameInput" class="text-input" type="text" placeholder="例：たなか農園 / 個人なら空欄OK" />
+                </div>
+                <div class="field-group">
+                  <label class="field-label" for="phoneInput">電話番号（マッチ後ワンタップ発信）</label>
+                  <input id="phoneInput" class="text-input" type="tel" placeholder="例：090-1234-5678" />
+                </div>
+              </div>
+              <p class="safe-tip">💬 <strong>LINE IDなどのSNS連絡先は安全のためここには書かず、マッチ後のチャット内で交換してください。</strong></p>
+            </div>
+
+            <!-- 【複数人・チームで使う】会社親＋担当者最大5名ブロック -->
+            <div id="teamContactCard" class="card reg-card hidden">
+              <!-- 既存チームコードによる合流・入力省略 -->
+              <div class="team-code-import-box">
+                <div class="code-shortcut-head">
+                  <div>
+                    <p class="mini-title">⚡ 会社のチームコードをお持ちの方（入力省略）</p>
+                    <p class="mini-note">本番では自分のLINE/メールでログインし、このコードで会社に合流します</p>
+                  </div>
+                  <button id="demoCodeBtn" type="button" class="btn-link">サンプル「EN-TK88」を試す</button>
+                </div>
+                <div class="inline-add">
+                  <input id="importCodeInput" class="text-input" type="text" placeholder="例：EN-TK88" />
+                  <button id="applyCodeBtn" type="button" class="btn btn-outline btn-sm">反映</button>
+                </div>
+                <p id="codeApplyMsg" class="feedback-msg"></p>
+              </div>
+
+              <h2 class="card-title" style="margin-top:14px;">🏢 会社・チーム情報（マッチ後に自動開示）</h2>
+              <div class="two-col-fields">
+                <div class="field-group">
+                  <label class="field-label" for="teamCompanyInput">正式な会社名・農園名</label>
+                  <input id="teamCompanyInput" class="text-input" type="text" placeholder="例：株式会社たなか農園" />
+                </div>
+                <div class="field-group">
+                  <label class="field-label" for="teamPhoneInput">代表電話番号</label>
+                  <input id="teamPhoneInput" class="text-input" type="tel" placeholder="例：072-000-1234" />
+                </div>
+              </div>
+
+              <div id="teamCodeDisplayBox" class="generated-code hidden">
+                <div>
+                  <span class="mini-note">この会社専用のチーム合流コード：</span>
+                  <strong id="generatedTeamCodeText" class="code-pill">EN-0000</strong>
+                </div>
+                <button id="copyTeamCodeBtn" type="button" class="btn-link">コピー</button>
+              </div>
+
+              <hr class="divider" />
+
+              <!-- 担当者リスト（初回は1名のみ表示・最大5名まで追加可能） -->
+              <div class="subrole-head">
+                <h3 style="font-size:0.95rem;">👥 担当者リスト（最大5名）</h3>
+                <span class="mini-note">まずはご自身の1名分だけ入力でOK。2〜5人目はあとから追加できます。</span>
+              </div>
+
+              <div id="teamMembersEditor" class="team-members-editor"></div>
+
+              <button id="addTeamMemberBtn" type="button" class="btn btn-outline btn-sm" style="margin-top:6px;">
+                ＋ 担当者を追加（現在 <span id="teamMemberCountText">1</span> / 5 名）
+              </button>
+
+              <p class="safe-tip" style="margin-top:12px;">💬 <strong>直通電話が空欄の担当者は代表番号が使われます。LINE IDはチャット内で交換してください。</strong></p>
+            </div>
+
+            <!-- 紹介コード＆完了ボタン -->
+            <div class="card reg-card">
+              <div class="field-group">
+                <label class="field-label" for="referralInput">🎁 紹介コード（お持ちの方・任意）</label>
+                <input id="referralInput" class="text-input" type="text" placeholder="招待URL経由なら自動入力されます" />
+                <p class="mini-note">紹介したお仲間の企画が形（巣立ち）になると、運営から応援特典が届きます。</p>
+              </div>
+
+              <div class="step-actions">
+                <button type="button" class="btn btn-ghost" data-prev="3">← 戻る</button>
+                <button id="completeRegBtn" type="button" class="btn btn-accent">🎉 登録完了して名刺を作る</button>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -393,7 +519,7 @@
                 </div>
                 <div class="stat-box">
                   <span class="stat-num" id="statOffers">0</span>
-                  <span class="stat-lbl">素材・スキル置き場</span>
+                  <span class="stat-lbl">素材・困りごと</span>
                 </div>
                 <div class="stat-box">
                   <span class="stat-num" id="statMatches">0</span>
@@ -408,7 +534,7 @@
 
             <div class="card">
               <div class="card-head-row">
-                <h3 class="card-title">自分のデジタル名刺プレビュー</h3>
+                <h3 class="card-title">自分のデジタル名刺</h3>
                 <div class="card-mode-switch" id="homeCardModeSwitch">
                   <button type="button" class="active" data-mode="pre">👀 マッチ前</button>
                   <button type="button" data-mode="post">🤝 マッチ後</button>
@@ -420,7 +546,7 @@
         </div>
       </section>
 
-            <!-- ==================== つぶやき＆動画タブ（一般＆農家レスキュー） ==================== -->
+      <!-- ==================== つぶやき＆動画タブ（一般＆農家レスキュー） ==================== -->
       <section id="view-feed" class="view-section">
         <div class="en-header">
           <div>
@@ -440,11 +566,11 @@
         <div id="feedListContainer" class="feed-list"></div>
       </section>
 
-      <!-- ==================== EN（開発ルーム）タブ ==================== -->
+      <!-- ==================== EN（開発ルーム一覧）タブ ==================== -->
       <section id="view-en" class="view-section">
         <div class="en-header">
           <div>
-            <p class="eyebrow">4ピースで形にする共創スペース</p>
+            <p class="eyebrow">2社から即スタート・途中EN追加OK</p>
             <h2>EN（開発ルーム）</h2>
           </div>
           <button id="openPostModalBtn" type="button" class="btn btn-accent">＋ 出す</button>
@@ -455,13 +581,11 @@
           <p>アイス・ジャム・焼き菓子などのカテゴリごとに「空の巣 → 開発卵 → 完成巣立ち」が横に並びます。</p>
         </div>
 
-        <!-- 切替：企画に参加 / 素材・スキルを置く -->
         <div class="en-mode-tabs" id="enModeTabs">
           <button type="button" class="active" data-enmode="projects">🧩 企画に参加する</button>
           <button type="button" data-enmode="offers">🌱 素材・困りごとを置く（企画化OK）</button>
         </div>
 
-        <!-- 絞り込みチップ -->
         <div class="filter-bar" id="enFilterBar">
           <button type="button" class="filter-chip active" data-filter="all">すべて</button>
           <button type="button" class="filter-chip" data-filter="last1">🔥 あと1ピース</button>
@@ -469,14 +593,11 @@
           <button type="button" class="filter-chip" data-filter="kansai">📍 大阪・京都</button>
         </div>
 
-        <!-- 企画一覧 / 0件＋イメージ見本1個 -->
         <div id="enProjectsContainer" class="en-grid"></div>
-
-        <!-- 素材・スキル1行置き場 -->
         <div id="enOffersContainer" class="offer-list hidden"></div>
       </section>
 
-            <!-- ==================== フル画面・専用EN開発ルーム ==================== -->
+      <!-- ==================== フル画面・専用EN開発ルーム ==================== -->
       <section id="view-en-room" class="view-section">
         <div class="room-topbar">
           <button id="backToEnListBtn" type="button" class="btn btn-outline btn-sm">← EN一覧へ</button>
@@ -486,7 +607,6 @@
           </div>
         </div>
 
-        <!-- ルーム概要ヘッダー -->
         <div class="card room-hero-card">
           <div class="room-hero-head">
             <div>
@@ -497,23 +617,19 @@
             <div id="roomActionSlot"></div>
           </div>
 
-          <!-- 添付写真・動画プレビュー -->
           <div id="roomMediaPreview" class="media-preview-row hidden"></div>
 
-          <!-- 参加ピース一覧（2人から開始OK＋途中EN追加ボタン） -->
           <div class="room-pieces-wrap">
             <div id="roomPiecesList" class="room-pieces-list"></div>
             <button id="openAddEnModalBtn" type="button" class="btn btn-outline btn-sm">＋ 必要なEN（企業・職種）を追加募集</button>
           </div>
         </div>
 
-        <!-- 将来ゾーン枠 -->
         <div class="future-zone" data-zone="true">
           <span class="zone-badge">🥚 将来ゾーン（卵デコ → 合体エンちゃん孵化 → 全画面巣立ち動画）</span>
           <p>マッチ直後は卵にスタンプを貼ってアイスブレイク → 方向性決定で合体エンちゃん誕生 → 📌固定した公開ストーリーを吸って巣立ち！</p>
         </div>
 
-        <!-- ルーム内 2タブ構成 -->
         <div class="en-mode-tabs" id="roomInnerTabs">
           <button type="button" class="active" data-roomtab="talk">💬 トーク ＆ 📌固定メモ</button>
           <button type="button" data-roomtab="members">👥 メンバー ＆ 応募承認</button>
@@ -534,6 +650,11 @@
           <div class="card">
             <div id="roomChatMessages" class="room-chat-messages"></div>
             <div id="roomChatInputWrap" class="room-chat-composer">
+              <!-- 複数人チーム時のみ表示：いまの発言者を1タップ切替 -->
+              <div id="teamSpeakerBar" class="team-speaker-bar hidden">
+                <span class="mini-note">いまの発言者：</span>
+                <div id="teamSpeakerChips" class="chip-group chip-group-sm" style="margin:0;"></div>
+              </div>
               <div class="composer-tools">
                 <label class="btn btn-outline btn-sm" for="roomMediaInput">📎 写真・動画</label>
                 <input id="roomMediaInput" type="file" accept="image/*,video/*" class="sr-only" />
@@ -593,7 +714,7 @@
       </section>
     </main>
 
-    <!-- スクロール連動ボトムナビ（非重複4タブ） -->
+    <!-- スクロール連動ボトムナビ（5タブ・登録画面中は非表示） -->
     <nav id="bottomNav" class="bottom-nav">
       <button type="button" class="nav-item" data-tab="home">
         <span class="nav-icon">🏠</span>
@@ -618,6 +739,102 @@
     </nav>
   </div>
 
+    <!-- ==================== モーダル：すべての規模・設備・得意なことを検索して選ぶ ==================== -->
+  <div id="allCapacitiesModal" class="modal-backdrop hidden">
+    <div class="modal-card modal-lg">
+      <div class="modal-head">
+        <h3>🔍 すべての規模・設備・得意なことから探す</h3>
+        <button type="button" class="icon-close" data-close-modal="allCapacitiesModal">✕</button>
+      </div>
+      <div class="field-group" style="margin-bottom:10px;">
+        <input id="allCapacitiesSearchInput" class="text-input" type="search" placeholder="キーワード検索（例：小ロット、冷凍、印刷、マルシェ）" />
+      </div>
+      <div id="allCapacitiesResult" class="all-activities-result"></div>
+      <div style="margin-top:12px;">
+        <button type="button" class="btn btn-primary btn-full" data-close-modal="allCapacitiesModal">選んだ内容で閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== モーダル：写真拡大プレビュー ==================== -->
+  <div id="photoLightboxModal" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width:480px;padding:12px;text-align:center;">
+      <div class="modal-head" style="margin-bottom:8px;">
+        <h3 style="font-size:0.95rem;">📸 写真プレビュー</h3>
+        <button type="button" class="icon-close" data-close-modal="photoLightboxModal">✕</button>
+      </div>
+      <img id="photoLightboxImg" src="" alt="拡大写真" style="width:100%;max-height:70vh;object-fit:contain;border-radius:10px;" />
+    </div>
+  </div>
+
+  <!-- ==================== モーダル（親階層）：すべての兼業・業種（役割）から探す ==================== -->
+  <div id="allSubRolesModal" class="modal-backdrop hidden">
+    <div class="modal-card modal-lg">
+      <div class="modal-head">
+        <div>
+          <span class="hierarchy-pill parent-pill" style="margin-bottom:4px;">親階層：役割・業種</span>
+          <h3>🔍 すべての兼業・業種から探す</h3>
+        </div>
+        <button type="button" class="icon-close" data-close-modal="allSubRolesModal">✕</button>
+      </div>
+      <p class="mini-note" style="margin:0 0 10px;">「掛け持ち・兼業」として追加する役割・業種を選べます（具体的な活動は次の子階層で選べます）。</p>
+      <div class="field-group" style="margin-bottom:10px;">
+        <input id="allSubRolesSearchInput" class="text-input" type="search" placeholder="業種・役割を検索（例：デザイナー、木工、カフェ、物流）" />
+      </div>
+      <div id="allSubRolesResult" class="all-activities-result"></div>
+      <div style="margin-top:12px;">
+        <button type="button" class="btn btn-primary btn-full" data-close-modal="allSubRolesModal">選んだ兼業で閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== モーダル（子階層）：具体的な活動から探す（対象ロール優先＋切替可） ==================== -->
+  <div id="allActivitiesModal" class="modal-backdrop hidden">
+    <div class="modal-card modal-lg">
+      <div class="modal-head">
+        <div>
+          <span class="hierarchy-pill child-pill" style="margin-bottom:4px;">子階層：具体的な活動</span>
+          <h3 id="allActivitiesModalTitle">🔍 具体的な活動から探す</h3>
+        </div>
+        <button type="button" class="icon-close" data-close-modal="allActivitiesModal">✕</button>
+      </div>
+      <div class="segment-group" id="allActivitiesScopeSwitch" style="margin-bottom:10px;">
+        <button type="button" class="seg-btn active" data-actscope="focused" id="actScopeFocusedBtn">この役割の活動だけ</button>
+        <button type="button" class="seg-btn" data-actscope="all">全ジャンルの活動を見る</button>
+      </div>
+      <div class="field-group" style="margin-bottom:10px;">
+        <input id="allActivitiesSearchInput" class="text-input" type="search" placeholder="活動キーワード検索（例：ジャム、いちご、印刷、マルシェ）" />
+      </div>
+      <div id="allActivitiesResult" class="all-activities-result"></div>
+      <div style="margin-top:12px;">
+        <button type="button" class="btn btn-primary btn-full" data-close-modal="allActivitiesModal">選んだ活動で閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== モーダル：登録完了「完成マイ名刺」カードお披露目演出 ==================== -->
+  <div id="cardRevealModal" class="modal-backdrop hidden">
+    <div class="modal-card modal-reveal">
+      <div class="reveal-header">
+        <span class="reveal-sparkle">✨ 登録完了！</span>
+        <h2>あなただけのデジタル名刺が<br />完成しました！</h2>
+        <div class="card-mode-switch" id="revealCardModeSwitch" style="margin-top:10px;">
+          <button type="button" class="active" data-mode="pre">👀 マッチ前</button>
+          <button type="button" data-mode="post">🤝 マッチ後</button>
+        </div>
+      </div>
+
+      <div class="reveal-card-stage">
+        <div id="revealBusinessCard" class="business-card reveal-card-anim"></div>
+      </div>
+
+      <div class="reveal-actions">
+        <button id="revealGoEnBtn" type="button" class="btn btn-accent btn-full">🤝 EN開発ルームを見に行く</button>
+        <button id="revealGoHomeBtn" type="button" class="btn btn-outline btn-full">🏠 マイページ（ホーム）へ</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== モーダル：企画・素材を出す ==================== -->
   <div id="postModal" class="modal-backdrop hidden">
     <div class="modal-card">
@@ -627,10 +844,9 @@
       </div>
       <div class="segment-group" id="postTypeSwitch">
         <button type="button" class="seg-btn active" data-posttype="project">🧩 開発企画を出す</button>
-        <button type="button" class="seg-btn" data-posttype="offer">🌱 素材・スキル1行置き場</button>
+        <button type="button" class="seg-btn" data-posttype="offer">🌱 素材・困りごとを置く</button>
       </div>
 
-      <!-- 企画投稿フォーム -->
       <form id="projectPostForm" class="modal-form">
         <div class="field-group">
           <label class="field-label" for="projTitle">企画タイトル（15文字目安）</label>
@@ -675,7 +891,6 @@
         <button type="submit" class="btn btn-accent btn-full">この企画をEN開発ルームに出す</button>
       </form>
 
-      <!-- 素材・困りごと置き場フォーム -->
       <form id="offerPostForm" class="modal-form hidden">
         <div class="field-group">
           <label class="field-label">種別タブ（複数選択OK）</label>
@@ -703,18 +918,7 @@
     </div>
   </div>
 
-  <!-- ==================== モーダル：企画詳細＆マッチング・簡易トーク ==================== -->
-  <div id="detailModal" class="modal-backdrop hidden">
-    <div class="modal-card modal-lg">
-      <div class="modal-head">
-        <h3 id="detailTitle">企画詳細</h3>
-        <button type="button" class="icon-close" data-close-modal="detailModal">✕</button>
-      </div>
-      <div id="detailBody"></div>
-    </div>
-  </div>
-
-    <!-- ==================== モーダル：つぶやき＆動画・農家レスキュー投稿 ==================== -->
+  <!-- ==================== モーダル：つぶやき＆動画・農家レスキュー投稿 ==================== -->
   <div id="feedPostModal" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-head">
@@ -731,7 +935,7 @@
         </div>
         <div class="field-group">
           <label class="field-label" for="feedTextInput">本文</label>
-          <textarea id="feedTextInput" class="text-area" rows="3" required placeholder="例：台風前の早摘みみかん50kg、どなたか試作や店頭販売で助けてください！／今日の試作ジャム最高でした！"></textarea>
+          <textarea id="feedTextInput" class="text-area" rows="3" required placeholder="例：台風前の早摘みみかん50kg、どなたか試作や店頭販売で助けてください！"></textarea>
         </div>
         <div class="field-group">
           <label class="field-label" for="feedMediaInput">🎥 動画・写真を添付（任意）</label>
