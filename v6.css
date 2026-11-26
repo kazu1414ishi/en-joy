@@ -1,0 +1,370 @@
+/* =========================================================
+   EN•joy v6 追加スタイル（v5原本の配色変数を100%踏襲）
+   生成り #F8F7F2 / 墨 #242724 / 緑 #3D664A / 橙 #E87A3E
+========================================================= */
+
+.chip-btn.chip-mode-mature {
+  background: var(--orange-soft);
+  border-color: var(--orange);
+  color: var(--orange);
+}
+.chip-btn.chip-mode-initial {
+  background: var(--green-soft);
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.v6-row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.btn-sample-fill {
+  border: 1px dashed var(--orange);
+  background: var(--orange-soft);
+  color: var(--orange);
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-sample-fill:hover {
+  background: var(--orange);
+  color: #fff;
+}
+
+/* ホーム上部固定アンカー（年輪・設定・お問い合わせをファーストビューへ） */
+.home-quick-anchors {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.home-anchor-tile {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 9px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+.home-anchor-tile:hover {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+.home-anchor-tile span { font-size: 1.1rem; }
+.home-anchor-tile strong { font-size: 0.78rem; }
+.home-anchor-tile small { font-size: 0.68rem; color: var(--ink-muted); }
+
+/* 名刺内の中央❓付き専用QR */
+.bc-qr-block {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.bc-qr-svg-wrap {
+  width: 88px;
+  height: 88px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 友達リスト ＆ 年輪 */
+.v6-list-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.friend-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--bg);
+}
+.nenrin-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-left: 2px solid var(--green-soft);
+  padding-left: 14px;
+  margin-top: 8px;
+}
+.nenrin-item {
+  position: relative;
+  font-size: 0.83rem;
+}
+.nenrin-item::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: 5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+/* EN•ラボ：スワイプ切替（企画まとめ ⇄ ルームカレンダー） */
+.swipe-room-wrap {
+  overflow: hidden;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  touch-action: pan-y;
+}
+.swipe-room-track {
+  display: flex;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.swipe-room-slide {
+  min-width: 100%;
+  padding: 1px;
+}
+.swipe-room-slide > .card {
+  margin-bottom: 0;
+}
+.swipe-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 7px;
+}
+.swipe-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+  cursor: pointer;
+}
+.swipe-dot.active {
+  width: 20px;
+  border-radius: 999px;
+  background: var(--green);
+}
+
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.74rem;
+  color: var(--ink-muted);
+  margin: 6px 0 8px;
+}
+.cal-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+.cal-dot.todo { background: var(--green); }
+.cal-dot.road { background: var(--orange); }
+.cal-dot.talk { background: #2F6F8F; }
+.cal-dot.vote { background: #8B5E83; }
+
+.cal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 165px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+.cal-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--bg);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.cal-item:hover {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+.cal-add-row {
+  display: grid;
+  grid-template-columns: 122px 1fr auto;
+  gap: 6px;
+}
+
+/* EN•ラボ内4タブ（ルーム / トーク / やること / 役立ち） */
+.room-tabs-4 {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+}
+.room-tabs-4 button {
+  padding: 9px 4px !important;
+  font-size: 0.75rem !important;
+  white-space: nowrap;
+}
+
+/* やること ＆ 多数決 ＆ カスタムボード */
+.todo-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  font-size: 0.84rem;
+}
+.todo-item.done span {
+  text-decoration: line-through;
+  color: var(--ink-muted);
+}
+.vote-opt-btn {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 9px 11px;
+  margin-top: 7px;
+  cursor: pointer;
+  font-size: 0.83rem;
+  color: var(--ink);
+}
+.vote-opt-btn.selected {
+  border-color: var(--green);
+  background: var(--green-soft);
+  font-weight: 700;
+}
+.vote-bar {
+  height: 6px;
+  background: var(--line);
+  border-radius: 999px;
+  margin-top: 5px;
+  overflow: hidden;
+}
+.vote-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--green);
+}
+.board-toggle-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.calc-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0;
+}
+.calc-result {
+  background: var(--green-soft);
+  color: var(--green);
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+/* ショップ（EC ＆ 50:50） */
+.ec-price {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--green);
+  margin: 4px 0 6px;
+}
+.review-box {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 11px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+}
+.review-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 7px;
+}
+.pairing-box {
+  background: var(--orange-soft);
+  color: #8A441A;
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-top: 8px;
+  font-size: 0.8rem;
+}
+.rotation-log {
+  margin-top: 8px;
+  font-size: 0.78rem;
+  background: var(--green-soft);
+  color: var(--green);
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px dashed var(--green);
+}
+
+/* 長押しうっすらプレビュー ＆ ヒートマップ可視化 */
+.peek-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 86px;
+  pointer-events: none;
+  background: rgba(36, 39, 36, 0.12);
+  backdrop-filter: blur(2px);
+}
+.peek-card {
+  width: 90%;
+  max-width: 380px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1.5px solid var(--green);
+  border-radius: 16px;
+  padding: 13px 15px;
+  box-shadow: 0 12px 28px rgba(36, 39, 36, 0.16);
+  font-size: 0.82rem;
+}
+.heatmap-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  pointer-events: none;
+}
+.heat-dot {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  margin-left: -13px;
+  margin-top: -13px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232, 122, 62, 0.65) 0%, rgba(232, 122, 62, 0) 70%);
+}
