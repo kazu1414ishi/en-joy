@@ -1,0 +1,165 @@
+/* =========================================================
+   EN•joy UI/UX パッチ（patch_ui.css）
+   ・6軸カスタム（色味/形/アイコン/表記/枠質感/文字サイズ）
+   ・極クール質感 / 5タブ崩れ防止 / 着せ替えパネルUI
+   ========================================================= */
+
+:root {
+  --en-bg: #f8f9fa;
+  --en-surface: #ffffff;
+  --en-text: #1f2937;
+  --en-muted: #6b7280;
+  --en-accent: #e67e22;
+  --en-border: #e5e7eb;
+  --en-radius: 12px;
+  --en-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --en-font-scale: 1;
+}
+
+/* --- ① 色味（6種） --- */
+html[data-en-color="v5"]     { --en-bg: #f7f5f0; --en-surface: #ffffff; --en-text: #2c2a29; --en-accent: #d97706; --en-border: #e7e2d8; }
+html[data-en-color="clear"]  { --en-bg: #ffffff; --en-surface: #f9fafb; --en-text: #111827; --en-accent: #2563eb; --en-border: #e5e7eb; }
+html[data-en-color="navy"]   { --en-bg: #f1f5f9; --en-surface: #ffffff; --en-text: #0f172a; --en-accent: #1d4ed8; --en-border: #cbd5e1; }
+html[data-en-color="wa"]     { --en-bg: #f4f1ea; --en-surface: #fffdf9; --en-text: #3a3226; --en-accent: #5c7c48; --en-border: #dfd7c8; }
+html[data-en-color="dark"]   { --en-bg: #111827; --en-surface: #1f2937; --en-text: #f9fafb; --en-muted: #9ca3af; --en-accent: #f59e0b; --en-border: #374151; }
+html[data-en-color="cool"]   { --en-bg: #0b1020; --en-surface: rgba(20, 28, 50, 0.72); --en-text: #f8fafc; --en-muted: #94a3b8; --en-accent: #ff7a2f; --en-border: rgba(255, 122, 47, 0.35); }
+
+/* --- ② 形（3種） --- */
+html[data-en-shape="round"] { --en-radius: 20px; }
+html[data-en-shape="semi"]  { --en-radius: 10px; }
+html[data-en-shape="sharp"] { --en-radius: 3px; }
+
+/* --- ⑤ 枠と質感（3種） --- */
+html[data-en-frame="border"] { --en-card-border: 1px solid var(--en-border); --en-backdrop: none; }
+html[data-en-frame="none"]   { --en-card-border: 1px solid transparent; --en-backdrop: none; }
+html[data-en-frame="glass"]  { --en-card-border: 1px solid rgba(255, 255, 255, 0.22); --en-backdrop: blur(12px); }
+
+/* --- ⑥ 文字サイズ（2種） --- */
+html[data-en-font="normal"] { --en-font-scale: 1; }
+html[data-en-font="large"]  { --en-font-scale: 1.14; }
+
+/* 全体への適用 */
+body {
+  background-color: var(--en-bg) !important;
+  color: var(--en-text) !important;
+  font-size: calc(15px * var(--en-font-scale));
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.card, .en-card, [class*="card"] {
+  background: var(--en-surface) !important;
+  border: var(--en-card-border, 1px solid var(--en-border)) !important;
+  border-radius: var(--en-radius) !important;
+  backdrop-filter: var(--en-backdrop, none);
+  -webkit-backdrop-filter: var(--en-backdrop, none);
+}
+
+/* 極・クール時の発光SVG演出 */
+html[data-en-color="cool"] .en-svg {
+  filter: drop-shadow(0 0 5px rgba(255, 122, 47, 0.65));
+}
+
+/* --- ④ ボタン表記（3種） --- */
+html[data-en-btn="icon-only"] .en-btn-label { display: none !important; }
+html[data-en-btn="mini"]      .en-btn-label { font-size: 10px !important; }
+
+/* --- 下部5タブ 崩れ防止ルール（文字大きめでも1行固定） --- */
+nav.bottom-nav, .bottom-nav, footer nav {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+}
+nav.bottom-nav button, .bottom-nav button, .bottom-nav a {
+  flex: 1 1 20% !important;
+  min-width: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  font-size: 11px !important; /* 文字サイズ設定の影響を受けない固定値 */
+  padding: 6px 2px !important;
+}
+
+/* =========================================================
+   着せ替えツール ＆ アンケート用フローティングUI（左下配置）
+   ========================================================= */
+#en-theme-fab {
+  position: fixed;
+  left: 14px;
+  bottom: 76px;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: var(--en-accent);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+#en-theme-drawer {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 9999;
+  max-height: 82vh;
+  overflow-y: auto;
+  background: #111827;
+  color: #f9fafb;
+  border-radius: 18px 18px 0 0;
+  padding: 16px 16px 28px;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.45);
+  transform: translateY(110%);
+  transition: transform 0.25s ease;
+  font-size: 13px;
+}
+#en-theme-drawer.open { transform: translateY(0); }
+
+.en-drawer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #374151;
+}
+.en-drawer-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+.en-drawer-tab {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #374151;
+  background: #1f2937;
+  color: #d1d5db;
+  font-weight: 700;
+  cursor: pointer;
+}
+.en-drawer-tab.active { background: #ff7a2f; color: #fff; border-color: #ff7a2f; }
+
+.en-sec-title { font-size: 12px; color: #9ca3af; margin: 12px 0 6px; font-weight: 700; }
+.en-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.en-chip {
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid #4b5563;
+  background: #1f2937;
+  color: #f3f4f6;
+  font-size: 12px;
+  cursor: pointer;
+}
+.en-chip.active { background: #ff7a2f; border-color: #ff7a2f; color: #fff; font-weight: 700; }
+
+.en-submit-btn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  background: #10b981;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}

@@ -6,6 +6,8 @@
   <title>EN•joy｜異業種コラボ開発プラットフォーム（Stage 1 テスト版）</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="v6.css" />
+  <!-- EN•joy UI/UXパッチ（見た目オーバーホール） -->
+  <link rel="stylesheet" href="./patch_ui.css?v=1">
 </head>
 <body>
   <!-- 開発用フローティングバー（PCでスマホ幅プレビュー中＋登録集中モード中でもリセット＆PC復帰できる） -->
@@ -716,26 +718,26 @@
     </main>
 
     <!-- スクロール連動ボトムナビ（5タブ・登録画面中は非表示） -->
-    <nav id="bottomNav" class="bottom-nav">
+<nav id="bottomNav" class="bottom-nav">
       <button type="button" class="nav-item" data-tab="home">
-        <span class="nav-icon">🏠</span>
-        <span>ホーム</span>
+        <span class="nav-icon" data-en-icon-name="home" data-en-emoji="🏠">🏠</span>
+        <span class="en-btn-label">ホーム</span>
       </button>
       <button type="button" class="nav-item" data-tab="feed">
-        <span class="nav-icon">💬</span>
-        <span>つぶやき</span>
+        <span class="nav-icon" data-en-icon-name="people" data-en-emoji="🤝">🤝</span>
+        <span class="en-btn-label">縁</span>
       </button>
       <button type="button" class="nav-item" data-tab="en">
-        <span class="nav-icon">🤝</span>
-        <span>EN開発</span>
+        <span class="nav-icon" data-en-icon-name="lab" data-en-emoji="🧪">🧪</span>
+        <span class="en-btn-label">ラボ</span>
       </button>
       <button type="button" class="nav-item" data-tab="tips">
-        <span class="nav-icon">🥬</span>
-        <span>役立ち🔒</span>
+        <span class="nav-icon" data-en-icon-name="news" data-en-emoji="🥬">🥬</span>
+        <span class="en-btn-label">役立ち</span>
       </button>
       <button type="button" class="nav-item" data-tab="shop">
-        <span class="nav-icon">🛍️</span>
-        <span>ショップ🔒</span>
+        <span class="nav-icon" data-en-icon-name="marche" data-en-emoji="🎪">🎪</span>
+        <span class="en-btn-label">マルシェ</span>
       </button>
     </nav>
   </div>
@@ -1015,5 +1017,8 @@
   <script src="app.js"></script>
   <script src="v6_part1.js"></script>
   <script src="v6_part2.js"></script>
+  <!-- EN•joy 機能パッチ -->
+  <script src="./patch_mock_data.js?v=1"></script>
+  <script src="./patch_theme.js?v=1"></script>
 </body>
 </html>
