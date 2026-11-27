@@ -163,3 +163,80 @@ nav.bottom-nav button, .bottom-nav button, .bottom-nav a {
   font-weight: 700;
   cursor: pointer;
 }
+
+/* =========================================================
+   モック画面用レイアウト（ホーム・縁・ラボ・役立ち・マルシェ）
+   ========================================================= */
+.en-wrap { display: flex; flex-direction: column; gap: 12px; padding-bottom: 24px; }
+.en-subtabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.en-subtab {
+  flex: 1; white-space: nowrap; padding: 8px 10px; font-size: 13px; font-weight: 700;
+  border-radius: var(--en-radius); border: 1px solid var(--en-border);
+  background: var(--en-surface); color: var(--en-text); cursor: pointer;
+}
+.en-subtab.active { background: var(--en-accent); color: #fff; border-color: var(--en-accent); }
+
+/* ホーム：自動横スワイプ3面帯 */
+.en-prof-slider {
+  position: relative; overflow: hidden; border-radius: var(--en-radius);
+  border: var(--en-card-border, 1px solid var(--en-border)); background: var(--en-surface);
+  backdrop-filter: var(--en-backdrop, none);
+}
+.en-prof-track { display: flex; transition: transform 0.35s ease; }
+.en-prof-slide { min-width: 100%; box-sizing: border-box; padding: 14px; }
+.en-prof-dots { display: flex; justify-content: center; gap: 6px; padding-bottom: 8px; }
+.en-prof-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--en-border); cursor: pointer; }
+.en-prof-dot.active { background: var(--en-accent); width: 18px; border-radius: 4px; }
+
+/* ホーム：2×2 ウィジェット */
+.en-widget-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.en-widget {
+  padding: 12px; border-radius: var(--en-radius); background: var(--en-surface);
+  border: var(--en-card-border, 1px solid var(--en-border)); cursor: pointer;
+  display: flex; flex-direction: column; gap: 4px; text-align: left; color: var(--en-text);
+  backdrop-filter: var(--en-backdrop, none);
+}
+.en-widget-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; color: var(--en-muted); }
+.en-badge { background: var(--en-accent); color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 999px; font-weight: 700; }
+.en-widget-body { font-size: 13px; font-weight: 700; line-height: 1.35; }
+.en-news-bar {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer;
+  border-radius: var(--en-radius); background: var(--en-surface);
+  border: var(--en-card-border, 1px solid var(--en-border)); font-size: 12px;
+}
+
+/* 写真付き共通カード */
+.en-card { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.en-card-img { width: 100%; height: 155px; object-fit: cover; border-radius: calc(var(--en-radius) * 0.7); }
+.en-row { display: flex; align-items: center; gap: 8px; }
+.en-between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.en-avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.en-meta { font-size: 11px; color: var(--en-muted); }
+.en-title { font-size: 14px; font-weight: 700; line-height: 1.35; }
+.en-text { font-size: 13px; line-height: 1.5; margin: 0; }
+.en-pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgba(230,126,34,0.14); color: var(--en-accent); font-weight: 700; }
+
+/* アクションボタン行（アイコンのみ/極小切替対応） */
+.en-actions { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid var(--en-border); }
+.en-act-btn {
+  display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px;
+  border-radius: var(--en-radius); border: 1px solid var(--en-border);
+  background: transparent; color: var(--en-text); font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.en-act-btn.primary { background: var(--en-accent); color: #fff; border-color: var(--en-accent); }
+
+/* 人材2列リスト ＆ マップ風ビュー */
+.en-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.en-map-box {
+  position: relative; height: 260px; border-radius: var(--en-radius); overflow: hidden;
+  background: radial-gradient(circle at 30% 40%, rgba(37,99,235,0.12), transparent 60%),
+              linear-gradient(135deg, rgba(16,185,129,0.14), rgba(245,158,11,0.12));
+  border: 1px solid var(--en-border);
+}
+.en-map-pin {
+  position: absolute; transform: translate(-50%, -50%); padding: 6px 8px;
+  border-radius: 999px; background: var(--en-surface); border: 2px solid var(--en-accent);
+  color: var(--en-text); font-size: 12px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 4px;
+}
+.en-map-pin.active { background: var(--en-accent); color: #fff; transform: translate(-50%, -50%) scale(1.1); }
