@@ -1,0 +1,351 @@
+/* =========================================================
+   EN•joy 人間工学PCデスクトップUI（patch_pc.css v5）
+   ・ヘッダー完全固定（スクロールで一切動かない）
+   ・トーク(左) vs ボード(右)の明確なコントラスト色分け＆中央グリップ
+   ・全ボード共通：構造化フォーム / 法規中身カード / 削除ボタンCSS
+   ========================================================= */
+
+/* ★PCモード時：スマホ幅制限を解除＆ボタン文字を常に読みやすく */
+html.en-pc-mode #appShell,
+html.en-pc-mode .app-shell,
+html.en-pc-mode .view-section {
+  max-width: 100% !important;
+  width: 100% !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+html.en-pc-mode[data-en-btn] .en-btn-label,
+html.en-pc-mode .en-btn-label {
+  display: inline !important;
+  font-size: 12.5px !important;
+}
+html.en-pc-mode .en-act-btn {
+  padding: 8px 13px !important;
+  font-size: 12.5px !important;
+}
+html.en-pc-mode .en-act-btn:hover {
+  filter: brightness(1.04);
+}
+
+/* --- 🔝 問題①解決：トップヘッダーを画面上端に100%完全固定 --- */
+html.en-pc-mode #topHeader.top-header {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  height: 58px !important;
+  z-index: 9975 !important;
+  transform: translateY(0) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+html.en-pc-mode #topHeader .header-inner {
+  max-width: 100% !important;
+  height: 58px !important;
+  padding: 0 20px !important;
+  gap: 10px;
+}
+
+.en-pc-burger-btn { display: none; }
+html.en-pc-mode body:not(.en-in-register) .en-pc-burger-btn {
+  display: inline-grid; place-items: center;
+  width: 38px; height: 38px; border-radius: 11px;
+  border: 1px solid var(--en-border); background: var(--en-surface-2); color: var(--en-text);
+  cursor: pointer; margin-right: 4px; transition: background 0.15s, border-color 0.15s;
+}
+html.en-pc-mode body:not(.en-in-register) .en-pc-burger-btn:hover {
+  border-color: var(--en-accent); background: var(--en-accent-soft);
+}
+
+html.en-pc-mode .en-hdr-icon-btn {
+  width: auto !important; height: 36px !important; border-radius: 999px !important;
+  padding: 0 13px !important; display: inline-flex !important; align-items: center !important;
+  gap: 6px !important; font-size: 12.5px !important; font-weight: 800 !important;
+}
+html.en-pc-mode .en-hdr-icon-btn:hover {
+  border-color: var(--en-accent) !important; background: var(--en-accent-soft) !important;
+}
+.en-pc-hdr-txt { display: none; }
+html.en-pc-mode .en-pc-hdr-txt { display: inline; }
+html.en-pc-mode .en-hdr-dot { position: static !important; margin-left: 2px; border: none !important; }
+
+/* --- 📌 Gemini風・開閉式サイドバー（完全固定） --- */
+html.en-pc-mode body:not(.en-in-register) nav#bottomNav.bottom-nav {
+  position: fixed !important; left: 0 !important; top: 58px !important;
+  right: auto !important; bottom: 0 !important;
+  width: 256px !important; max-width: 256px !important; height: calc(100vh - 58px) !important;
+  margin: 0 !important; padding: 12px 10px 72px !important;
+  border-radius: 0 18px 0 0 !important; border-top: none !important; border-left: none !important;
+  border-bottom: none !important; border-right: 1px solid var(--en-border) !important;
+  flex-direction: column !important; align-items: stretch !important; justify-content: flex-start !important;
+  gap: 3px !important; overflow-y: auto !important;
+  opacity: 1 !important; visibility: visible !important; pointer-events: auto !important;
+  transform: translateX(-105%) !important; transition: transform 0.24s cubic-bezier(.22,1,.36,1) !important;
+  z-index: 9965 !important; box-shadow: 8px 0 28px rgba(0, 0, 0, 0.12) !important;
+}
+html.en-pc-mode.en-pc-sb-open body:not(.en-in-register) nav#bottomNav.bottom-nav {
+  transform: translateX(0) !important;
+}
+
+/* メイン領域：固定ヘッダー分(58px)＋余白を確保 */
+html.en-pc-mode body:not(.en-in-register) main.main-container {
+  margin-left: 0 !important; max-width: 100% !important; width: auto !important;
+  padding: 76px 32px 70px !important; box-sizing: border-box;
+  transition: margin-left 0.24s cubic-bezier(.22,1,.36,1), max-width 0.24s cubic-bezier(.22,1,.36,1);
+}
+html.en-pc-mode.en-pc-sb-open body:not(.en-in-register) main.main-container {
+  margin-left: 256px !important; max-width: calc(100% - 256px) !important;
+}
+html.en-pc-mode body.en-in-register main.main-container {
+  margin-left: 0 !important; max-width: 100% !important; padding-top: 76px !important;
+}
+html.en-pc-mode .reg-shell { max-width: 680px !important; margin: 0 auto !important; }
+html.en-pc-mode .en-wrap { max-width: 1220px; margin: 0 auto; padding-bottom: 56px; gap: 18px; }
+
+html.en-pc-mode body:not(.en-in-register) nav#bottomNav.bottom-nav > button.nav-item {
+  flex: none !important; width: 100% !important; display: flex !important; flex-direction: row !important;
+  align-items: center !important; justify-content: flex-start !important; gap: 11px !important;
+  padding: 9px 12px !important; font-size: 13px !important; border-radius: 11px !important;
+  text-align: left !important; overflow: visible !important; white-space: normal !important;
+}
+html.en-pc-mode body:not(.en-in-register) nav#bottomNav.bottom-nav > button.nav-item .nav-icon {
+  font-size: 17px !important; width: 22px; display: inline-flex; justify-content: center; flex-shrink: 0;
+}
+html.en-pc-mode body:not(.en-in-register) nav#bottomNav.bottom-nav > button.nav-item:hover { background: var(--en-surface-2) !important; }
+html.en-pc-mode body:not(.en-in-register) nav#bottomNav.bottom-nav > button.nav-item.active::after {
+  left: 3px !important; top: 22% !important; bottom: 22% !important; width: 3px !important; height: auto !important; transform: none !important;
+}
+.en-pc-nav-sub { display: none; }
+html.en-pc-mode .en-pc-nav-sub { display: block; font-size: 10px; font-weight: 600; color: var(--en-muted); margin-top: 1px; }
+html.en-pc-mode .en-pc-nav-col { display: flex; flex-direction: column; line-height: 1.2; }
+
+/* 🧪 サイドバー内「最近のEN•ラボ」 */
+.en-pc-sb-rooms { display: none; }
+html.en-pc-mode .en-pc-sb-rooms { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--en-border); }
+.en-pc-sb-head { display: flex; align-items: center; justify-content: space-between; padding: 0 8px 4px; font-size: 11px; font-weight: 800; color: var(--en-muted); }
+.en-pc-sb-new { border: 1px dashed var(--en-accent); background: var(--en-accent-soft); color: var(--en-accent); border-radius: 8px; padding: 2px 7px; font-size: 10.5px; font-weight: 800; cursor: pointer; }
+.en-pc-sb-room-btn {
+  width: 100% !important; flex: none !important; display: flex !important; align-items: center !important;
+  gap: 8px !important; padding: 8px 10px !important; border-radius: 10px !important; border: none !important;
+  background: transparent !important; color: var(--en-text) !important; font-size: 12px !important; font-weight: 700 !important;
+  text-align: left !important; cursor: pointer; transition: background 0.14s;
+}
+.en-pc-sb-room-btn:hover { background: var(--en-surface-2) !important; }
+.en-pc-sb-room-btn.is-current { background: var(--en-accent-soft) !important; color: var(--en-accent) !important; font-weight: 800 !important; }
+.en-pc-sb-room-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.en-pc-sb-room-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--en-accent); }
+.en-pc-sb-room-dot.solo { background: #8b5cf6; }
+
+html.en-pc-mode body:not(.en-in-register) #en-theme-fab { left: 16px !important; bottom: 18px !important; z-index: 9968 !important; transition: width 0.22s ease !important; }
+html.en-pc-mode.en-pc-sb-open body:not(.en-in-register) #en-theme-fab { left: 12px !important; width: 232px !important; justify-content: center !important; }
+html.en-pc-mode #en-action-fab { right: 26px !important; bottom: 22px !important; padding: 12px 20px !important; font-size: 13.5px !important; }
+
+/* --- 各タブのPCグリッド最適化 --- */
+html.en-pc-mode .en-subtabs { max-width: 680px; }
+html.en-pc-mode .en-subtab { padding: 9px 14px; font-size: 13px; }
+html.en-pc-mode #view-home .en-wrap { display: grid; grid-template-columns: 400px 1fr; grid-template-rows: auto auto; gap: 18px; align-items: start; }
+html.en-pc-mode #view-home .en-prof-slider { grid-column: 1; grid-row: 1; }
+html.en-pc-mode #view-home .en-news-bar    { grid-column: 1; grid-row: 2; }
+html.en-pc-mode #view-home .en-widget-grid { grid-column: 2; grid-row: 1 / span 2; gap: 14px; }
+html.en-pc-mode #view-home .en-widget      { padding: 18px 17px; min-height: 142px; justify-content: space-between; }
+html.en-pc-mode #view-home .en-widget-body { font-size: 15.5px; }
+
+html.en-pc-mode .en-feed-stack { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; align-items: start; }
+html.en-pc-mode #view-feed .en-grid-2 { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+html.en-pc-mode #view-feed .en-search-row { max-width: 640px; }
+html.en-pc-mode #view-feed .en-map-box { height: 360px; }
+html.en-pc-mode #view-feed .card.en-card:has(.en-hero-card) { max-width: 540px; margin: 0 auto; width: 100%; }
+
+html.en-pc-mode #view-en .en-wrap { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; align-items: start; }
+html.en-pc-mode #view-en .en-wrap > :not(.en-card) { grid-column: 1 / -1; }
+html.en-pc-mode #view-en .en-search-input { max-width: 560px; }
+
+html.en-pc-mode .en-season-banner { height: 175px; }
+html.en-pc-mode .en-season-num { font-size: 48px; }
+html.en-pc-mode .en-shun-grid { grid-template-columns: repeat(6, 1fr); gap: 12px; }
+html.en-pc-mode .en-recipe-grid { grid-template-columns: repeat(4, 1fr); gap: 14px; }
+html.en-pc-mode #view-tips .en-grid-2 { grid-template-columns: repeat(4, 1fr); gap: 14px; }
+html.en-pc-mode #view-tips .en-hero-card { height: 280px; }
+html.en-pc-mode #view-tips .en-wrap:has(#enCopyAutoShopBtn) { display: grid; grid-template-columns: 1.2fr 0.9fr; gap: 16px; align-items: start; }
+html.en-pc-mode #view-tips .en-wrap:has(#enCopyAutoShopBtn) > :not(.en-card) { grid-column: 1 / -1; }
+html.en-pc-mode #view-tips .en-wrap:has(#enCopyAutoShopBtn) > .en-card:has(#enCopyAutoShopBtn) { grid-column: 2; grid-row: 5 / span 2; position: sticky; top: 76px; }
+
+html.en-pc-mode #view-shop .en-grid-2 { grid-template-columns: repeat(4, 1fr); gap: 14px; }
+html.en-pc-mode #view-shop .en-hero-card { height: 270px; max-width: 780px; }
+
+/* =========================================================
+   🧠 問題②解決：PC開発ルーム（トークとボードの色をハッキリ分離！）
+   ========================================================= */
+html.en-pc-mode #en-room-modal.en-pc-ws-active .en-ai-copilot,
+html.en-pc-mode #en-room-modal.en-pc-ws-active .en-room-nav { display: none !important; }
+
+html.en-pc-mode #en-room-modal.en-pc-ws-active .en-room-head {
+  height: 52px; box-sizing: border-box; padding: 0 18px !important;
+  display: grid !important; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
+  background: var(--en-surface); border-bottom: 1.5px solid var(--en-border);
+}
+.en-ergo-head-left  { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.en-ergo-title      { font-size: 14px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.en-ergo-head-mid   { display: flex; align-items: center; gap: 3px; padding: 3px; border-radius: 12px; background: var(--en-surface-2); border: 1px solid var(--en-border); }
+.en-ergo-seg { padding: 6px 14px; border-radius: 9px; border: none; background: transparent; color: var(--en-muted); font-size: 12.5px; font-weight: 800; cursor: pointer; transition: 0.16s; }
+.en-ergo-seg:hover { color: var(--en-text); }
+.en-ergo-seg.active { background: var(--en-surface); color: var(--en-accent); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
+.en-ergo-head-right { display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
+.en-ergo-pill { padding: 6px 11px; border-radius: 10px; border: 1px solid var(--en-border); background: var(--en-surface-2); color: var(--en-text); font-size: 12px; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: 0.15s; }
+.en-ergo-pill:hover { border-color: var(--en-accent); }
+.en-ergo-pill.on { background: var(--en-accent-soft); color: var(--en-accent); border-color: var(--en-accent); }
+.en-ergo-pill.ai { background: linear-gradient(135deg, rgba(139,92,246,0.16), rgba(236,72,153,0.16)); border-color: rgba(139,92,246,0.4); color: var(--en-text); }
+
+/* 🪟 左右2ペイン：左(トーク専用ブルーグレー/濃色面) × 中央立体バー × 右(作業ボード面) */
+.en-pc-ws-grid { flex: 1; min-height: 0; display: flex; overflow: hidden; position: relative; }
+.en-pc-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+
+.en-pc-pane-left {
+  flex: 0 0 var(--en-left-w, 36%);
+  background: #e9eef5 !important;
+  box-shadow: inset -10px 0 20px -14px rgba(15, 23, 42, 0.25);
+}
+html[data-en-color="wa"] .en-pc-pane-left   { background: #e5dfd1 !important; }
+html[data-en-color="dark"] .en-pc-pane-left { background: #070d1a !important; }
+html[data-en-color="cool"] .en-pc-pane-left { background: #030612 !important; }
+
+.en-pc-pane-left .en-chat-bubble:not(.me) {
+  background: var(--en-surface) !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08) !important;
+}
+html[data-en-color="dark"] .en-pc-pane-left .en-chat-bubble:not(.me),
+html[data-en-color="cool"] .en-pc-pane-left .en-chat-bubble:not(.me) {
+  background: #1a243d !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.en-pc-pane-left .en-room-composer {
+  background: var(--en-surface) !important;
+  border-top: 1.5px solid var(--en-border) !important;
+}
+
+.en-pc-pane-right {
+  flex: 1 1 auto;
+  background: var(--en-bg);
+  background-image: var(--en-bg-grad);
+}
+.en-pc-ws-grid.is-single .en-pc-pane-left,
+.en-pc-ws-grid.is-single .en-pc-resizer { display: none !important; }
+
+/* 境界線リサイザー（パッと見で境目がわかる立体レール＋⋮グリップ） */
+.en-pc-resizer {
+  width: 10px; flex: 0 0 10px; cursor: col-resize; position: relative;
+  background: var(--en-surface-2);
+  border-left: 1px solid var(--en-border);
+  border-right: 1px solid var(--en-border);
+  display: grid; place-items: center;
+  transition: background 0.15s;
+}
+.en-pc-resizer::after {
+  content: ""; width: 4px; height: 38px; border-radius: 99px;
+  background: var(--en-muted); opacity: 0.45; transition: opacity 0.15s, background 0.15s, height 0.15s;
+}
+.en-pc-resizer:hover,
+.en-pc-resizer.dragging { background: var(--en-accent-soft); }
+.en-pc-resizer:hover::after,
+.en-pc-resizer.dragging::after { background: var(--en-accent); opacity: 1; height: 54px; }
+
+/* 左ペイン上部タブ（トーク区画の帯アクセント付き） */
+.en-pc-left-bar {
+  height: 42px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 12px;
+  background: var(--en-surface);
+  border-bottom: 1.5px solid var(--en-border);
+  border-top: 3px solid var(--en-accent);
+}
+.en-pc-left-tabs { display: flex; gap: 4px; }
+.en-pc-left-tab { padding: 5px 10px; border-radius: 8px; border: none; background: transparent; color: var(--en-muted); font-size: 12px; font-weight: 800; cursor: pointer; }
+.en-pc-left-tab:hover { color: var(--en-text); background: var(--en-surface-2); }
+.en-pc-left-tab.active { background: var(--en-accent); color: #fff; }
+.en-pc-close-left { border: none; background: transparent; color: var(--en-muted); font-size: 13px; padding: 4px 7px; border-radius: 7px; cursor: pointer; }
+.en-pc-close-left:hover { background: var(--en-surface-2); color: var(--en-text); }
+
+.en-pc-pane-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+.en-pc-pane-right #enRoomBody { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 22px 26px !important; }
+.en-pc-ws-grid.is-single .en-pc-pane-right #enRoomBody { padding: 18px max(28px, calc((100vw - 1160px) / 2)) 28px !important; }
+.en-pc-pane-right .en-quick-chips,
+.en-pc-pane-right .en-room-composer { padding-left: max(20px, calc((100% - 820px) / 2)) !important; padding-right: max(20px, calc((100% - 820px) / 2)) !important; }
+
+html.en-pc-mode #en-room-modal .en-board-topbar { flex-wrap: nowrap !important; gap: 7px; margin-bottom: 4px; }
+html.en-pc-mode #en-room-modal .en-tool-strip { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 6px; }
+html.en-pc-mode #en-room-modal .en-tool-tab.en-pc-overflow-hidden { display: none !important; }
+
+html.en-pc-mode .en-pc-pane-right .en-card:has(#enKpiRate) { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; align-items: start; }
+html.en-pc-mode .en-pc-pane-right .en-card:has(#enKpiRate) > .en-between:first-child { grid-column: 1 / -1; }
+html.en-pc-mode .en-pc-pane-right .en-card:has(#enKpiRate) > div:last-child { grid-column: 2; grid-row: 2 / span 3; }
+
+html.en-pc-mode .en-pc-ws-grid.is-single #enRoomBody:has(#enNewTaskIn) { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+html.en-pc-mode .en-pc-pane-right .en-wb-card:not(.is-fullscreen) .en-wb-stage { width: min(100%, calc((100vh - 255px) * 4 / 3)) !important; max-width: 100% !important; }
+html.en-pc-mode .en-pc-ws-grid.is-single .en-wb-card:not(.is-fullscreen) .en-wb-stage { width: min(100%, calc((100vh - 245px) * 4 / 3)) !important; max-width: 1080px !important; }
+
+html.en-pc-mode #en-sheet-backdrop { align-items: center; padding: 20px; }
+html.en-pc-mode .en-sheet-card { border-radius: 22px; max-width: 620px; max-height: 85vh; border: 1px solid var(--en-border); }
+html.en-pc-mode #en-theme-drawer { left: 50%; right: auto; width: 580px; max-width: 94vw; transform: translate(-50%, 110%); }
+html.en-pc-mode #en-theme-drawer.open { transform: translate(-50%, 0); }
+
+/* =========================================================
+   🧰 問題③・④解決：全ボード共通（PC＆スマホ両対応）
+   ・削除ボタン / 複数段フォーム / 複数なぜなぜ / 中身が見える法規カード
+   ========================================================= */
+.en-del-x {
+  flex-shrink: 0; border: 1px solid transparent; background: transparent;
+  color: var(--en-muted); font-size: 12px; font-weight: 900;
+  padding: 2px 6px; border-radius: 7px; cursor: pointer; transition: 0.14s;
+}
+.en-del-x:hover { background: rgba(239, 68, 68, 0.14); color: #ef4444; border-color: rgba(239, 68, 68, 0.35); }
+
+.en-form-box {
+  padding: 10px 11px; border-radius: 13px; background: var(--en-surface-2);
+  border: 1px dashed var(--en-border); display: flex; flex-direction: column; gap: 7px;
+}
+.en-form-grid-3 { display: grid; grid-template-columns: 1.8fr 0.9fr 0.85fr; gap: 6px; }
+.en-form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+/* ❓ 複数課題対応：なぜなぜ分析カード */
+.en-why-card {
+  padding: 12px; border-radius: 14px; background: var(--en-surface-2);
+  border: 1.5px solid var(--en-border); display: flex; flex-direction: column; gap: 8px;
+}
+.en-why-step {
+  position: relative; padding: 7px 32px 7px 34px; border-radius: 10px;
+  background: var(--en-surface); border: 1px solid var(--en-border); font-size: 12.5px;
+}
+.en-why-step .en-del-x { position: absolute; right: 5px; top: 5px; }
+
+/* 📋 中身が一番見やすい：食品表示・法規詳細カード */
+.en-legal-card {
+  padding: 11px 12px; border-radius: 13px; background: var(--en-surface-2);
+  border: 1px solid var(--en-border); border-left: 4px solid var(--en-accent);
+  display: flex; flex-direction: column; gap: 7px; transition: opacity 0.18s;
+}
+.en-legal-card.is-done {
+  border-left-color: #10b981;
+  background: rgba(16, 185, 129, 0.06);
+}
+.en-legal-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.en-legal-check-lbl {
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  font-size: 13px; font-weight: 900; flex: 1; min-width: 0;
+}
+.en-legal-detail-in {
+  width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 9px;
+  border: 1px solid var(--en-border); background: var(--en-surface); color: var(--en-text);
+  font-size: 12px; line-height: 1.5; resize: vertical; font-family: inherit;
+}
+
+.en-list-row-del {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 6px;
+}
+.en-list-row-del > span { flex: 1; min-width: 0; }
