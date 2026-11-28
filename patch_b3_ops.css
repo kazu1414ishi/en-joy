@@ -1,0 +1,143 @@
+/* =========================================================
+   EN•joy STEP B-3 実務連動＆AI安全エンジン（patch_b3_ops.css v1）
+   ・タスク期日＆担当メタUI / カレンダー同期バッジ
+   ・ボード間バトンリレーバー
+   ・AI下書き警告＆人間承認チェック / AI安全ステータスバー
+   ========================================================= */
+
+/* --- 📅 やることリスト：期日・担当メタ入力＆バッジ --- */
+.en-task-meta-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 6px;
+}
+.en-task-meta-in {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border-radius: 9px;
+  border: 1px solid var(--en-border);
+  background: var(--en-surface);
+  color: var(--en-text);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.en-task-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-left: 4px;
+}
+.en-task-chip {
+  padding: 1.5px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  border: 1px solid var(--en-border);
+  background: var(--en-surface-2);
+  color: var(--en-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.en-task-chip.due {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+  border-color: rgba(37, 99, 235, 0.3);
+}
+.en-task-chip.overdue {
+  background: rgba(239, 68, 68, 0.14);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+.en-task-chip.who {
+  background: var(--en-accent-soft);
+  color: var(--en-accent);
+  border-color: transparent;
+}
+.en-task-chip.edit {
+  border-style: dashed;
+}
+
+/* --- 🔁 ボード間「自動バトンリレー」バー --- */
+.en-relay-bar {
+  margin-top: 6px;
+  padding: 9px 10px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(16, 185, 129, 0.1));
+  border: 1px dashed rgba(249, 115, 22, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.en-relay-txt {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--en-text);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 150px;
+}
+.en-relay-txt small {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--en-muted);
+}
+
+/* --- 🛡️ AI安全ガード：下書き警告＆人間承認ロック --- */
+.en-ai-draft-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  font-size: 11px;
+  font-weight: 800;
+  color: #b45309;
+  flex-wrap: wrap;
+}
+html[data-en-color="dark"] .en-ai-draft-bar,
+html[data-en-color="cool"] .en-ai-draft-bar {
+  color: #fbbf24;
+}
+.en-ai-approved-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+  font-size: 10px;
+  font-weight: 900;
+}
+.en-ai-guard-status {
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: var(--en-surface-2);
+  border: 1px solid var(--en-border);
+  font-size: 11px;
+  color: var(--en-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.en-ai-mask-preview {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px dashed rgba(16, 185, 129, 0.45);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--en-text);
+}
