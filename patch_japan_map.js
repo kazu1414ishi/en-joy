@@ -1,9 +1,10 @@
 /* =========================================================
    EN•joy 日本地図 × 半径ゲージ × ポケふた風「ご当地職種メダルマップ」
-   （patch_japan_map.js v2）
+   （patch_japan_map.js v3）
+   ・全国追加メンバーの mapPos 欠落エラーを完全修正（マップが開かないバグ根治）
    ・国土地理院（地理院地図・淡色）タイル採用（APIキー完全不要・日本語表記）
-   ・通信エラー時はOpenStreetMapへ自動フォールバック
-   ・mapOpen === false のユーザーは地図上へ一切表示しない（地域検索・リストのみ表示）
+   ・他タブ復帰時の自動リサイズ(invalidateSize)＋通信エラー時OSM自動退避
+   ・mapOpen === false のユーザーは地図非掲載（地域検索・リストのみ表示）
    ========================================================= */
 
 (function () {
@@ -108,9 +109,9 @@
     } catch (e) {}
   }
 
-  function ensureNationwideCraftPeople() {
+  // 全メンバーに必須の mapPos と latLng を保証（patch_views.js の描画エラーを完全防止）
+  function normalizePeopleCoords() {
     if (typeof EN_MOCK_PEOPLE === 'undefined' || !Array.isArray(EN_MOCK_PEOPLE)) return;
-
     const existingCoords = {
       'usr-001': [34.814, 135.650], 'usr-002': [34.679, 135.601],
       'usr-003': [34.686, 135.512], 'usr-004': [34.766, 135.628],
@@ -118,20 +119,26 @@
     };
     EN_MOCK_PEOPLE.forEach(p => {
       if (!p.latLng) p.latLng = existingCoords[p.id] || resolveLatLng(p.area);
+      if (!p.mapPos) p.mapPos = { x: 50, y: 50 };
     });
+  }
+
+  function ensureNationwideCraftPeople() {
+    if (typeof EN_MOCK_PEOPLE === 'undefined' || !Array.isArray(EN_MOCK_PEOPLE)) return;
 
     const extraNationwide = [
-      { id: 'usr-futa-hokkaido', name: '佐々木 拓真', shop: '十勝ひまわり牧場', category: 'farm', categoryLabel: '一次産業・酪農', area: '北海道 帯広市', latLng: [42.924, 143.196], avatar: EN_IMAGES.userFarm, canDo: '放牧グラスフェッド牛乳・ホエイの冷凍小ロット供給（全国クール発送OK）', aiMatch: '濃厚乳製品×焼き菓子・ジェラートコラボで差別化抜群！', detail: { equipment: '殺菌タンク・急速冷凍・全国冷凍便契約', pastLabs: 4, replySpeed: '朝と夜に返信' }, mapOpen: true },
-      { id: 'usr-futa-sendai', name: '伊藤 優子', shop: 'みちのく発酵蔵', category: 'factory', categoryLabel: '加工・発酵蔵元', area: '宮城県 仙台市', latLng: [38.268, 140.872], avatar: EN_IMAGES.userFact, canDo: '米麹・甘酒・発酵シロップのOEM小ロット50本〜試作', aiMatch: '無添加×発酵トレンドで全国のフルーツ農家と相性◎', detail: { equipment: '麹室・低温発酵タンク・瓶詰殺菌ライン', pastLabs: 8, replySpeed: '平日昼間に返信' }, mapOpen: true },
-      { id: 'usr-futa-kanazawa', name: '前田 匠', shop: '加賀ウッドクラフト', category: 'craft', categoryLabel: '木工・什器職人', area: '石川県 金沢市', latLng: [36.561, 136.656], avatar: EN_IMAGES.userDes, canDo: '県産間伐材で作る折りたたみマルシェ棚・木製ギフト箱の小ロット制作', aiMatch: 'マルシェ出店時の見栄えとブランド感を一気に格上げ！', detail: { equipment: 'レーザー刻印機・NCルーター・全国発送対応', pastLabs: 6, replySpeed: '24時間以内に返信' }, mapOpen: true },
-      { id: 'usr-futa-kyoto', name: '藤本 凛', shop: '古民家カフェ en.茶寮', category: 'shop', categoryLabel: '販売・古民家カフェ', area: '京都府 宇治市', latLng: [34.884, 135.800], avatar: EN_IMAGES.userBuyer, canDo: '週末マルシェ会場・店頭テスト販売棚・試食モニター会の共催', aiMatch: 'できたて試作品をリアルなお客様に届けて生の声を集められます！', detail: { equipment: '古民家イベント土間・冷蔵ショーケース・試食キッチン', pastLabs: 10, replySpeed: '水〜日に即レス' }, mapOpen: true },
-      { id: 'usr-futa-onomichi', name: '村上 海斗', shop: 'せとうち柑橘ラボ', category: 'farm', categoryLabel: '一次産業・柑橘農家', area: '広島県 尾道市', latLng: [34.409, 133.205], avatar: EN_IMAGES.userFarm, canDo: '減農薬レモン・ネーブルの規格外果実＆皮ごとペースト提供', aiMatch: '香り高い瀬戸内レモンで全国のスイーツ・ドリンク企画に引っ張りだこ！', detail: { equipment: '選果場・冷凍ストッカー・クール便対応', pastLabs: 7, replySpeed: '夕方以降に返信' }, mapOpen: true },
-      { id: 'usr-futa-naha', name: '比嘉 美穂', shop: 'やんばるボタニカル印刷', category: 'design', categoryLabel: 'デザイン・和紙印刷', area: '沖縄県 那覇市', latLng: [26.212, 127.679], avatar: EN_IMAGES.userDes, canDo: '南国テイスト＆手描きイラストの耐水シール50枚〜全国郵送', aiMatch: '目を引くギフト向けパッケージデザインが得意です！', detail: { equipment: '小ロットオンデマンド印刷・耐水ラミネート', pastLabs: 5, replySpeed: '平日夕方に返信' }, mapOpen: true }
+      { id: 'usr-futa-hokkaido', name: '佐々木 拓真', shop: '十勝ひまわり牧場', category: 'farm', categoryLabel: '一次産業・酪農', area: '北海道 帯広市', latLng: [42.924, 143.196], mapPos: { x: 82, y: 14 }, avatar: EN_IMAGES.userFarm, canDo: '放牧グラスフェッド牛乳・ホエイの冷凍小ロット供給（全国クール発送OK）', aiMatch: '濃厚乳製品×焼き菓子・ジェラートコラボで差別化抜群！', detail: { equipment: '殺菌タンク・急速冷凍・全国冷凍便契約', pastLabs: 4, replySpeed: '朝と夜に返信' }, mapOpen: true },
+      { id: 'usr-futa-sendai', name: '伊藤 優子', shop: 'みちのく発酵蔵', category: 'factory', categoryLabel: '加工・発酵蔵元', area: '宮城県 仙台市', latLng: [38.268, 140.872], mapPos: { x: 76, y: 34 }, avatar: EN_IMAGES.userFact, canDo: '米麹・甘酒・発酵シロップのOEM小ロット50本〜試作', aiMatch: '無添加×発酵トレンドで全国のフルーツ農家と相性◎', detail: { equipment: '麹室・低温発酵タンク・瓶詰殺菌ライン', pastLabs: 8, replySpeed: '平日昼間に返信' }, mapOpen: true },
+      { id: 'usr-futa-kanazawa', name: '前田 匠', shop: '加賀ウッドクラフト', category: 'craft', categoryLabel: '木工・什器職人', area: '石川県 金沢市', latLng: [36.561, 136.656], mapPos: { x: 56, y: 46 }, avatar: EN_IMAGES.userDes, canDo: '県産間伐材で作る折りたたみマルシェ棚・木製ギフト箱の小ロット制作', aiMatch: 'マルシェ出店時の見栄えとブランド感を一気に格上げ！', detail: { equipment: 'レーザー刻印機・NCルーター・全国発送対応', pastLabs: 6, replySpeed: '24時間以内に返信' }, mapOpen: true },
+      { id: 'usr-futa-kyoto', name: '藤本 凛', shop: '古民家カフェ en.茶寮', category: 'shop', categoryLabel: '販売・古民家カフェ', area: '京都府 宇治市', latLng: [34.884, 135.800], mapPos: { x: 52, y: 58 }, avatar: EN_IMAGES.userBuyer, canDo: '週末マルシェ会場・店頭テスト販売棚・試食モニター会の共催', aiMatch: 'できたて試作品をリアルなお客様に届けて生の声を集められます！', detail: { equipment: '古民家イベント土間・冷蔵ショーケース・試食キッチン', pastLabs: 10, replySpeed: '水〜日に即レス' }, mapOpen: true },
+      { id: 'usr-futa-onomichi', name: '村上 海斗', shop: 'せとうち柑橘ラボ', category: 'farm', categoryLabel: '一次産業・柑橘農家', area: '広島県 尾道市', latLng: [34.409, 133.205], mapPos: { x: 38, y: 64 }, avatar: EN_IMAGES.userFarm, canDo: '減農薬レモン・ネーブルの規格外果実＆皮ごとペースト提供', aiMatch: '香り高い瀬戸内レモンで全国のスイーツ・ドリンク企画に引っ張りだこ！', detail: { equipment: '選果場・冷凍ストッカー・クール便対応', pastLabs: 7, replySpeed: '夕方以降に返信' }, mapOpen: true },
+      { id: 'usr-futa-naha', name: '比嘉 美穂', shop: 'やんばるボタニカル印刷', category: 'design', categoryLabel: 'デザイン・和紙印刷', area: '沖縄県 那覇市', latLng: [26.212, 127.679], mapPos: { x: 16, y: 88 }, avatar: EN_IMAGES.userDes, canDo: '南国テイスト＆手描きイラストの耐水シール50枚〜全国郵送', aiMatch: '目を引くギフト向けパッケージデザインが得意です！', detail: { equipment: '小ロットオンデマンド印刷・耐水ラミネート', pastLabs: 5, replySpeed: '平日夕方に返信' }, mapOpen: true }
     ];
 
     extraNationwide.forEach(p => {
       if (!EN_MOCK_PEOPLE.some(x => x.id === p.id)) EN_MOCK_PEOPLE.push(p);
     });
+    normalizePeopleCoords();
   }
 
   let leafletMap = null;
@@ -170,6 +177,7 @@
   }
 
   function getPeopleWithDistance(onlyMapAllowed) {
+    normalizePeopleCoords();
     return EN_MOCK_PEOPLE
       .filter(p => !onlyMapAllowed || p.mapOpen !== false)
       .map(p => {
@@ -263,7 +271,6 @@
     if (oldCard && oldCard.classList.contains('en-card')) oldCard.remove();
 
     syncBaseFromAreaSettings();
-    // ★マップに載せてOKな人（mapOpen !== false）だけ地図へ配置！
     const mapPeople = getPeopleWithDistance(true);
     const hiddenMapCount = EN_MOCK_PEOPLE.filter(p => p.mapOpen === false).length;
 
@@ -381,7 +388,6 @@
       });
     });
 
-    // ★APIキー完全不要：日本政府公式「国土地理院（地理院地図・淡色）」タイル
     destroyLeafletMap();
     const mapEl = host.querySelector('#enJapanLeafletMap');
     if (typeof window.L === 'undefined' || !mapEl) {
@@ -405,7 +411,6 @@
       attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a>'
     }).addTo(leafletMap);
 
-    // 万一地理院タイルが落ちた場合のみ自動でOpenStreetMapへ退避
     let tileErrCount = 0;
     gsiLayer.on('tileerror', () => {
       tileErrCount++;
@@ -460,7 +465,7 @@
       if (!leafletMap) return;
       leafletMap.invalidateSize();
       fitMapToRadius(curKm);
-    }, 80);
+    }, 100);
 
     const slider = host.querySelector('#enRadiusSlider');
     if (slider) {
@@ -496,19 +501,31 @@
     if (typeof window.renderEnFeed === 'function') {
       const origFeed = window.renderEnFeed;
       window.renderEnFeed = function () {
+        normalizePeopleCoords();
         const res = origFeed.apply(this, arguments);
         const wrap = document.querySelector('#view-feed .en-wrap');
         if (!wrap) return res;
 
         if (enViewState.enSubTab === 'people' && enViewState.peopleView === 'map') {
           wrap.querySelectorAll('[data-en-areabar="1"]').forEach(el => el.remove());
-          mountJapanFutaMapView(wrap);
+          try {
+            mountJapanFutaMapView(wrap);
+          } catch (err) {
+            console.error('EN•joy Japan Map error:', err);
+          }
         } else {
           destroyLeafletMap();
         }
         return res;
       };
     }
+
+    // 他タブから「縁」へ戻ったときにマップが切れないよう自動リサイズ
+    document.addEventListener('click', e => {
+      if (e.target.closest('#bottomNav [data-tab="feed"]')) {
+        setTimeout(() => { if (leafletMap) leafletMap.invalidateSize(); }, 120);
+      }
+    });
   }
 
   window.addEventListener('DOMContentLoaded', () => {
