@@ -1,8 +1,9 @@
 /* =========================================================
-   EN•joy スリム統合ヘッダー＆ハンバーガーメニュー（patch_header.css v2）
+   EN•joy スリム統合ヘッダー＆ハンバーガーメニュー（patch_header.css v3）
    ・最上部：50pxのスリム1行ヘッダー（「ロゴ」＋「☰」の2要素のみ）
    ・スクロール時：ヘッダー背景は完全透明＆クリック透過
-     → ロゴと☰だけが立体フローティングカプセルでくっきり浮上！
+     → ロゴと☰だけが立体フローティングカプセルでくっきり浮上
+   ・タブ切替時の上隙間ゼロ化（余白の二重掛けを全リセット＆一本化）
    ========================================================= */
 
 /* --- 🔝 スリム固定ヘッダー（スマホ・PC共通） --- */
@@ -15,6 +16,7 @@
   height: 50px !important;
   min-height: 0 !important;
   padding: 0 !important;
+  margin: 0 !important;
   z-index: 9980 !important;
   transform: translateY(0) !important;
   opacity: 1 !important;
@@ -128,7 +130,6 @@ html.en-hdr-scrolled #topHeader .brand-wrap:hover {
   background: var(--en-accent-soft);
 }
 
-/* スクロール時：アクセント色でくっきり目立つフローティングタブ化 */
 html.en-hdr-scrolled #enUnifiedBurgerBtn {
   width: 40px;
   height: 40px;
@@ -170,13 +171,46 @@ html.en-hdr-scrolled #enUnifiedBurgerBtn .en-uhdr-badge {
   display: block;
 }
 
-/* 固定ヘッダー分のメイン上余白（スマホもPCも被らないように調整） */
-main.main-container {
-  padding-top: 62px !important;
+/* =========================================================
+   📐 隙間ゼロ化：上余白の二重掛けを全リセット＆1箇所に統一
+   ========================================================= */
+body,
+#appShell,
+.app-shell {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
 }
-html.en-pc-mode body:not(.en-in-register) main.main-container {
-  padding-top: 68px !important;
+
+/* 唯一のヘッダー逃げ余白（ヘッダー50px ＋ ちょうどいい呼吸余白6〜8px） */
+main.main-container,
+body:not(.en-in-register) main.main-container,
+body.en-in-register main.main-container {
+  margin-top: 0 !important;
+  padding-top: 56px !important;
 }
+html.en-pc-mode body:not(.en-in-register) main.main-container,
+html.en-pc-mode body.en-in-register main.main-container {
+  margin-top: 0 !important;
+  padding-top: 58px !important;
+}
+
+/* 各タブ・ラッパー・先頭要素の上余白を完全ゼロ化（タブ切替時の段差・隙間を根絶） */
+main.main-container > .view-section,
+.view-section,
+.view-section > .en-wrap,
+.en-wrap {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+.view-section > :first-child,
+.view-section > .en-wrap > :first-child,
+.en-wrap > .en-subtabs:first-child,
+.en-wrap > .card:first-child,
+.en-wrap > .en-prof-slider:first-child {
+  margin-top: 0 !important;
+}
+
+/* PCサイドバー上端合わせ */
 html.en-pc-mode body:not(.en-in-register) nav#bottomNav.bottom-nav {
   top: 50px !important;
   height: calc(100vh - 50px) !important;
@@ -330,7 +364,6 @@ html.en-pc-mode.en-hdr-scrolled body:not(.en-in-register) nav#bottomNav.bottom-n
   color: #fff;
 }
 
-/* 設定案内ボックス */
 .en-hdr-d-guide {
   padding: 10px 12px;
   border-radius: 12px;

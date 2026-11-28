@@ -1,8 +1,8 @@
 /* =========================================================
-   EN•joy スリム統合ヘッダー＆ハンバーガーメニュー（patch_header.js v1）
+   EN•joy スリム統合ヘッダー＆ハンバーガーメニュー（patch_header.js v2）
    ・ヘッダーは「ロゴ」＋「☰」の2要素のみ
-   ・スクロール時は42pxすりガラスで残す（ロゴタップでトップ復帰）
-   ・☰メニュー内に旧ヘッダー機能＋設定画面案内＋PC時ラボ直通を集約
+   ・スクロール時は完全透明＋ロゴ＆☰浮遊カプセル
+   ・タブ切替時のスクロール位置＆ヘッダー状態を即リセットして隙間ゼロ化
    ========================================================= */
 
 (function () {
@@ -20,6 +20,29 @@
   function syncBurgerUnread() {
     const btn = document.getElementById('enUnifiedBurgerBtn');
     if (btn) btn.classList.toggle('has-unread', hasUnreadNotif());
+  }
+
+  function onScrollHeader() {
+    const y = Math.max(
+      window.scrollY || 0,
+      document.documentElement.scrollTop || 0,
+      document.getElementById('appShell')?.scrollTop || 0,
+      document.querySelector('main.main-container')?.scrollTop || 0
+    );
+    document.documentElement.classList.toggle('en-hdr-scrolled', y > 24);
+  }
+
+  // ★タブ切替時にスクロール残りとヘッダー状態を即リセット（上隙間を完全防止）
+  function resetTabScrollTop() {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    const shell = document.getElementById('appShell');
+    if (shell) shell.scrollTop = 0;
+    const main = document.querySelector('main.main-container');
+    if (main) main.scrollTop = 0;
+    document.querySelectorAll('.view-section').forEach(sec => { sec.scrollTop = 0; });
+    onScrollHeader();
   }
 
   function closeHdrDrawer() {
@@ -66,7 +89,6 @@
     const unread = hasUnreadNotif();
     const hasMobileToggle = !!document.getElementById('toggleMobileBtn');
 
-    // PC時：最近のEN•ラボ（最新順）を取得
     let recentLabsHtml = '';
     if (isPc && typeof enViewState !== 'undefined' && Array.isArray(enViewState.labs)) {
       let recentIds = [];
@@ -180,7 +202,6 @@
       ` : ''}
     `;
 
-    // 各ボタンを既存のDOMイベントへ安全にブリッジ
     document.getElementById('enMenuAsk')?.addEventListener('click', () => {
       closeHdrDrawer();
       document.getElementById('enHdrAskBtn')?.click();
@@ -241,22 +262,38 @@
       inner.appendChild(btn);
     }
 
-    // ロゴタップで最上部へスッと戻る
     const brand = inner.querySelector('.brand-wrap');
     if (brand && !brand.dataset.enTopBound) {
       brand.dataset.enTopBound = '1';
       brand.addEventListener('click', () => {
-        if (window.scrollY > 30) {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const shell = document.getElementById('appShell');
+        if (shell) shell.scrollTo({ top: 0, behavior: 'smooth' });
       });
     }
 
     syncBurgerUnread();
   }
 
-  function onScrollHeader() {
-    document.documentElement.classList.toggle('en-hdr-scrolled', window.scrollY > 24);
+  // enGoTab 呼び出しにもフックして、どの経路のタブ遷移でも最上部へピタッと合わせる
+  function hookTabSwitchers() {
+    if (typeof window.enGoTab === 'function' && !window.enGoTab._enHdrWrapped) {
+      const orig = window.enGoTab;
+      const wrapped = function () {
+        const res = orig.apply(this, arguments);
+        requestAnimationFrame(resetTabScrollTop);
+        return res;
+      };
+      wrapped._enHdrWrapped = true;
+      window.enGoTab = wrapped;
+    }
+
+    // メインタブ・サブタブのクリックでも即リセット
+    document.addEventListener('click', e => {
+      if (e.target.closest('#bottomNav [data-tab], .en-subtab')) {
+        requestAnimationFrame(resetTabScrollTop);
+      }
+    }, true);
   }
 
   window.addEventListener('scroll', onScrollHeader, { passive: true });
@@ -264,8 +301,15 @@
 
   window.addEventListener('DOMContentLoaded', () => {
     mountUnifiedHeader();
+    hookTabSwitchers();
     onScrollHeader();
-    setTimeout(mountUnifiedHeader, 300);
-    setTimeout(mountUnifiedHeader, 700);
+
+    const shell = document.getElementById('appShell');
+    if (shell) shell.addEventListener('scroll', onScrollHeader, { passive: true });
+    const main = document.querySelector('main.main-container');
+    if (main) main.addEventListener('scroll', onScrollHeader, { passive: true });
+
+    setTimeout(() => { mountUnifiedHeader(); hookTabSwitchers(); }, 300);
+    setTimeout(() => { mountUnifiedHeader(); hookTabSwitchers(); }, 700);
   });
 })();
