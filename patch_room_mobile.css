@@ -1,24 +1,46 @@
 /* =========================================================
-   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.css v3）
+   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.css v4）
+   ・遮光カーテン＋裏スクロール固定でキーボード切替時の画像チラつき完全ゼロ化
+   ・トーク入力中(en-kbd-open)は上部ヘッダー＆下タブを自動収納し会話エリア最大化
    ・カルーセル（左:やること / 真ん中:カレンダー / 右:ラボ現在地）
-   ・進行：「いまここカード」フォーカス型ロードマップ＋やること＋多数決
-   ・ボード：入口「カテゴリ別2列カード一覧」→ タップで全画面作業
-   ・トーク：完全非公開＋「＋」展開トレイ
-   ・★新機能：文字入力中(en-kbd-open)は下タブ＆バナーを自動非表示＋iOSズレ防止
    ========================================================= */
 
-html.en-pc-mode .en-mrm-only { display: none !important; }
+html.en-pc-mode .en-mrm-only,
+html.en-pc-mode #en-mrm-curtain { display: none !important; }
 
+/* ★チラつき防止：モーダル真裏の完全不透明カーテン＆裏ページスクロール固定 */
+#en-mrm-curtain {
+  position: fixed;
+  inset: -200px 0;
+  background: var(--en-bg, #f7f4ec);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+#en-mrm-curtain.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+html.en-mrm-locked,
+body.en-mrm-locked {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+html:not(.en-pc-mode) #en-room-modal.en-mrm-active {
+  background: var(--en-bg, #f7f4ec) !important;
+  overscroll-behavior: contain;
+}
 html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-ai-copilot {
   display: none !important;
 }
 html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-room-head {
-  height: 50px;
+  height: 48px;
   padding: 0 12px !important;
   gap: 8px;
   background: var(--en-surface);
   border-bottom: 1px solid var(--en-border);
-  transition: height 0.18s ease, padding 0.18s ease;
 }
 html:not(.en-pc-mode) #en-room-modal.en-mrm-active #enRoomBody {
   padding: 12px 12px 24px !important;
@@ -33,46 +55,78 @@ html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-room-tab {
   padding: 5px 2px;
 }
 
-/* ボード全画面作業時はごちゃごちゃした上部横スクロールタブを完全非表示 */
+/* ボード全画面作業時は上部横スクロールタブを非表示 */
 html:not(.en-pc-mode) #en-room-modal.en-mrm-board-detail .en-board-topbar {
   display: none !important;
 }
 
-/* トーク画面：常駐チップバーを隠して「＋」展開トレイへ一本化 */
+/* トーク画面：常駐チップバーを隠して「＋」展開トレイへ一本化＆吹き出しをスッキリ配置 */
 html:not(.en-pc-mode) #en-room-modal.en-mrm-talk .en-quick-chips {
   display: none !important;
 }
+html:not(.en-pc-mode) #en-room-modal.en-mrm-talk #enRoomBody {
+  padding: 8px 10px 10px !important;
+  gap: 7px !important;
+}
+html:not(.en-pc-mode) #en-room-modal.en-mrm-talk .en-chat-bubble {
+  padding: 8px 11px !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+  border-radius: 14px !important;
+}
 
 /* =========================================================
-   ⌨️ スマホ文字入力モード最適化（画面の圧迫＆ズレを徹底解消）
+   ⌨️ スマホ文字入力モード：チラつき防止＆トーク表示エリア最大化
    ========================================================= */
 html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active {
   top: var(--en-vvt, 0px) !important;
   height: var(--en-vvh, 100dvh) !important;
   bottom: auto !important;
+  transition: none !important;
 }
 
-/* 入力中は下の5タブ＆非公開バナーを隠してトーク・ボード領域を一気に広げる */
+/* 入力中は下の5タブ＆非公開バナーを非表示 */
 html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-nav,
 html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-talk-private-bar {
   display: none !important;
 }
 
-/* 入力中は上部ヘッダーも極薄(40px)に圧縮 */
-html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-head {
-  height: 40px !important;
+/* ★トーク入力中は上部ヘッダーも自動収納して会話エリアを限界まで広げる（余白タップor閉じるで即復帰） */
+html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-talk .en-room-head {
+  display: none !important;
+}
+html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-talk #enRoomBody {
+  padding: 6px 10px 6px !important;
+  gap: 6px !important;
+}
+html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-talk .en-chat-bubble {
+  padding: 7px 10px !important;
+  font-size: 12.5px !important;
+  line-height: 1.4 !important;
+}
+
+/* ボード・進行などの入力中はヘッダーを極薄(38px)に圧縮 */
+html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active:not(.en-mrm-talk) .en-room-head {
+  height: 38px !important;
   padding: 0 10px !important;
 }
-html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-head .en-act-btn {
-  padding: 4px 9px !important;
-  font-size: 11.5px !important;
+html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active:not(.en-mrm-talk) .en-room-head .en-act-btn {
+  padding: 3px 8px !important;
+  font-size: 11px !important;
 }
-html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active #enRoomBody {
-  padding: 8px 10px 10px !important;
-}
+
+/* 入力バーをスリム化してトーク縦幅をさらに確保 */
 html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-composer {
-  padding: 6px 10px !important;
+  padding: 5px 8px !important;
   gap: 6px !important;
+}
+html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-input {
+  padding: 6px 12px !important;
+  min-height: 36px !important;
+}
+html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-talk-plus-btn {
+  width: 34px;
+  height: 34px;
 }
 
 /* =========================================================
@@ -235,7 +289,7 @@ html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-composer
 .en-bcat-desc { font-size: 10px; color: var(--en-muted); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
 /* --- 💬 トーク：非公開バッジ ＋ 「＋」展開トレイ --- */
-.en-talk-private-bar { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 6px 10px; margin-bottom: 10px; border-radius: 10px; background: var(--en-surface-2); border: 1px dashed var(--en-border); font-size: 11px; font-weight: 700; color: var(--en-muted); }
+.en-talk-private-bar { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 6px 10px; margin-bottom: 6px; border-radius: 10px; background: var(--en-surface-2); border: 1px dashed var(--en-border); font-size: 11px; font-weight: 700; color: var(--en-muted); }
 .en-talk-plus-btn { width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--en-border); background: var(--en-surface-2); color: var(--en-text); font-size: 20px; font-weight: 700; line-height: 1; display: grid; place-items: center; flex-shrink: 0; cursor: pointer; transition: transform 0.2s ease, background 0.15s, border-color 0.15s, color 0.15s; }
 .en-talk-plus-btn.open { transform: rotate(45deg); background: var(--en-accent); border-color: var(--en-accent); color: #fff; }
 .en-talk-plus-tray { display: none; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px 12px; background: var(--en-surface); border-top: 1px solid var(--en-border); }

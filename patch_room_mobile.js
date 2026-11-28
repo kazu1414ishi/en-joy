@@ -1,11 +1,8 @@
 /* =========================================================
-   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.js v4）
-   ・カルーセル：左(0)やること ／ 真ん中(1・初期)カレンダー ／ 右(2)ラボ現在地
-   ・進行：🗺️「いまここカード」フォーカス型ロードマップ
-   ・ボード：🧰入口「カテゴリ別2列カード一覧」→ 全画面作業
-   ・トーク：🔒完全非公開＋「＋」展開トレイ
-   ・★新機能：iOSキーボード展開検知(visualViewport追従)で
-     入力中は下タブ＆バナーを自動非表示＆トーク欄を広く確保！
+   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.js v5）
+   ・遮光カーテン(#en-mrm-curtain)＆裏スクロール固定で画像チラつき完全ゼロ
+   ・トーク入力中は上部ヘッダー＆下タブを自動収納し会話表示を最大化
+   ・トーク余白タップでキーボードを閉じてヘッダー＆下タブ即復帰
    ========================================================= */
 
 (function () {
@@ -95,26 +92,67 @@
   }
 
   // =========================================================
-  // ⌨️ スマホ入力モード検知 ＆ iOS visualViewport 高さと位置をピタッと追従
+  // 🛡️ チラつき完全防止：モーダル真裏の遮光カーテン＆スクロールロック
+  // =========================================================
+  function syncModalCurtain() {
+    const modal = document.getElementById('en-room-modal');
+    const isOpenMobile = !!(modal && modal.classList.contains('open') && isMobileRoomMode());
+
+    let curtain = document.getElementById('en-mrm-curtain');
+    if (isOpenMobile && !curtain) {
+      curtain = document.createElement('div');
+      curtain.id = 'en-mrm-curtain';
+      document.body.appendChild(curtain);
+    }
+
+    if (curtain) {
+      if (isOpenMobile && modal) {
+        const mz = parseInt(window.getComputedStyle(modal).zIndex, 10) || 9990;
+        curtain.style.zIndex = String(mz - 1);
+      }
+      curtain.classList.toggle('active', isOpenMobile);
+    }
+
+    document.documentElement.classList.toggle('en-mrm-locked', isOpenMobile);
+    document.body.classList.toggle('en-mrm-locked', isOpenMobile);
+    if (!isOpenMobile) {
+      document.documentElement.classList.remove('en-kbd-open');
+    }
+  }
+
+  // =========================================================
+  // ⌨️ スマホ入力モード検知 ＆ iOS visualViewport 同期
   // =========================================================
   let kbdBlurTimer = null;
+  let vpRaf = 0;
 
   function syncViewportVars() {
-    const root = document.documentElement;
-    if (!isMobileRoomMode()) {
-      root.classList.remove('en-kbd-open');
-      root.style.removeProperty('--en-vvh');
-      root.style.removeProperty('--en-vvt');
-      return;
-    }
-    const vv = window.visualViewport;
-    if (vv) {
-      root.style.setProperty('--en-vvh', Math.round(vv.height) + 'px');
-      root.style.setProperty('--en-vvt', Math.round(vv.offsetTop) + 'px');
-    } else {
-      root.style.setProperty('--en-vvh', window.innerHeight + 'px');
-      root.style.setProperty('--en-vvt', '0px');
-    }
+    if (vpRaf) cancelAnimationFrame(vpRaf);
+    vpRaf = requestAnimationFrame(() => {
+      vpRaf = 0;
+      const root = document.documentElement;
+      if (!isMobileRoomMode()) {
+        root.classList.remove('en-kbd-open');
+        root.style.removeProperty('--en-vvh');
+        root.style.removeProperty('--en-vvt');
+        return;
+      }
+      const vv = window.visualViewport;
+      if (vv) {
+        root.style.setProperty('--en-vvh', Math.round(vv.height) + 'px');
+        root.style.setProperty('--en-vvt', Math.round(vv.offsetTop) + 'px');
+      } else {
+        root.style.setProperty('--en-vvh', window.innerHeight + 'px');
+        root.style.setProperty('--en-vvt', '0px');
+      }
+      if (root.classList.contains('en-kbd-open')) {
+        const body = document.getElementById('enRoomBody');
+        const modal = document.getElementById('en-room-modal');
+        if (body && modal && modal.classList.contains('en-mrm-talk')) {
+          body.scrollTop = body.scrollHeight;
+        }
+      }
+    });
   }
 
   function setKeyboardOpen(isOpen) {
@@ -124,14 +162,11 @@
       return;
     }
     if (isOpen) {
+      syncModalCurtain();
       document.documentElement.classList.add('en-kbd-open');
       syncViewportVars();
-      // トーク入力中は最新メッセージが隠れないよう最下部へスッと合わせる
-      const modal = document.getElementById('en-room-modal');
-      if (modal && modal.classList.contains('en-mrm-talk')) {
-        const body = document.getElementById('enRoomBody');
-        if (body) setTimeout(() => { body.scrollTop = body.scrollHeight; }, 120);
-      }
+      setTimeout(syncViewportVars, 180);
+      setTimeout(syncViewportVars, 360);
     } else {
       kbdBlurTimer = setTimeout(() => {
         const ae = document.activeElement;
@@ -140,7 +175,7 @@
           document.documentElement.classList.remove('en-kbd-open');
           syncViewportVars();
         }
-      }, 120);
+      }, 100);
     }
   }
 
@@ -148,11 +183,16 @@
     if (window._enKbdObsInstalled) return;
     window._enKbdObsInstalled = true;
 
+    const modal = document.getElementById('en-room-modal');
+    if (modal) {
+      const mo = new MutationObserver(syncModalCurtain);
+      mo.observe(modal, { attributes: true, attributeFilter: ['class'] });
+    }
+
     document.addEventListener('focusin', e => {
       const t = e.target;
       if (!t || !isMobileRoomMode()) return;
       if (t.closest('#en-room-modal') && /INPUT|TEXTAREA/.test(t.tagName) && !/checkbox|radio|range|file|button/i.test(t.type || '')) {
-        // ＋トレイが開いていたら自動で閉じて視界を最大化
         if (uiState.talkPlusOpen) {
           uiState.talkPlusOpen = false;
           document.querySelector('#en-room-modal .en-talk-plus-btn')?.classList.remove('open');
@@ -963,7 +1003,7 @@
   }
 
   // =========================================================
-  // 💬 トーク機能強化：完全非公開 ＋ 「＋」展開トレイ ＋ 送信時スムーズ体験
+  // 💬 トーク機能強化：完全非公開 ＋ 「＋」展開トレイ ＋ 余白タップでキーボード閉じ
   // =========================================================
   function enhanceMobileTalk(modal, lab, d) {
     const body = modal.querySelector('#enRoomBody');
@@ -974,7 +1014,17 @@
       body.insertBefore(priv, body.firstChild);
 
       const lastMeta = body.querySelector('.en-meta:last-child');
-      if (lastMeta) lastMeta.textContent = '💡 発言タップ → ルーム内メモ / やること / なぜなぜ分析へ（完全非公開）';
+      if (lastMeta) lastMeta.textContent = '💡 発言タップ → ルーム内メモ・やること・なぜなぜへ（完全非公開）';
+
+      // 入力中にトークの背景余白をタップしたらキーボードを閉じてヘッダー＆下タブを即復帰
+      body.addEventListener('click', e => {
+        if (!e.target.closest('.en-chat-bubble, button, a, input, textarea')) {
+          if (document.documentElement.classList.contains('en-kbd-open')) {
+            document.activeElement?.blur();
+            setKeyboardOpen(false);
+          }
+        }
+      });
 
       body.querySelectorAll('[data-msgaction]').forEach(b => {
         b.onclick = () => {
@@ -998,6 +1048,14 @@
 
     const composer = modal.querySelector('.en-room-composer');
     if (composer) {
+      const roomInp = composer.querySelector('#enRoomInput');
+      if (roomInp) {
+        roomInp.setAttribute('autocomplete', 'off');
+        roomInp.setAttribute('autocorrect', 'off');
+        roomInp.setAttribute('spellcheck', 'false');
+        roomInp.setAttribute('enterkeyhint', 'send');
+      }
+
       const tray = document.createElement('div');
       tray.className = `en-talk-plus-tray ${uiState.talkPlusOpen ? 'open' : ''}`;
       tray.innerHTML = `
@@ -1014,7 +1072,6 @@
       plusBtn.setAttribute('aria-label', '便利機能を開く');
       plusBtn.textContent = '+';
       plusBtn.onclick = () => {
-        // ＋を押したらキーボードを引っ込めてトレイを見やすくする
         document.activeElement?.blur();
         setKeyboardOpen(false);
         uiState.talkPlusOpen = !uiState.talkPlusOpen;
@@ -1101,7 +1158,9 @@
         uiState.talkPlusOpen = false;
         uiState._staySlide = 1;
         const targetTab = (isMobileRoomMode() && !asFan) ? 'hub' : initialTab;
-        return origOpen.call(this, labId, targetTab, asFan);
+        const res = origOpen.call(this, labId, targetTab, asFan);
+        syncModalCurtain();
+        return res;
       };
       wrappedOpen._enMrmWrapped = true;
       window.openEnRoomModal = wrappedOpen;
@@ -1116,6 +1175,7 @@
           if (!isMobileRoomMode() && (enViewState.roomTab === 'hub' || enViewState.roomTab === 'launch')) {
             enViewState.roomTab = enViewState.roomTab === 'launch' ? 'detail' : 'board';
           }
+          syncModalCurtain();
           return origRender.apply(this, arguments);
         }
 
@@ -1126,6 +1186,7 @@
 
         modal.classList.add('en-mrm-active');
         modal.classList.remove('en-mrm-board-detail', 'en-mrm-talk');
+        syncModalCurtain();
 
         if (rt === 'hub') { renderMobileRoomHub(modal, lab, d); return; }
         if (rt === 'detail') { renderMobileRoomSettings(modal, lab, d); return; }
