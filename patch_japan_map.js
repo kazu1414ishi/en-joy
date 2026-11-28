@@ -1,20 +1,17 @@
 /* =========================================================
    EN•joy 日本地図 × 半径ゲージ × ポケふた風「ご当地職種メダルマップ」
-   （patch_japan_map.js v1）
-   ・Leafletによる本物の日本地図（4テーマ対応・APIキー不要）
-   ・拠点からの半径ゲージ（5km〜500km〜全国）リアルタイム円伸縮＆距離計算
-   ・ポケふた風・円形職種メダル（6大職種カテゴリ・ご当地発見図鑑コレクション）
-   ・PUBLIC保護（市町村代表座標のみ表示・番地非公開）
+   （patch_japan_map.js v2）
+   ・国土地理院（地理院地図・淡色）タイル採用（APIキー完全不要・日本語表記）
+   ・通信エラー時はOpenStreetMapへ自動フォールバック
+   ・mapOpen === false のユーザーは地図上へ一切表示しない（地域検索・リストのみ表示）
    ========================================================= */
 
 (function () {
   const MAP_CFG_KEY = 'en_joy_map_radius_v1';
   const FUTA_DEX_KEY = 'en_joy_futa_discovered_v1';
+  const RADIUS_STEPS = [5, 10, 20, 30, 50, 100, 200, 300, 500, 0];
+  let jpMapHookInstalled = false;
 
-  // 非線形スライダー刻み（近場は細かく、広域は大きく選択できる人間工学設計）
-  const RADIUS_STEPS = [5, 10, 20, 30, 50, 100, 200, 300, 500, 0]; // 0 = 全国すべて
-
-  // 職種メダルの色・ラベル・統一ラインSVG
   const ROLE_META = {
     farm:    { label: '一次産業・農家',   color: '#16a34a', svg: `<path d="M12 21V9"/><path d="M12 9c-3 0-5.5-2-6-5 3-.5 5.5 1.5 6 5z"/><path d="M12 13c3 0 5.5-2 6-5-3-.5-5.5 1.5-6 5z"/>` },
     factory: { label: '加工・工房・蔵元', color: '#ea580c', svg: `<path d="M3 21V10l6 4V10l6 4V6h6v15H3z"/><path d="M7 17h2M11 17h2M15 17h2"/>` },
@@ -24,7 +21,6 @@
     craft:   { label: '木工・工芸・特技', color: '#b45309', svg: `<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>` }
   };
 
-  // 全国47都道府県＋主要市区町村の代表座標（PUBLIC用・個人住所非特定）
   const AREA_COORDS = {
     '北海道': [43.064, 141.347], '札幌': [43.064, 141.347], '帯広': [42.924, 143.196], '旭川': [43.771, 142.365],
     '青森県': [40.824, 140.740], '岩手県': [39.704, 141.153], '宮城県': [38.268, 140.872], '仙台': [38.268, 140.872],
@@ -49,20 +45,16 @@
 
   function resolveLatLng(areaText) {
     const raw = String(areaText || '');
-    // より具体的な市町村名を優先マッチ
     const keys = Object.keys(AREA_COORDS).sort((a, b) => b.length - a.length);
     for (const k of keys) {
       if (raw.includes(k)) return AREA_COORDS[k];
     }
-    return [34.766, 135.628]; // デフォルト（寝屋川）
+    return [34.766, 135.628];
   }
 
-  // ハバーサイン公式：2点間の直線距離（km）
   function calcDistanceKm(lat1, lng1, lat2, lng2) {
-    const R = 6371;
-    const toRad = d => (d * Math.PI) / 180;
-    const dLat = toRad(lat2 - lat1);
-    const dLng = toRad(lng2 - lng1);
+    const R = 6371, toRad = d => (d * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
     const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
@@ -71,26 +63,18 @@
     return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  // 半径＆拠点設定の読み込み
   const mapCfg = (function loadMapCfg() {
     try {
       const s = JSON.parse(localStorage.getItem(MAP_CFG_KEY) || 'null');
       if (s && typeof s.stepIdx === 'number') return s;
     } catch (e) {}
-    return {
-      stepIdx: 9, // 初期＝全国（9 -> 0km＝全国すべて）
-      baseLat: 34.766,
-      baseLng: 135.628,
-      baseLabel: '大阪府 寝屋川市',
-      catFilter: 'all'
-    };
+    return { stepIdx: 9, baseLat: 34.766, baseLng: 135.628, baseLabel: '大阪府 寝屋川市', catFilter: 'all' };
   })();
 
   function saveMapCfg() {
     try { localStorage.setItem(MAP_CFG_KEY, JSON.stringify(mapCfg)); } catch (e) {}
   }
 
-  // ポケふた風「発見済みご当地職種」コレクション
   const discoveredSet = (function loadDex() {
     try {
       const arr = JSON.parse(localStorage.getItem(FUTA_DEX_KEY) || '[]');
@@ -113,88 +97,36 @@
     return km === 0 ? '全国すべて' : `半径 ${km}km 以内`;
   }
 
-  // 拠点座標をプロフィール・エリア設定と同期
   function syncBaseFromAreaSettings() {
     try {
       const areaSaved = JSON.parse(localStorage.getItem('en_joy_area_scope_v1') || 'null');
       if (areaSaved && areaSaved.pref && !mapCfg.gpsLocked) {
         const lbl = `${areaSaved.pref}${areaSaved.city ? ' ' + areaSaved.city : ''}`;
         const [lat, lng] = resolveLatLng(lbl);
-        mapCfg.baseLat = lat;
-        mapCfg.baseLng = lng;
-        mapCfg.baseLabel = lbl;
+        mapCfg.baseLat = lat; mapCfg.baseLng = lng; mapCfg.baseLabel = lbl;
       }
     } catch (e) {}
   }
 
-  // 全国ポケふた探索が最高に楽しくなる多彩な職種メンバーを補完（緯度経度つき）
   function ensureNationwideCraftPeople() {
     if (typeof EN_MOCK_PEOPLE === 'undefined' || !Array.isArray(EN_MOCK_PEOPLE)) return;
 
-    // 既存メンバーへ正確な座標を付与
     const existingCoords = {
-      'usr-001': [34.814, 135.650], // 枚方市
-      'usr-002': [34.679, 135.601], // 東大阪市
-      'usr-003': [34.686, 135.512], // 大阪市中央区
-      'usr-004': [34.766, 135.628], // 寝屋川市
-      'usr-jp-01': [36.238, 137.972], // 長野県松本市
-      'usr-jp-02': [35.658, 139.701], // 東京都渋谷区
-      'usr-jp-03': [33.556, 130.196]  // 福岡県糸島市
+      'usr-001': [34.814, 135.650], 'usr-002': [34.679, 135.601],
+      'usr-003': [34.686, 135.512], 'usr-004': [34.766, 135.628],
+      'usr-jp-01': [36.238, 137.972], 'usr-jp-02': [35.658, 139.701], 'usr-jp-03': [33.556, 130.196]
     };
     EN_MOCK_PEOPLE.forEach(p => {
       if (!p.latLng) p.latLng = existingCoords[p.id] || resolveLatLng(p.area);
     });
 
-    // ポケふた風の全国多彩な職種を追加（木工・古民家カフェ・発酵蔵・和紙印刷・キッチンカー・柑橘・酪農・南国果実）
     const extraNationwide = [
-      {
-        id: 'usr-futa-hokkaido', name: '佐々木 拓真', shop: '十勝ひまわり牧場',
-        category: 'farm', categoryLabel: '一次産業・酪農', area: '北海道 帯広市',
-        latLng: [42.924, 143.196], avatar: EN_IMAGES.userFarm,
-        canDo: '放牧グラスフェッド牛乳・ホエイの冷凍小ロット供給（全国クール発送OK）',
-        aiMatch: '濃厚乳製品×焼き菓子・ジェラートコラボで差別化抜群！',
-        detail: { equipment: '殺菌タンク・急速冷凍・全国冷凍便契約', pastLabs: 4, replySpeed: '朝と夜に返信' }
-      },
-      {
-        id: 'usr-futa-sendai', name: '伊藤 優子', shop: 'みちのく発酵蔵',
-        category: 'factory', categoryLabel: '加工・発酵蔵元', area: '宮城県 仙台市',
-        latLng: [38.268, 140.872], avatar: EN_IMAGES.userFact,
-        canDo: '米麹・甘酒・発酵シロップのOEM小ロット50本〜試作',
-        aiMatch: '無添加×発酵トレンドで全国のフルーツ農家と相性◎',
-        detail: { equipment: '麹室・低温発酵タンク・瓶詰殺菌ライン', pastLabs: 8, replySpeed: '平日昼間に返信' }
-      },
-      {
-        id: 'usr-futa-kanazawa', name: '前田 匠', shop: '加賀ウッドクラフト',
-        category: 'craft', categoryLabel: '木工・什器職人', area: '石川県 金沢市',
-        latLng: [36.561, 136.656], avatar: EN_IMAGES.userDes,
-        canDo: '県産間伐材で作る折りたたみマルシェ棚・木製ギフト箱の小ロット制作',
-        aiMatch: 'マルシェ出店時の見栄えとブランド感を一気に格上げ！',
-        detail: { equipment: 'レーザー刻印機・NCルーター・全国発送対応', pastLabs: 6, replySpeed: '24時間以内に返信' }
-      },
-      {
-        id: 'usr-futa-kyoto', name: '藤本 凛', shop: '古民家カフェ en.茶寮',
-        category: 'shop', categoryLabel: '販売・古民家カフェ', area: '京都府 宇治市',
-        latLng: [34.884, 135.800], avatar: EN_IMAGES.userBuyer,
-        canDo: '週末マルシェ会場・店頭テスト販売棚・試食モニター会の共催',
-        aiMatch: 'できたて試作品をリアルなお客様に届けて生の声を集められます！',
-        detail: { equipment: '古民家イベント土間・冷蔵ショーケース・試食キッチン', pastLabs: 10, replySpeed: '水〜日に即レス' }
-      },
-      {
-        id: 'usr-futa-onomichi', name: '村上 海斗', shop: 'せとうち柑橘ラボ',
-        category: 'farm', categoryLabel: '一次産業・柑橘農家', area: '広島県 尾道市',
-        latLng: [34.409, 133.205], avatar: EN_IMAGES.userFarm,
-        canDo: '減農薬レモン・ネーブルの規格外果実＆皮ごとペースト提供',
-        aiMatch: '香り高い瀬戸内レモンで全国のスイーツ・ドリンク企画に引っ張りだこ！',
-        detail: { equipment: '選果場・冷凍ストッカー・クール便対応', pastLabs: 7, replySpeed: '夕方以降に返信' }
-      },
-      {
-        id: 'usr-futa-naha', name: '比嘉 美穂', shop: 'やんばるボタニカル印刷',
-        category: 'design', categoryLabel: 'デザイン・和紙印刷', area: '沖縄県 那覇市',
-        latLng: [26.212, 127.679], avatar: EN_IMAGES.userDes,
-        canDo: '南国テイスト＆手描きイラストの耐水シール50枚〜全国郵送',
-        aiMatch: '目を引くギフト向けパッケージデザインが得意です！',
-        detail: { equipment: '小ロットオンデマンド印刷・耐水ラミネート', pastLabs: 5, replySpeed: '平日夕方に返信' }
-      }
+      { id: 'usr-futa-hokkaido', name: '佐々木 拓真', shop: '十勝ひまわり牧場', category: 'farm', categoryLabel: '一次産業・酪農', area: '北海道 帯広市', latLng: [42.924, 143.196], avatar: EN_IMAGES.userFarm, canDo: '放牧グラスフェッド牛乳・ホエイの冷凍小ロット供給（全国クール発送OK）', aiMatch: '濃厚乳製品×焼き菓子・ジェラートコラボで差別化抜群！', detail: { equipment: '殺菌タンク・急速冷凍・全国冷凍便契約', pastLabs: 4, replySpeed: '朝と夜に返信' }, mapOpen: true },
+      { id: 'usr-futa-sendai', name: '伊藤 優子', shop: 'みちのく発酵蔵', category: 'factory', categoryLabel: '加工・発酵蔵元', area: '宮城県 仙台市', latLng: [38.268, 140.872], avatar: EN_IMAGES.userFact, canDo: '米麹・甘酒・発酵シロップのOEM小ロット50本〜試作', aiMatch: '無添加×発酵トレンドで全国のフルーツ農家と相性◎', detail: { equipment: '麹室・低温発酵タンク・瓶詰殺菌ライン', pastLabs: 8, replySpeed: '平日昼間に返信' }, mapOpen: true },
+      { id: 'usr-futa-kanazawa', name: '前田 匠', shop: '加賀ウッドクラフト', category: 'craft', categoryLabel: '木工・什器職人', area: '石川県 金沢市', latLng: [36.561, 136.656], avatar: EN_IMAGES.userDes, canDo: '県産間伐材で作る折りたたみマルシェ棚・木製ギフト箱の小ロット制作', aiMatch: 'マルシェ出店時の見栄えとブランド感を一気に格上げ！', detail: { equipment: 'レーザー刻印機・NCルーター・全国発送対応', pastLabs: 6, replySpeed: '24時間以内に返信' }, mapOpen: true },
+      { id: 'usr-futa-kyoto', name: '藤本 凛', shop: '古民家カフェ en.茶寮', category: 'shop', categoryLabel: '販売・古民家カフェ', area: '京都府 宇治市', latLng: [34.884, 135.800], avatar: EN_IMAGES.userBuyer, canDo: '週末マルシェ会場・店頭テスト販売棚・試食モニター会の共催', aiMatch: 'できたて試作品をリアルなお客様に届けて生の声を集められます！', detail: { equipment: '古民家イベント土間・冷蔵ショーケース・試食キッチン', pastLabs: 10, replySpeed: '水〜日に即レス' }, mapOpen: true },
+      { id: 'usr-futa-onomichi', name: '村上 海斗', shop: 'せとうち柑橘ラボ', category: 'farm', categoryLabel: '一次産業・柑橘農家', area: '広島県 尾道市', latLng: [34.409, 133.205], avatar: EN_IMAGES.userFarm, canDo: '減農薬レモン・ネーブルの規格外果実＆皮ごとペースト提供', aiMatch: '香り高い瀬戸内レモンで全国のスイーツ・ドリンク企画に引っ張りだこ！', detail: { equipment: '選果場・冷凍ストッカー・クール便対応', pastLabs: 7, replySpeed: '夕方以降に返信' }, mapOpen: true },
+      { id: 'usr-futa-naha', name: '比嘉 美穂', shop: 'やんばるボタニカル印刷', category: 'design', categoryLabel: 'デザイン・和紙印刷', area: '沖縄県 那覇市', latLng: [26.212, 127.679], avatar: EN_IMAGES.userDes, canDo: '南国テイスト＆手描きイラストの耐水シール50枚〜全国郵送', aiMatch: '目を引くギフト向けパッケージデザインが得意です！', detail: { equipment: '小ロットオンデマンド印刷・耐水ラミネート', pastLabs: 5, replySpeed: '平日夕方に返信' }, mapOpen: true }
     ];
 
     extraNationwide.forEach(p => {
@@ -202,9 +134,6 @@
     });
   }
 
-  // =========================================================
-  // 🗾 Leaflet 日本地図コントローラー（再描画安全・60fps半径更新）
-  // =========================================================
   let leafletMap = null;
   let radiusCircle = null;
   let homeMarker = null;
@@ -240,36 +169,30 @@
     });
   }
 
-  function getPeopleWithDistance() {
-    return EN_MOCK_PEOPLE.map(p => {
-      const [lat, lng] = p.latLng || resolveLatLng(p.area);
-      const distKm = Math.round(calcDistanceKm(mapCfg.baseLat, mapCfg.baseLng, lat, lng));
-      return { ...p, lat, lng, distKm };
-    });
+  function getPeopleWithDistance(onlyMapAllowed) {
+    return EN_MOCK_PEOPLE
+      .filter(p => !onlyMapAllowed || p.mapOpen !== false)
+      .map(p => {
+        const [lat, lng] = p.latLng || resolveLatLng(p.area);
+        const distKm = Math.round(calcDistanceKm(mapCfg.baseLat, mapCfg.baseLng, lat, lng));
+        return { ...p, lat, lng, distKm };
+      });
   }
 
   function updateRadiusVisualsLive(km, wrapEl) {
-    // 1) ラベル更新
     const valEl = wrapEl.querySelector('#enRadiusValPill');
     if (valEl) valEl.textContent = formatRadiusLabel(km);
 
-    // 2) Leafletの半径サークルをリアルタイム伸縮
     if (leafletMap && radiusCircle) {
-      if (km === 0) {
-        radiusCircle.setStyle({ opacity: 0, fillOpacity: 0 });
-      } else {
-        radiusCircle.setRadius(km * 1000);
-        radiusCircle.setStyle({ opacity: 0.85, fillOpacity: 0.14 });
-      }
+      if (km === 0) radiusCircle.setStyle({ opacity: 0, fillOpacity: 0 });
+      else { radiusCircle.setRadius(km * 1000); radiusCircle.setStyle({ opacity: 0.85, fillOpacity: 0.14 }); }
     }
 
-    // 3) マーカーの圏内・圏外スタイルを即時切替
     let inCount = 0;
     personMarkers.forEach(item => {
       const catOk = mapCfg.catFilter === 'all' || item.person.category === mapCfg.catFilter;
       const distOk = km === 0 || item.person.distKm <= km;
-      const visible = catOk;
-      if (visible) {
+      if (catOk) {
         if (!leafletMap.hasLayer(item.marker)) item.marker.addTo(leafletMap);
         item.marker.setIcon(buildFutaDivIcon(item.person, item.person.id === enViewState.mapSelectedId, distOk));
         if (distOk) inCount++;
@@ -285,8 +208,7 @@
   function fitMapToRadius(km) {
     if (!leafletMap) return;
     if (km === 0) {
-      // 日本列島全体が気持ちよく収まるビュー
-      leafletMap.setView([36.2, 137.8], 5, { animate: true });
+      leafletMap.setView([36.5, 137.8], 5, { animate: true });
     } else if (radiusCircle) {
       radiusCircle.setRadius(km * 1000);
       leafletMap.fitBounds(radiusCircle.getBounds(), { padding: [26, 26], maxZoom: 12, animate: true });
@@ -312,16 +234,13 @@
           </div>
           <span class="en-futa-dist-pill">拠点から 約${person.distKm}km</span>
         </div>
-
         <div class="en-row" style="flex-wrap:wrap;gap:6px;">
           <span class="en-pill" style="background:${meta.color}1a;color:${meta.color};">${esc(meta.label)}</span>
           ${isFound ? '<span class="en-pill" style="background:rgba(16,185,129,0.14);color:#059669;">✓ 図鑑で発見済み</span>' : ''}
           <span class="en-meta" style="font-size:11px;">過去ラボ実績 ${person.detail?.pastLabs || 2}件</span>
         </div>
-
         <p class="en-text">${esc(person.canDo)}</p>
         <div class="en-meta" style="color:var(--en-accent);font-weight:800;">✨ ${esc(aiTxt)}</div>
-
         <div class="en-actions">
           <button type="button" class="en-act-btn" id="enFutaGreetBtn">👋 ${isBuyer ? '応援する' : '気になる'}</button>
           <button type="button" class="en-act-btn" id="enFutaAskBtn">💬 ちょっと聞く</button>
@@ -330,15 +249,9 @@
       </div>
     `;
 
-    document.getElementById('enFutaGreetBtn')?.addEventListener('click', () => {
-      enToast(`👋 ${person.name}さんに「${isBuyer ? '応援' : '気になる'}」を送りました！`);
-    });
-    document.getElementById('enFutaAskBtn')?.addEventListener('click', () => {
-      if (typeof startQuickAsk === 'function') startQuickAsk(person.id);
-    });
-    document.getElementById('enFutaDetailBtn')?.addEventListener('click', () => {
-      if (typeof openPersonDetailSheet === 'function') openPersonDetailSheet(person.id);
-    });
+    document.getElementById('enFutaGreetBtn')?.addEventListener('click', () => enToast(`👋 ${person.name}さんに「${isBuyer ? '応援' : '気になる'}」を送りました！`));
+    document.getElementById('enFutaAskBtn')?.addEventListener('click', () => { if (typeof startQuickAsk === 'function') startQuickAsk(person.id); });
+    document.getElementById('enFutaDetailBtn')?.addEventListener('click', () => { if (typeof openPersonDetailSheet === 'function') openPersonDetailSheet(person.id); });
     if (typeof enSyncTheme === 'function') enSyncTheme();
   }
 
@@ -346,39 +259,39 @@
     const oldMapBox = wrapEl.querySelector('.en-map-box');
     if (!oldMapBox) return;
 
-    // 既存の簡易マップ＋選択カードを置換するコンテナを用意
     const oldCard = oldMapBox.nextElementSibling;
     if (oldCard && oldCard.classList.contains('en-card')) oldCard.remove();
 
     syncBaseFromAreaSettings();
-    const allPeople = getPeopleWithDistance();
+    // ★マップに載せてOKな人（mapOpen !== false）だけ地図へ配置！
+    const mapPeople = getPeopleWithDistance(true);
+    const hiddenMapCount = EN_MOCK_PEOPLE.filter(p => p.mapOpen === false).length;
+
     const curKm = getCurrentRadiusKm();
     const q = (enViewState.peopleQuery || '').trim();
-    const searchFiltered = allPeople.filter(p => !q || (p.name + p.shop + p.area + p.canDo + p.categoryLabel).includes(q));
+    const searchFiltered = mapPeople.filter(p => !q || (p.name + p.shop + p.area + p.canDo + p.categoryLabel).includes(q));
 
-    const selected = searchFiltered.find(p => p.id === enViewState.mapSelectedId) || searchFiltered[0] || allPeople[0];
+    const selected = searchFiltered.find(p => p.id === enViewState.mapSelectedId) || searchFiltered[0] || mapPeople[0];
     if (selected) {
       enViewState.mapSelectedId = selected.id;
       markDiscovered(selected.id);
     }
 
-    const foundCount = allPeople.filter(p => discoveredSet.has(p.id)).length;
-    const dexPct = Math.round((foundCount / Math.max(1, allPeople.length)) * 100);
+    const foundCount = mapPeople.filter(p => discoveredSet.has(p.id)).length;
+    const dexPct = Math.round((foundCount / Math.max(1, mapPeople.length)) * 100);
     const inRangeNow = searchFiltered.filter(p => (mapCfg.catFilter === 'all' || p.category === mapCfg.catFilter) && (curKm === 0 || p.distKm <= curKm)).length;
 
     const host = document.createElement('div');
     host.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
     host.innerHTML = `
-      <!-- 🪙 ポケふた風：ご当地職種図鑑プログレス -->
       <div class="en-futa-dex">
         <div class="en-futa-dex-left">
           <div class="en-futa-dex-title">🗾 日本全国「職種ふた」探索マップ</div>
           <div class="en-futa-dex-bar"><div class="en-futa-dex-fill" id="enFutaDexFill" style="width:${dexPct}%"></div></div>
         </div>
-        <span class="en-futa-dex-cnt" id="enFutaDexCnt">${foundCount} / ${allPeople.length} 発見</span>
+        <span class="en-futa-dex-cnt" id="enFutaDexCnt">${foundCount} / ${mapPeople.length} 発見</span>
       </div>
 
-      <!-- 📏 拠点からの半径ゲージ -->
       <div class="en-radius-box">
         <div class="en-radius-head">
           <span class="en-radius-title">📏 拠点（${esc(mapCfg.baseLabel)}）からの範囲</span>
@@ -393,13 +306,12 @@
         <div class="en-radius-actions">
           <span class="en-meta" style="font-weight:800;" id="enRadiusHitCount">${inRangeNow}件ヒット</span>
           <div class="en-row" style="gap:5px;">
-            <button type="button" class="en-radius-mini-btn" id="enMapUseGpsBtn">📍 GPS現在地を拠点に</button>
-            <button type="button" class="en-radius-mini-btn" id="enMapPickPrefBtn">🗾 拠点を変更</button>
+            <button type="button" class="en-radius-mini-btn" id="enMapUseGpsBtn">📍 GPS現在地</button>
+            <button type="button" class="en-radius-mini-btn" id="enMapPickPrefBtn">🗾 拠点変更</button>
           </div>
         </div>
       </div>
 
-      <!-- 🎨 職種メダルカテゴリ切替 -->
       <div class="en-futa-cat-strip">
         <button type="button" class="en-futa-cat-chip ${mapCfg.catFilter==='all'?'active':''}" data-futacat="all">すべて (${searchFiltered.length})</button>
         ${Object.entries(ROLE_META).map(([k, m]) => `
@@ -409,17 +321,16 @@
         `).join('')}
       </div>
 
-      <!-- 🗾 本物の日本地図（Leaflet） -->
       <div class="en-jpmap-wrap">
         <div id="enJapanLeafletMap"></div>
         <div class="en-jpmap-float-ctrls">
           <button type="button" class="en-jpmap-fbtn" id="enJpFitAllBtn">🗾 日本全体</button>
           <button type="button" class="en-jpmap-fbtn" id="enJpFitBaseBtn">🎯 拠点へ</button>
         </div>
-        <span class="en-jpmap-privacy-tag">🛡️ 市町村エリア表示（詳細住所は非公開）</span>
+        <span class="en-jpmap-privacy-tag">🛡️ 市町村エリア表示（詳細住所＆非掲載設定は保護）</span>
       </div>
 
-      <!-- 選択中メダル詳細カード -->
+      ${hiddenMapCount > 0 ? `<div class="en-map-hidden-note">🔒 地図非掲載設定のメンバー（${hiddenMapCount}名）はマップには出ず、<strong>「📋 リスト」の地域検索</strong>に表示されます</div>` : ''}
       <div id="enFutaDetailSlot"></div>
     `;
 
@@ -428,7 +339,6 @@
     const detailSlot = host.querySelector('#enFutaDetailSlot');
     renderSelectedFutaDetailCard(detailSlot, selected);
 
-    // 職種フィルタ切替
     host.querySelectorAll('[data-futacat]').forEach(btn => {
       btn.onclick = () => {
         mapCfg.catFilter = btn.getAttribute('data-futacat');
@@ -438,7 +348,6 @@
       };
     });
 
-    // 拠点変更（GPS / 都道府県選択）
     host.querySelector('#enMapUseGpsBtn')?.addEventListener('click', () => {
       if (!navigator.geolocation) return enToast('⚠️ この端末ではGPS位置情報を利用できません');
       enToast('📍 現在地を取得中...');
@@ -450,9 +359,7 @@
         saveMapCfg();
         enToast('📍 現在地をマップ拠点に設定しました！');
         renderEnFeed();
-      }, () => {
-        enToast('⚠️ 位置情報が許可されませんでした（拠点変更から都道府県を選べます）');
-      }, { timeout: 6000 });
+      }, () => enToast('⚠️ 位置情報が許可されませんでした（拠点変更から都道府県を選べます）'), { timeout: 6000 });
     });
 
     host.querySelector('#enMapPickPrefBtn')?.addEventListener('click', () => {
@@ -469,18 +376,12 @@
         const ct = (document.getElementById('enBaseCityIn')?.value || '').trim();
         const lbl = `${pf}${ct ? ' ' + ct : ''}`;
         const [lat, lng] = resolveLatLng(lbl);
-        mapCfg.baseLat = lat;
-        mapCfg.baseLng = lng;
-        mapCfg.baseLabel = lbl;
-        mapCfg.gpsLocked = true;
-        saveMapCfg();
-        closeEnSheet();
-        enToast(`📍 拠点を「${lbl}」に設定しました！`);
-        renderEnFeed();
+        mapCfg.baseLat = lat; mapCfg.baseLng = lng; mapCfg.baseLabel = lbl; mapCfg.gpsLocked = true;
+        saveMapCfg(); closeEnSheet(); enToast(`📍 拠点を「${lbl}」に設定しました！`); renderEnFeed();
       });
     });
 
-    // Leaflet マップ初期化
+    // ★APIキー完全不要：日本政府公式「国土地理院（地理院地図・淡色）」タイル
     destroyLeafletMap();
     const mapEl = host.querySelector('#enJapanLeafletMap');
     if (typeof window.L === 'undefined' || !mapEl) {
@@ -488,48 +389,48 @@
       return;
     }
 
-    const themeCol = document.documentElement.getAttribute('data-en-color') || 'v5';
-    const isDarkTile = themeCol === 'dark' || themeCol === 'cool';
-    const tileUrl = isDarkTile
-      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-
     leafletMap = L.map(mapEl, {
-      center: curKm === 0 ? [36.2, 137.8] : [mapCfg.baseLat, mapCfg.baseLng],
+      center: curKm === 0 ? [36.5, 137.8] : [mapCfg.baseLat, mapCfg.baseLng],
       zoom: curKm === 0 ? 5 : 9,
+      minZoom: 5,
+      maxZoom: 17,
       zoomControl: false,
       attributionControl: true
     });
 
-    L.tileLayer(tileUrl, {
-      maxZoom: 16,
-      minZoom: 4,
-      subdomains: 'abcd',
-      attribution: '&copy; OpenStreetMap &copy; CARTO'
+    let switchedToOsm = false;
+    const gsiLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
+      minZoom: 5,
+      maxZoom: 18,
+      attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a>'
     }).addTo(leafletMap);
 
-    // 拠点マーカー＆半径サークル
+    // 万一地理院タイルが落ちた場合のみ自動でOpenStreetMapへ退避
+    let tileErrCount = 0;
+    gsiLayer.on('tileerror', () => {
+      tileErrCount++;
+      if (!switchedToOsm && tileErrCount >= 4 && leafletMap) {
+        switchedToOsm = true;
+        leafletMap.removeLayer(gsiLayer);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          minZoom: 4,
+          maxZoom: 18,
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(leafletMap);
+      }
+    });
+
     radiusCircle = L.circle([mapCfg.baseLat, mapCfg.baseLng], {
       radius: (curKm || 50) * 1000,
-      color: '#2563eb',
-      weight: 2,
-      dashArray: '6 4',
-      fillColor: '#3b82f6',
-      fillOpacity: curKm === 0 ? 0 : 0.14,
-      opacity: curKm === 0 ? 0 : 0.85
+      color: '#2563eb', weight: 2, dashArray: '6 4',
+      fillColor: '#3b82f6', fillOpacity: curKm === 0 ? 0 : 0.14, opacity: curKm === 0 ? 0 : 0.85
     }).addTo(leafletMap);
 
     homeMarker = L.marker([mapCfg.baseLat, mapCfg.baseLng], {
-      icon: L.divIcon({
-        className: 'en-home-pin-wrap',
-        iconSize: [22, 22],
-        iconAnchor: [11, 11],
-        html: '<div class="en-home-pin" title="あなたの拠点"></div>'
-      }),
+      icon: L.divIcon({ className: 'en-home-pin-wrap', iconSize: [22, 22], iconAnchor: [11, 11], html: '<div class="en-home-pin" title="あなたの拠点"></div>' }),
       zIndexOffset: 500
     }).addTo(leafletMap);
 
-    // ポケふた風「職種メダル」ピンを日本各地に配置
     personMarkers = searchFiltered.map(p => {
       const distOk = curKm === 0 || p.distKm <= curKm;
       const marker = L.marker([p.lat, p.lng], {
@@ -541,40 +442,33 @@
         const newlyFound = markDiscovered(p.id);
         if (newlyFound) {
           enToast(`✨ 新しいご当地職種「${p.shop}（${p.area}）」を発見！`);
-          const fNow = allPeople.filter(x => discoveredSet.has(x.id)).length;
+          const fNow = mapPeople.filter(x => discoveredSet.has(x.id)).length;
           const cntEl = host.querySelector('#enFutaDexCnt');
           const fillEl = host.querySelector('#enFutaDexFill');
-          if (cntEl) cntEl.textContent = `${fNow} / ${allPeople.length} 発見`;
-          if (fillEl) fillEl.style.width = `${Math.round((fNow / Math.max(1, allPeople.length)) * 100)}%`;
+          if (cntEl) cntEl.textContent = `${fNow} / ${mapPeople.length} 発見`;
+          if (fillEl) fillEl.style.width = `${Math.round((fNow / Math.max(1, mapPeople.length)) * 100)}%`;
         }
         updateRadiusVisualsLive(getCurrentRadiusKm(), host);
         renderSelectedFutaDetailCard(detailSlot, p);
       });
 
-      const catOk = mapCfg.catFilter === 'all' || p.category === mapCfg.catFilter;
-      if (catOk) marker.addTo(leafletMap);
+      if (mapCfg.catFilter === 'all' || p.category === mapCfg.catFilter) marker.addTo(leafletMap);
       return { person: p, marker };
     });
 
-    // 初期ズーム調整（描画直後にサイズ再計算して崩れ防止）
     setTimeout(() => {
       if (!leafletMap) return;
       leafletMap.invalidateSize();
       fitMapToRadius(curKm);
     }, 80);
 
-    // 半径ゲージの60fpsリアルタイム連動
     const slider = host.querySelector('#enRadiusSlider');
     if (slider) {
       slider.addEventListener('input', e => {
         mapCfg.stepIdx = Number(e.target.value);
-        const km = getCurrentRadiusKm();
-        updateRadiusVisualsLive(km, host);
+        updateRadiusVisualsLive(getCurrentRadiusKm(), host);
       });
-      slider.addEventListener('change', () => {
-        saveMapCfg();
-        fitMapToRadius(getCurrentRadiusKm());
-      });
+      slider.addEventListener('change', () => { saveMapCfg(); fitMapToRadius(getCurrentRadiusKm()); });
     }
 
     host.querySelector('#enJpFitAllBtn')?.addEventListener('click', () => {
@@ -586,7 +480,7 @@
     });
     host.querySelector('#enJpFitBaseBtn')?.addEventListener('click', () => {
       if (getCurrentRadiusKm() === 0) {
-        mapCfg.stepIdx = 4; // 50kmへスッとフォーカス
+        mapCfg.stepIdx = 4;
         saveMapCfg();
         if (slider) slider.value = '4';
         updateRadiusVisualsLive(50, host);
@@ -595,30 +489,25 @@
     });
   }
 
-  // =========================================================
-  // 🔌 renderEnFeed にフック（マップ時は日本地図へ＆リスト時も距離バッジ表示）
-  // =========================================================
-  function installJapanMapHook() {
-    if (typeof window.renderEnFeed === 'function' && !window.renderEnFeed._enJpMapWrapped) {
+  function installJapanMapHookOnce() {
+    if (jpMapHookInstalled) return;
+    jpMapHookInstalled = true;
+
+    if (typeof window.renderEnFeed === 'function') {
       const origFeed = window.renderEnFeed;
-      const wrappedFeed = function () {
+      window.renderEnFeed = function () {
         const res = origFeed.apply(this, arguments);
         const wrap = document.querySelector('#view-feed .en-wrap');
         if (!wrap) return res;
 
-        // 「おすすめ人材 → マップ」のとき本物の日本地図＆ポケふた風職種マップへ昇格！
         if (enViewState.enSubTab === 'people' && enViewState.peopleView === 'map') {
-          // マップ画面では上の重複エリアバーを隠して半径ゲージへ一本化
-          const dupBar = wrap.querySelector('[data-en-areabar="1"]');
-          if (dupBar) dupBar.style.display = 'none';
+          wrap.querySelectorAll('[data-en-areabar="1"]').forEach(el => el.remove());
           mountJapanFutaMapView(wrap);
         } else {
           destroyLeafletMap();
         }
         return res;
       };
-      wrappedFeed._enJpMapWrapped = true;
-      window.renderEnFeed = wrappedFeed;
     }
   }
 
@@ -626,7 +515,7 @@
     setTimeout(() => {
       ensureNationwideCraftPeople();
       syncBaseFromAreaSettings();
-      installJapanMapHook();
+      installJapanMapHookOnce();
       if (typeof renderEnFeed === 'function') renderEnFeed();
     }, 300);
   });

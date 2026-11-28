@@ -1,30 +1,41 @@
 /* =========================================================
-   EN•joy STEP B-2 統合スタイル（patch_b2_core.css v1）
-   ・全国47都道府県 ＆ 商圏範囲バー
+   EN•joy STEP B-2 統合スタイル（patch_b2_core.css v2）
+   ・全国エリアバーを普段は極小1行折りたたみ（タップ時のみ展開）
    ・データ区分バッジ（PUBLIC / TEAM_ONLY / MATCHED_ONLY）
-   ・コラボ「ゆる約束メモ」ボード ＆ メンバー合意ステータス
+   ・コラボ「ゆる約束メモ」ボード
    ========================================================= */
 
-/* --- 🗾 全国エリア＆範囲指定バー --- */
+/* --- 🗾 折りたたみ式 全国エリアバー（普段は1行スッキリ） --- */
 .en-area-bar {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 9px 11px;
-  border-radius: 15px;
+  gap: 0;
+  padding: 6px 10px;
+  border-radius: 12px;
   background: var(--en-surface);
   border: 1px solid var(--en-border);
-  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
-.en-area-bar-top {
+.en-area-bar.is-open {
+  gap: 8px;
+  padding: 9px 11px;
+}
+.en-area-bar-toggle {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--en-text);
+  padding: 1px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  cursor: pointer;
+  text-align: left;
 }
 .en-area-current {
-  font-size: 12px;
-  font-weight: 900;
+  font-size: 11.5px;
+  font-weight: 800;
   color: var(--en-text);
   display: inline-flex;
   align-items: center;
@@ -34,20 +45,21 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.en-area-edit-btn {
-  padding: 4px 9px;
-  border-radius: 999px;
-  border: 1px solid var(--en-border);
-  background: var(--en-surface-2);
-  color: var(--en-text);
-  font-size: 11px;
+.en-area-caret {
+  font-size: 10.5px;
   font-weight: 800;
-  cursor: pointer;
+  color: var(--en-muted);
   flex-shrink: 0;
 }
-.en-area-edit-btn:hover {
-  border-color: var(--en-accent);
-  color: var(--en-accent);
+.en-area-drawer {
+  display: none;
+  flex-direction: column;
+  gap: 7px;
+  padding-top: 7px;
+  border-top: 1px dashed var(--en-border);
+}
+.en-area-bar.is-open .en-area-drawer {
+  display: flex;
 }
 .en-area-pills {
   display: grid;
@@ -55,7 +67,7 @@
   gap: 4px;
 }
 .en-area-pill {
-  padding: 5px 4px;
+  padding: 5.5px 4px;
   border-radius: 9px;
   border: 1px solid var(--en-border);
   background: var(--en-surface-2);
@@ -73,6 +85,26 @@
   background: var(--en-accent);
   color: #ffffff;
   border-color: var(--en-accent);
+}
+.en-area-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.en-area-edit-btn {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--en-border);
+  background: var(--en-surface-2);
+  color: var(--en-text);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.en-area-edit-btn:hover {
+  border-color: var(--en-accent);
+  color: var(--en-accent);
 }
 .en-area-empty {
   padding: 16px 14px;
@@ -116,7 +148,6 @@
   border: 1px solid rgba(59, 130, 246, 0.35);
 }
 
-/* 外見え画面の保護案内バー */
 .en-public-guard-note {
   padding: 9px 11px;
   border-radius: 12px;
@@ -128,11 +159,7 @@
 }
 
 /* --- 🤝 コラボ「ゆる約束メモ」ボード --- */
-.en-promise-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
+.en-promise-grid { display: flex; flex-direction: column; gap: 9px; }
 .en-promise-item {
   padding: 10px 11px;
   border-radius: 13px;
@@ -142,11 +169,7 @@
   flex-direction: column;
   gap: 5px;
 }
-.en-promise-item label {
-  font-size: 12px;
-  font-weight: 900;
-  color: var(--en-text);
-}
+.en-promise-item label { font-size: 12px; font-weight: 900; color: var(--en-text); }
 .en-promise-agree-box {
   padding: 11px;
   border-radius: 14px;
@@ -181,6 +204,4 @@
   font-weight: 800;
 }
 html[data-en-color="dark"] .en-promise-changed-warn,
-html[data-en-color="cool"] .en-promise-changed-warn {
-  color: #fbbf24;
-}
+html[data-en-color="cool"] .en-promise-changed-warn { color: #fbbf24; }
