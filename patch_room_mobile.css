@@ -1,9 +1,10 @@
 /* =========================================================
-   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.css v2）
-   ・1×1カルーセル（1:即ワープハイライト / 2:上下スワイプ月間カレンダー / 3:サマリー）
+   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.css v3）
+   ・カルーセル（左:やること / 真ん中:カレンダー / 右:ラボ現在地）
    ・進行：「いまここカード」フォーカス型ロードマップ＋やること＋多数決
    ・ボード：入口「カテゴリ別2列カード一覧」→ タップで全画面作業
-   ・トーク：完全ルーム内完結（非公開）＋「＋」ボタン展開トレイ
+   ・トーク：完全非公開＋「＋」展開トレイ
+   ・★新機能：文字入力中(en-kbd-open)は下タブ＆バナーを自動非表示＋iOSズレ防止
    ========================================================= */
 
 html.en-pc-mode .en-mrm-only { display: none !important; }
@@ -12,11 +13,12 @@ html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-ai-copilot {
   display: none !important;
 }
 html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-room-head {
-  height: 52px;
+  height: 50px;
   padding: 0 12px !important;
   gap: 8px;
   background: var(--en-surface);
   border-bottom: 1px solid var(--en-border);
+  transition: height 0.18s ease, padding 0.18s ease;
 }
 html:not(.en-pc-mode) #en-room-modal.en-mrm-active #enRoomBody {
   padding: 12px 12px 24px !important;
@@ -39,6 +41,38 @@ html:not(.en-pc-mode) #en-room-modal.en-mrm-board-detail .en-board-topbar {
 /* トーク画面：常駐チップバーを隠して「＋」展開トレイへ一本化 */
 html:not(.en-pc-mode) #en-room-modal.en-mrm-talk .en-quick-chips {
   display: none !important;
+}
+
+/* =========================================================
+   ⌨️ スマホ文字入力モード最適化（画面の圧迫＆ズレを徹底解消）
+   ========================================================= */
+html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active {
+  top: var(--en-vvt, 0px) !important;
+  height: var(--en-vvh, 100dvh) !important;
+  bottom: auto !important;
+}
+
+/* 入力中は下の5タブ＆非公開バナーを隠してトーク・ボード領域を一気に広げる */
+html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-nav,
+html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-talk-private-bar {
+  display: none !important;
+}
+
+/* 入力中は上部ヘッダーも極薄(40px)に圧縮 */
+html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-head {
+  height: 40px !important;
+  padding: 0 10px !important;
+}
+html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-head .en-act-btn {
+  padding: 4px 9px !important;
+  font-size: 11.5px !important;
+}
+html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active #enRoomBody {
+  padding: 8px 10px 10px !important;
+}
+html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-composer {
+  padding: 6px 10px !important;
+  gap: 6px !important;
 }
 
 /* =========================================================
@@ -93,181 +127,54 @@ html:not(.en-pc-mode) #en-room-modal.en-mrm-talk .en-quick-chips {
 }
 .en-mrm-dot.active { width: 20px; background: var(--en-accent); }
 
-/* --- ⚡ 1枚目：いま動くべきハイライト（タップ即ワープ行） --- */
-.en-hl-list {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
+/* --- ✅ 左：やること・ハイライト --- */
+.en-hl-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; }
 .en-hl-row {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 10px;
-  border-radius: 13px;
-  border: 1px solid var(--en-border);
-  background: var(--en-surface-2);
-  color: var(--en-text);
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.14s, background 0.14s, transform 0.12s;
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 10px;
+  border-radius: 13px; border: 1px solid var(--en-border); background: var(--en-surface-2);
+  color: var(--en-text); text-align: left; cursor: pointer; transition: border-color 0.14s, background 0.14s, transform 0.12s;
 }
 .en-hl-row:active { transform: scale(0.985); }
 .en-hl-row:hover  { border-color: var(--en-accent); background: var(--en-accent-soft); }
-.en-hl-row.accent {
-  border-color: rgba(249, 115, 22, 0.45);
-  background: rgba(249, 115, 22, 0.08);
-}
-.en-hl-ico {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  background: var(--en-surface);
-  border: 1px solid var(--en-border);
-  display: grid;
-  place-items: center;
-  font-size: 15px;
-  flex-shrink: 0;
-}
-.en-hl-txt {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
+.en-hl-row.accent { border-color: rgba(249, 115, 22, 0.45); background: rgba(249, 115, 22, 0.08); }
+.en-hl-ico { width: 30px; height: 30px; border-radius: 9px; background: var(--en-surface); border: 1px solid var(--en-border); display: grid; place-items: center; font-size: 15px; flex-shrink: 0; }
+.en-hl-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .en-hl-tag { font-size: 10px; font-weight: 800; color: var(--en-accent); }
-.en-hl-main {
-  font-size: 12px;
-  font-weight: 800;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.en-hl-main { font-size: 12px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .en-hl-go { font-size: 12px; color: var(--en-muted); font-weight: 900; flex-shrink: 0; }
 
-/* --- 📅 2枚目：Googleカレンダー風 月間カレンダー（縦スワイプ＆前日翌日送り） --- */
-.en-gcal-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 5px;
-}
+/* --- 📅 真ん中：Googleカレンダー風 月間カレンダー --- */
+.en-gcal-head { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
 .en-gcal-month { font-size: 14px; font-weight: 900; letter-spacing: 0.02em; }
 .en-gcal-nav   { display: flex; align-items: center; gap: 4px; }
-.en-gcal-btn {
-  border: 1px solid var(--en-border);
-  background: var(--en-surface-2);
-  color: var(--en-text);
-  border-radius: 8px;
-  padding: 4px 7px;
-  font-size: 11px;
-  font-weight: 800;
-  cursor: pointer;
-}
+.en-gcal-btn { border: 1px solid var(--en-border); background: var(--en-surface-2); color: var(--en-text); border-radius: 8px; padding: 4px 7px; font-size: 11px; font-weight: 800; cursor: pointer; }
 .en-gcal-btn.primary { background: var(--en-accent); color: #fff; border-color: transparent; }
-
-.en-gcal-dow {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  text-align: center;
-  font-size: 10px;
-  font-weight: 800;
-  color: var(--en-muted);
-}
+.en-gcal-dow { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 10px; font-weight: 800; color: var(--en-muted); }
 .en-gcal-dow span:first-child { color: #ef4444; }
 .en-gcal-dow span:last-child  { color: #3b82f6; }
-
-/* touch-action: pan-x で横カルーセルを守りつつ縦スワイプで月移動を検知 */
-.en-gcal-grid {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  grid-auto-rows: 1fr;
-  gap: 2px;
-  touch-action: pan-x;
-}
-.en-gcal-cell {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--en-text);
-  padding: 2px 1px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 1px;
-  cursor: pointer;
-  overflow: hidden;
-}
+.en-gcal-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 1fr; gap: 2px; touch-action: pan-x; }
+.en-gcal-cell { border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--en-text); padding: 2px 1px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 1px; cursor: pointer; overflow: hidden; }
 .en-gcal-cell.other { opacity: 0.28; }
 .en-gcal-cell.is-sun .en-gcal-num { color: #ef4444; }
 .en-gcal-cell.is-sat .en-gcal-num { color: #3b82f6; }
 .en-gcal-cell.selected { background: var(--en-accent-soft); border-color: var(--en-accent); }
-.en-gcal-num {
-  font-size: 11px; font-weight: 800; width: 19px; height: 19px; line-height: 19px;
-  text-align: center; border-radius: 50%;
-}
+.en-gcal-num { font-size: 11px; font-weight: 800; width: 19px; height: 19px; line-height: 19px; text-align: center; border-radius: 50%; }
 .en-gcal-cell.is-today .en-gcal-num { background: var(--en-accent); color: #fff !important; }
-.en-gcal-chip {
-  width: 92%; font-size: 8.5px; font-weight: 800; line-height: 1.2;
-  padding: 1px 2px; border-radius: 4px; background: var(--en-accent); color: #fff;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
-}
+.en-gcal-chip { width: 92%; font-size: 8.5px; font-weight: 800; line-height: 1.2; padding: 1px 2px; border-radius: 4px; background: var(--en-accent); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
 .en-gcal-chip.tone-2 { background: #10b981; }
 .en-gcal-chip.tone-3 { background: #8b5cf6; }
+.en-gcal-daybar { border-top: 1px solid var(--en-border); padding-top: 6px; display: flex; align-items: center; gap: 5px; }
+.en-gcal-dayinfo { flex: 1; min-width: 0; border: none; background: var(--en-surface-2); color: var(--en-text); border-radius: 8px; padding: 5px 8px; font-size: 11px; font-weight: 700; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 
-/* 前日・翌日送りバー（カルーセルを動かさず日付をサクサク移動） */
-.en-gcal-daybar {
-  border-top: 1px solid var(--en-border);
-  padding-top: 6px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.en-gcal-dayinfo {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  background: var(--en-surface-2);
-  color: var(--en-text);
-  border-radius: 8px;
-  padding: 5px 8px;
-  font-size: 11px;
-  font-weight: 700;
-  text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
-}
-
-/* --- 📊 3枚目：サマリー --- */
+/* --- 📊 右：サマリー --- */
 .en-mrm-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1; }
-.en-mrm-stat-box {
-  background: var(--en-surface-2); border: 1px solid var(--en-border); border-radius: 13px;
-  padding: 10px; display: flex; flex-direction: column; justify-content: center; gap: 3px;
-}
+.en-mrm-stat-box { background: var(--en-surface-2); border: 1px solid var(--en-border); border-radius: 13px; padding: 10px; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
 .en-mrm-stat-box small  { font-size: 10.5px; color: var(--en-muted); font-weight: 700; }
 .en-mrm-stat-box strong { font-size: 18px; font-weight: 900; color: var(--en-text); }
 
-/* =========================================================
-   🧩 2列メニュータイル & 🍊 1列フル幅「商品完成登録」
-   ========================================================= */
+/* --- 🧩 2列タイル & 🍊 1列フル幅 --- */
 .en-mrm-tile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-.en-mrm-tile {
-  background: var(--en-surface); border: 1.5px solid var(--en-border); border-radius: 17px;
-  padding: 13px 12px; text-align: left; color: var(--en-text);
-  display: flex; flex-direction: column; justify-content: space-between; gap: 8px;
-  min-height: 104px; cursor: pointer; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
-  transition: transform 0.14s ease, border-color 0.14s ease;
-}
+.en-mrm-tile { background: var(--en-surface); border: 1.5px solid var(--en-border); border-radius: 17px; padding: 13px 12px; text-align: left; color: var(--en-text); display: flex; flex-direction: column; justify-content: space-between; gap: 8px; min-height: 104px; cursor: pointer; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04); transition: transform 0.14s ease, border-color 0.14s ease; }
 .en-mrm-tile:active { transform: scale(0.97); }
 .en-mrm-tile:hover  { border-color: var(--en-accent); }
 .en-mrm-tile-top   { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
@@ -276,18 +183,11 @@ html:not(.en-pc-mode) #en-room-modal.en-mrm-talk .en-quick-chips {
 .en-mrm-tile-title { font-size: 14px; font-weight: 900; line-height: 1.25; }
 .en-mrm-tile-sub   { font-size: 11px; color: var(--en-muted); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-.en-mrm-complete-card {
-  width: 100%; border-radius: 18px; padding: 14px 15px;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  text-align: left; cursor: pointer; transition: transform 0.16s ease, box-shadow 0.2s ease;
-}
+.en-mrm-complete-card { width: 100%; border-radius: 18px; padding: 14px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; cursor: pointer; transition: transform 0.16s ease, box-shadow 0.2s ease; }
 .en-mrm-complete-card:active { transform: scale(0.98); }
 .en-mrm-complete-card.locked { background: var(--en-surface-2); border: 1.5px dashed var(--en-border); color: var(--en-muted); }
 .en-mrm-complete-card.locked strong { color: var(--en-text); font-size: 13.5px; }
-.en-mrm-complete-card.unlocked {
-  background: linear-gradient(135deg, #f97316 0%, #fb923c 55%, #f59e0b 100%);
-  border: none; color: #ffffff; box-shadow: 0 10px 26px rgba(249, 115, 22, 0.36);
-}
+.en-mrm-complete-card.unlocked { background: linear-gradient(135deg, #f97316 0%, #fb923c 55%, #f59e0b 100%); border: none; color: #ffffff; box-shadow: 0 10px 26px rgba(249, 115, 22, 0.36); }
 .en-mrm-complete-card.unlocked small { color: rgba(255, 255, 255, 0.92); }
 .en-mrm-complete-ico { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 22px; flex-shrink: 0; background: rgba(255, 255, 255, 0.22); }
 .en-mrm-complete-card.locked .en-mrm-complete-ico { background: var(--en-surface); border: 1px solid var(--en-border); }
@@ -297,269 +197,48 @@ html:not(.en-pc-mode) #en-room-modal.en-mrm-talk .en-quick-chips {
 .en-mrm-complete-pill { padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 900; flex-shrink: 0; background: rgba(255, 255, 255, 0.95); color: #ea580c; }
 .en-mrm-complete-card.locked .en-mrm-complete-pill { background: var(--en-surface); color: var(--en-muted); border: 1px solid var(--en-border); }
 
-/* =========================================================
-   🗺️ 進行：「いまここカード」フォーカス型ロードマップ
-   ========================================================= */
-.en-focus-rm {
-  background: var(--en-surface);
-  border: 1.5px solid var(--en-border);
-  border-radius: 18px;
-  padding: 13px 13px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 11px;
-}
-
-/* 上部の細い5段階バー（将来SVGアイコン差し替え対応） */
-.en-rm-rail {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 2px 4px 0;
-}
-.en-rm-rail::before {
-  content: "";
-  position: absolute;
-  left: 18px;
-  right: 18px;
-  top: 17px;
-  height: 3px;
-  border-radius: 99px;
-  background: var(--en-border);
-  z-index: 0;
-}
-.en-rm-rail-fill {
-  position: absolute;
-  left: 18px;
-  top: 17px;
-  height: 3px;
-  border-radius: 99px;
-  background: var(--en-accent);
-  z-index: 1;
-  transition: width 0.26s ease;
-}
-.en-rm-node {
-  position: relative;
-  z-index: 2;
-  border: none;
-  background: transparent;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-}
-.en-rm-dot {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-size: 14px;
-  background: var(--en-surface-2);
-  border: 2px solid var(--en-border);
-  transition: transform 0.16s, border-color 0.16s, background 0.16s;
-}
-.en-rm-node.done .en-rm-dot {
-  background: #10b981;
-  border-color: #10b981;
-  color: #fff;
-  font-size: 12px;
-}
-.en-rm-node.current .en-rm-dot {
-  background: var(--en-accent);
-  border-color: var(--en-accent);
-  color: #fff;
-  transform: scale(1.14);
-  box-shadow: 0 0 0 4px var(--en-accent-soft);
-}
-.en-rm-node-lbl {
-  font-size: 9.5px;
-  font-weight: 800;
-  color: var(--en-muted);
-}
+/* --- 🗺️ 進行：「いまここカード」フォーカス型ロードマップ --- */
+.en-focus-rm { background: var(--en-surface); border: 1.5px solid var(--en-border); border-radius: 18px; padding: 13px 13px 14px; display: flex; flex-direction: column; gap: 11px; }
+.en-rm-rail { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 0; }
+.en-rm-rail::before { content: ""; position: absolute; left: 18px; right: 18px; top: 17px; height: 3px; border-radius: 99px; background: var(--en-border); z-index: 0; }
+.en-rm-rail-fill { position: absolute; left: 18px; top: 17px; height: 3px; border-radius: 99px; background: var(--en-accent); z-index: 1; transition: width 0.26s ease; }
+.en-rm-node { position: relative; z-index: 2; border: none; background: transparent; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+.en-rm-dot { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; background: var(--en-surface-2); border: 2px solid var(--en-border); transition: transform 0.16s, border-color 0.16s, background 0.16s; }
+.en-rm-node.done .en-rm-dot { background: #10b981; border-color: #10b981; color: #fff; font-size: 12px; }
+.en-rm-node.current .en-rm-dot { background: var(--en-accent); border-color: var(--en-accent); color: #fff; transform: scale(1.14); box-shadow: 0 0 0 4px var(--en-accent-soft); }
+.en-rm-node-lbl { font-size: 9.5px; font-weight: 800; color: var(--en-muted); }
 .en-rm-node.current .en-rm-node-lbl { color: var(--en-accent); font-weight: 900; }
-
-/* 今いるフェーズ1つだけの親切カード */
-.en-rm-focus-card {
-  background: var(--en-surface-2);
-  border: 1.5px solid var(--en-accent);
-  border-radius: 15px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
+.en-rm-focus-card { background: var(--en-surface-2); border: 1.5px solid var(--en-accent); border-radius: 15px; padding: 12px; display: flex; flex-direction: column; gap: 9px; }
 .en-rm-focus-title { font-size: 15px; font-weight: 900; line-height: 1.3; }
 .en-rm-focus-desc  { font-size: 12px; color: var(--en-muted); line-height: 1.45; }
-
-.en-rm-rec-boards {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.en-rm-rec-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 9px 11px;
-  border-radius: 11px;
-  border: 1px solid var(--en-border);
-  background: var(--en-surface);
-  color: var(--en-text);
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
+.en-rm-rec-boards { display: flex; flex-direction: column; gap: 6px; }
+.en-rm-rec-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 11px; border-radius: 11px; border: 1px solid var(--en-border); background: var(--en-surface); color: var(--en-text); font-size: 12px; font-weight: 800; cursor: pointer; }
 .en-rm-rec-btn:hover { border-color: var(--en-accent); background: var(--en-accent-soft); }
-.en-rm-rec-btn.orange {
-  background: linear-gradient(135deg, #f97316, #f59e0b);
-  color: #fff;
-  border: none;
-}
-
-.en-rm-foot-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding-top: 2px;
-}
-.en-rm-nav-btn {
-  padding: 7px 11px;
-  border-radius: 10px;
-  border: 1px solid var(--en-border);
-  background: var(--en-surface);
-  color: var(--en-text);
-  font-size: 11.5px;
-  font-weight: 800;
-  cursor: pointer;
-}
-.en-rm-nav-btn.next {
-  flex: 1;
-  background: var(--en-accent);
-  color: #fff;
-  border-color: transparent;
-}
+.en-rm-rec-btn.orange { background: linear-gradient(135deg, #f97316, #f59e0b); color: #fff; border: none; }
+.en-rm-foot-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 2px; }
+.en-rm-nav-btn { padding: 7px 11px; border-radius: 10px; border: 1px solid var(--en-border); background: var(--en-surface); color: var(--en-text); font-size: 11.5px; font-weight: 800; cursor: pointer; }
+.en-rm-nav-btn.next { flex: 1; background: var(--en-accent); color: #fff; border-color: transparent; }
 .en-rm-nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-/* =========================================================
-   🧰 ボード入口：カテゴリ別「2列カード一覧」（案B）
-   ========================================================= */
+/* --- 🧰 ボード入口：カテゴリ別「2列カード一覧」 --- */
 .en-bcat-wrap { display: flex; flex-direction: column; gap: 14px; }
-.en-bcat-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 11.5px;
-  font-weight: 900;
-  color: var(--en-muted);
-  margin-bottom: 6px;
-  padding: 0 2px;
-}
-.en-bcat-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 9px;
-}
-.en-bcat-card {
-  position: relative;
-  background: var(--en-surface);
-  border: 1.5px solid var(--en-border);
-  border-radius: 15px;
-  padding: 11px 11px 10px;
-  text-align: left;
-  color: var(--en-text);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 6px;
-  min-height: 92px;
-  cursor: pointer;
-  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
-  transition: transform 0.13s, border-color 0.14s;
-}
+.en-bcat-head { display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; font-weight: 900; color: var(--en-muted); margin-bottom: 6px; padding: 0 2px; }
+.en-bcat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.en-bcat-card { position: relative; background: var(--en-surface); border: 1.5px solid var(--en-border); border-radius: 15px; padding: 11px 11px 10px; text-align: left; color: var(--en-text); display: flex; flex-direction: column; justify-content: space-between; gap: 6px; min-height: 92px; cursor: pointer; box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04); transition: transform 0.13s, border-color 0.14s; }
 .en-bcat-card:active { transform: scale(0.97); }
 .en-bcat-card:hover  { border-color: var(--en-accent); }
-.en-bcat-card.rec {
-  border-color: rgba(249, 115, 22, 0.55);
-  box-shadow: 0 4px 14px rgba(249, 115, 22, 0.12);
-}
+.en-bcat-card.rec { border-color: rgba(249, 115, 22, 0.55); box-shadow: 0 4px 14px rgba(249, 115, 22, 0.12); }
 .en-bcat-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
 .en-bcat-ico { font-size: 20px; line-height: 1; }
 .en-bcat-cnt { font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 99px; background: var(--en-surface-2); color: var(--en-muted); }
 .en-bcat-name { font-size: 12.5px; font-weight: 900; line-height: 1.25; }
 .en-bcat-desc { font-size: 10px; color: var(--en-muted); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-/* =========================================================
-   💬 トーク：完全非公開バッジ ＋ LINE式「＋」展開トレイ
-   ========================================================= */
-.en-talk-private-bar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 6px 10px;
-  margin-bottom: 10px;
-  border-radius: 10px;
-  background: var(--en-surface-2);
-  border: 1px dashed var(--en-border);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--en-muted);
-}
-
-.en-talk-plus-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1.5px solid var(--en-border);
-  background: var(--en-surface-2);
-  color: var(--en-text);
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  cursor: pointer;
-  transition: transform 0.2s ease, background 0.15s, border-color 0.15s, color 0.15s;
-}
-.en-talk-plus-btn.open {
-  transform: rotate(45deg);
-  background: var(--en-accent);
-  border-color: var(--en-accent);
-  color: #fff;
-}
-
-.en-talk-plus-tray {
-  display: none;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  padding: 10px 12px;
-  background: var(--en-surface);
-  border-top: 1px solid var(--en-border);
-}
+/* --- 💬 トーク：非公開バッジ ＋ 「＋」展開トレイ --- */
+.en-talk-private-bar { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 6px 10px; margin-bottom: 10px; border-radius: 10px; background: var(--en-surface-2); border: 1px dashed var(--en-border); font-size: 11px; font-weight: 700; color: var(--en-muted); }
+.en-talk-plus-btn { width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--en-border); background: var(--en-surface-2); color: var(--en-text); font-size: 20px; font-weight: 700; line-height: 1; display: grid; place-items: center; flex-shrink: 0; cursor: pointer; transition: transform 0.2s ease, background 0.15s, border-color 0.15s, color 0.15s; }
+.en-talk-plus-btn.open { transform: rotate(45deg); background: var(--en-accent); border-color: var(--en-accent); color: #fff; }
+.en-talk-plus-tray { display: none; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px 12px; background: var(--en-surface); border-top: 1px solid var(--en-border); }
 .en-talk-plus-tray.open { display: grid; }
-.en-talk-tray-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 11px;
-  border-radius: 12px;
-  border: 1px solid var(--en-border);
-  background: var(--en-surface-2);
-  color: var(--en-text);
-  font-size: 12px;
-  font-weight: 800;
-  text-align: left;
-  cursor: pointer;
-}
-.en-talk-tray-btn.ai {
-  border-color: rgba(139, 92, 246, 0.45);
-  background: rgba(139, 92, 246, 0.1);
-}
+.en-talk-tray-btn { display: flex; align-items: center; gap: 8px; padding: 10px 11px; border-radius: 12px; border: 1px solid var(--en-border); background: var(--en-surface-2); color: var(--en-text); font-size: 12px; font-weight: 800; text-align: left; cursor: pointer; }
+.en-talk-tray-btn.ai { border-color: rgba(139, 92, 246, 0.45); background: rgba(139, 92, 246, 0.1); }

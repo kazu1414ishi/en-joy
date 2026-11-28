@@ -1,11 +1,11 @@
 /* =========================================================
-   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.js v3）
-   ・カルーセル配置：左(0)＝✅やること・ハイライト ／ 真ん中(1・初期表示)＝📅カレンダー ／ 右(2)＝📊ラボ現在地
-   ・カレンダー：上下スワイプで月切替＋◀前日/翌日▶で横カルーセルと干渉ゼロ
-   ・進行：🗺️「いまここカード」フォーカス型ロードマップ（往復自由＋推奨ボード案内）
-   ・ボード：🧰入口「カテゴリ別2列カード一覧」→ 選んだら全画面作業
-   ・トーク：🔒完全ルーム内完結（公開ストーリー転送廃止）＋「＋」展開トレイ
-   ・企画書：⚙️ルーム詳細へ集約＋作成日時つき履歴管理
+   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.js v4）
+   ・カルーセル：左(0)やること ／ 真ん中(1・初期)カレンダー ／ 右(2)ラボ現在地
+   ・進行：🗺️「いまここカード」フォーカス型ロードマップ
+   ・ボード：🧰入口「カテゴリ別2列カード一覧」→ 全画面作業
+   ・トーク：🔒完全非公開＋「＋」展開トレイ
+   ・★新機能：iOSキーボード展開検知(visualViewport追従)で
+     入力中は下タブ＆バナーを自動非表示＆トーク欄を広く確保！
    ========================================================= */
 
 (function () {
@@ -64,7 +64,7 @@
   const uiState = {
     boardViewMode: 'list',
     talkPlusOpen: false,
-    _staySlide: 1 // ★デフォルト初期表示＝真ん中(1)のカレンダー！
+    _staySlide: 1
   };
 
   function isMobileRoomMode() {
@@ -92,6 +92,87 @@
 
   function safeSave() {
     if (typeof saveRoomProStore === 'function') saveRoomProStore();
+  }
+
+  // =========================================================
+  // ⌨️ スマホ入力モード検知 ＆ iOS visualViewport 高さと位置をピタッと追従
+  // =========================================================
+  let kbdBlurTimer = null;
+
+  function syncViewportVars() {
+    const root = document.documentElement;
+    if (!isMobileRoomMode()) {
+      root.classList.remove('en-kbd-open');
+      root.style.removeProperty('--en-vvh');
+      root.style.removeProperty('--en-vvt');
+      return;
+    }
+    const vv = window.visualViewport;
+    if (vv) {
+      root.style.setProperty('--en-vvh', Math.round(vv.height) + 'px');
+      root.style.setProperty('--en-vvt', Math.round(vv.offsetTop) + 'px');
+    } else {
+      root.style.setProperty('--en-vvh', window.innerHeight + 'px');
+      root.style.setProperty('--en-vvt', '0px');
+    }
+  }
+
+  function setKeyboardOpen(isOpen) {
+    clearTimeout(kbdBlurTimer);
+    if (!isMobileRoomMode()) {
+      document.documentElement.classList.remove('en-kbd-open');
+      return;
+    }
+    if (isOpen) {
+      document.documentElement.classList.add('en-kbd-open');
+      syncViewportVars();
+      // トーク入力中は最新メッセージが隠れないよう最下部へスッと合わせる
+      const modal = document.getElementById('en-room-modal');
+      if (modal && modal.classList.contains('en-mrm-talk')) {
+        const body = document.getElementById('enRoomBody');
+        if (body) setTimeout(() => { body.scrollTop = body.scrollHeight; }, 120);
+      }
+    } else {
+      kbdBlurTimer = setTimeout(() => {
+        const ae = document.activeElement;
+        const stillInRoomInput = ae && ae.closest('#en-room-modal') && /INPUT|TEXTAREA/.test(ae.tagName);
+        if (!stillInRoomInput) {
+          document.documentElement.classList.remove('en-kbd-open');
+          syncViewportVars();
+        }
+      }, 120);
+    }
+  }
+
+  function installKeyboardObservers() {
+    if (window._enKbdObsInstalled) return;
+    window._enKbdObsInstalled = true;
+
+    document.addEventListener('focusin', e => {
+      const t = e.target;
+      if (!t || !isMobileRoomMode()) return;
+      if (t.closest('#en-room-modal') && /INPUT|TEXTAREA/.test(t.tagName) && !/checkbox|radio|range|file|button/i.test(t.type || '')) {
+        // ＋トレイが開いていたら自動で閉じて視界を最大化
+        if (uiState.talkPlusOpen) {
+          uiState.talkPlusOpen = false;
+          document.querySelector('#en-room-modal .en-talk-plus-btn')?.classList.remove('open');
+          document.querySelector('#en-room-modal .en-talk-plus-tray')?.classList.remove('open');
+        }
+        setKeyboardOpen(true);
+      }
+    });
+
+    document.addEventListener('focusout', e => {
+      const t = e.target;
+      if (t && t.closest('#en-room-modal') && /INPUT|TEXTAREA/.test(t.tagName)) {
+        setKeyboardOpen(false);
+      }
+    });
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', syncViewportVars);
+      window.visualViewport.addEventListener('scroll', syncViewportVars);
+    }
   }
 
   function ensureMobileLabData(d) {
@@ -535,14 +616,14 @@
       };
     });
     modal.querySelectorAll('[data-mrmgo]').forEach(btn => {
-      btn.onclick = () => { enViewState.roomTab = btn.getAttribute('data-mrmgo'); window.renderEnRoomModal(); };
+      btn.onclick = () => { uiState._staySlide = 1; enViewState.roomTab = btn.getAttribute('data-mrmgo'); window.renderEnRoomModal(); };
     });
     bindMobileDock(modal);
     if (typeof enSyncTheme === 'function') enSyncTheme();
   }
 
   // =========================================================
-  // 🏠 スマホ版 ルームホーム画面（真ん中＝カレンダー初期表示！）
+  // 🏠 スマホ版 ルームホーム画面（真ん中＝カレンダー初期表示）
   // =========================================================
   function renderMobileRoomHub(modal, lab, d) {
     const c = d.cost;
@@ -556,7 +637,6 @@
     const st = STAGES[d.stage] || STAGES[1];
     const isUnlocked = d.stage >= 2;
 
-    // 📊 右(2枚目)：ラボ現在地サマリー
     const slideRight = `
       <div class="en-mrm-slide">
         <div class="en-between">
@@ -593,7 +673,6 @@
       </div>
 
       <div class="en-room-body" id="enRoomBody">
-        <!-- 1×1 横スワイプ：左(0)やること ／ 真ん中(1・初期表示)カレンダー ／ 右(2)ラボ現在地 -->
         <div class="en-mrm-carousel-wrap">
           <div class="en-mrm-carousel" id="enMrmCarousel">
             ${buildHighlightSlide(lab, d)}
@@ -607,7 +686,6 @@
           </div>
         </div>
 
-        <!-- 2列タイルメニュー -->
         <div class="en-mrm-tile-grid">
           <button type="button" class="en-mrm-tile" data-mrmgo="talk">
             <div class="en-mrm-tile-top">
@@ -654,7 +732,6 @@
           </button>
         </div>
 
-        <!-- 1列フル幅：商品完成登録（試作到達でオレンジ解放！） -->
         <button type="button" class="en-mrm-complete-card ${isUnlocked ? 'unlocked' : 'locked'}" id="enMrmCompleteBtn">
           <span class="en-mrm-complete-ico">${isUnlocked ? '🍊' : '🔒'}</span>
           <span class="en-mrm-complete-txt">
@@ -671,7 +748,6 @@
       ${buildMobileDock('hub')}
     `;
 
-    // カルーセルをピタッと中央（デフォルト1:カレンダー）へ配置＆ドット同期
     const car = document.getElementById('enMrmCarousel');
     const dots = modal.querySelectorAll('#enMrmDots .en-mrm-dot');
     if (car) {
@@ -684,10 +760,7 @@
       const updateDots = (idx) => dots.forEach((dt, i) => dt.classList.toggle('active', i === idx));
 
       const startIdx = typeof uiState._staySlide === 'number' ? uiState._staySlide : 1;
-      const snapInitial = () => {
-        car.scrollLeft = centerScrollOf(startIdx);
-        updateDots(startIdx);
-      };
+      const snapInitial = () => { car.scrollLeft = centerScrollOf(startIdx); updateDots(startIdx); };
       snapInitial();
       requestAnimationFrame(snapInitial);
 
@@ -709,7 +782,6 @@
       });
     }
 
-    // ハイライト各行の即ワープ
     modal.querySelectorAll('[data-hljump]').forEach(btn => {
       btn.onclick = () => {
         const act = btn.getAttribute('data-hljump');
@@ -727,7 +799,6 @@
       };
     });
 
-    // カレンダー操作（常に真ん中位置を維持）
     const rerenderOnCal = () => { uiState._staySlide = 1; window.renderEnRoomModal(); };
     document.getElementById('enGcalPrevM')?.addEventListener('click', () => { shiftCalMonth(-1); rerenderOnCal(); });
     document.getElementById('enGcalNextM')?.addEventListener('click', () => { shiftCalMonth(1); rerenderOnCal(); });
@@ -747,22 +818,16 @@
     const gcalGrid = document.getElementById('enGcalGrid');
     if (gcalGrid) {
       let sx = 0, sy = 0;
-      gcalGrid.addEventListener('touchstart', e => {
-        if (!e.touches[0]) return;
-        sx = e.touches[0].clientX; sy = e.touches[0].clientY;
-      }, { passive: true });
+      gcalGrid.addEventListener('touchstart', e => { if (!e.touches[0]) return; sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
       gcalGrid.addEventListener('touchend', e => {
         if (!e.changedTouches[0]) return;
         const dx = e.changedTouches[0].clientX - sx;
         const dy = e.changedTouches[0].clientY - sy;
-        if (Math.abs(dy) > 40 && Math.abs(dy) > Math.abs(dx) * 1.4) {
-          shiftCalMonth(dy < 0 ? 1 : -1);
-          rerenderOnCal();
-        }
+        if (Math.abs(dy) > 40 && Math.abs(dy) > Math.abs(dx) * 1.4) { shiftCalMonth(dy < 0 ? 1 : -1); rerenderOnCal(); }
       }, { passive: true });
     }
 
-    document.getElementById('enMrmExitBtn').onclick = () => modal.classList.remove('open');
+    document.getElementById('enMrmExitBtn').onclick = () => { setKeyboardOpen(false); modal.classList.remove('open'); };
     document.getElementById('enMrmFanBtn').onclick = () => { enViewState.roomViewAsFan = true; window.renderEnRoomModal(); };
 
     modal.querySelectorAll('[data-mrmgo]').forEach(btn => {
@@ -785,7 +850,7 @@
   }
 
   // =========================================================
-  // ⚙️ ルーム詳細（細かい設定 ＋ 日時つき企画書履歴）
+  // ⚙️ ルーム詳細
   // =========================================================
   function renderMobileRoomSettings(modal, lab, d) {
     const latestRep = d.reportHistory[0];
@@ -869,7 +934,7 @@
       ${buildMobileDock('detail')}
     `;
 
-    document.getElementById('enMrmCloseAll').onclick = () => modal.classList.remove('open');
+    document.getElementById('enMrmCloseAll').onclick = () => { setKeyboardOpen(false); modal.classList.remove('open'); };
     document.getElementById('enSetOpenRepBtn').onclick = () => openReportHistorySheet(lab, d);
     document.getElementById('enSetLabTitle').onchange = e => {
       const v = e.target.value.trim();
@@ -886,18 +951,19 @@
     document.getElementById('enSetJoinPolicy').onchange = e => { d.roomMeta.joinPolicy = e.target.value; safeSave(); enToast('👥 参加ルールを更新しました'); };
     document.getElementById('enSetProBtn').onclick = () => { enAiProEnabled = !enAiProEnabled; window.renderEnRoomModal(); };
     document.getElementById('enSetOriginBtn').onclick = () => {
+      setKeyboardOpen(false);
       modal.classList.remove('open');
       enViewState.enSubTab = 'tweet';
       if (typeof renderEnFeed === 'function') renderEnFeed();
       if (typeof enGoTab === 'function') enGoTab('feed');
     };
-    modal.querySelectorAll('[data-mrmgo]').forEach(btn => btn.onclick = () => { enViewState.roomTab = btn.getAttribute('data-mrmgo'); window.renderEnRoomModal(); });
+    modal.querySelectorAll('[data-mrmgo]').forEach(btn => btn.onclick = () => { uiState._staySlide = 1; enViewState.roomTab = btn.getAttribute('data-mrmgo'); window.renderEnRoomModal(); });
     bindMobileDock(modal);
     if (typeof enSyncTheme === 'function') enSyncTheme();
   }
 
   // =========================================================
-  // 💬 トーク機能強化：完全非公開ガード ＋ LINE式「＋」展開トレイ
+  // 💬 トーク機能強化：完全非公開 ＋ 「＋」展開トレイ ＋ 送信時スムーズ体験
   // =========================================================
   function enhanceMobileTalk(modal, lab, d) {
     const body = modal.querySelector('#enRoomBody');
@@ -948,6 +1014,9 @@
       plusBtn.setAttribute('aria-label', '便利機能を開く');
       plusBtn.textContent = '+';
       plusBtn.onclick = () => {
+        // ＋を押したらキーボードを引っ込めてトレイを見やすくする
+        document.activeElement?.blur();
+        setKeyboardOpen(false);
         uiState.talkPlusOpen = !uiState.talkPlusOpen;
         plusBtn.classList.toggle('open', uiState.talkPlusOpen);
         tray.classList.toggle('open', uiState.talkPlusOpen);
@@ -989,6 +1058,7 @@
   function bindMobileDock(modal) {
     modal.querySelectorAll('[data-mrmdock]').forEach(btn => {
       btn.onclick = () => {
+        setKeyboardOpen(false);
         const next = btn.getAttribute('data-mrmdock');
         if (next === 'board') uiState.boardViewMode = 'list';
         if (next === 'hub') uiState._staySlide = 1;
@@ -1007,8 +1077,8 @@
         <strong style="font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:center;">${esc(subTitle || lab.title)}</strong>
         <button type="button" class="en-act-btn" id="enMrmCloseAll" title="ラボ一覧へ戻る">✕</button>
       `;
-      document.getElementById('enMrmBackBtn').onclick = backFn || (() => { uiState._staySlide = 1; enViewState.roomTab = 'hub'; window.renderEnRoomModal(); });
-      document.getElementById('enMrmCloseAll').onclick = () => modal.classList.remove('open');
+      document.getElementById('enMrmBackBtn').onclick = backFn || (() => { setKeyboardOpen(false); uiState._staySlide = 1; enViewState.roomTab = 'hub'; window.renderEnRoomModal(); });
+      document.getElementById('enMrmCloseAll').onclick = () => { setKeyboardOpen(false); modal.classList.remove('open'); };
     }
     const oldNav = modal.querySelector('.en-room-nav');
     if (oldNav) {
@@ -1021,12 +1091,15 @@
   // 🔌 既存フック
   // =========================================================
   function installHooks() {
+    installKeyboardObservers();
+
     if (typeof window.openEnRoomModal === 'function' && !window.openEnRoomModal._enMrmWrapped) {
       const origOpen = window.openEnRoomModal;
       const wrappedOpen = function (labId, initialTab, asFan) {
+        setKeyboardOpen(false);
         uiState.boardViewMode = 'list';
         uiState.talkPlusOpen = false;
-        uiState._staySlide = 1; // ★ルームを開いたら真ん中のカレンダーからスタート
+        uiState._staySlide = 1;
         const targetTab = (isMobileRoomMode() && !asFan) ? 'hub' : initialTab;
         return origOpen.call(this, labId, targetTab, asFan);
       };
@@ -1102,6 +1175,7 @@
             if (btn.textContent.includes('ストーリーへ')) btn.textContent = '📌 決定メモへ';
           });
           applyMobileChrome(modal, lab, d, 'board', titleStr, '← ボード一覧', () => {
+            setKeyboardOpen(false);
             uiState.boardViewMode = 'list';
             window.renderEnRoomModal();
           });
