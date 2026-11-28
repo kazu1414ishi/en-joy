@@ -1,0 +1,364 @@
+/* =========================================================
+   EN•joy STEP C コンセプト設計3大ボード専用スタイル
+   （patch_concept_boards.css v1）
+   ・系統図（ロジックツリー）
+   ・ビジュアル魚の骨（リアルタイムSVGフィッシュボーン）
+   ・ポジショニングマトリクス（指＆マウスドラッグ2軸マップ）
+   ========================================================= */
+
+.en-c-svg {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  vertical-align: -0.2em;
+  flex-shrink: 0;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.en-c-svg.sm { width: 12px; height: 12px; }
+
+/* =========================================================
+   1. 系統図（ロジックツリー / 手段展開）
+   ========================================================= */
+.en-tree-goal {
+  padding: 11px 12px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--en-accent-soft), rgba(16, 185, 129, 0.08));
+  border: 1.5px solid var(--en-accent);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.en-tree-goal-lbl {
+  font-size: 10.5px;
+  font-weight: 900;
+  color: var(--en-accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.en-tree-branches {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 14px;
+  margin-left: 8px;
+  border-left: 2px solid var(--en-border);
+}
+.en-tree-branch {
+  position: relative;
+  padding: 10px 11px;
+  border-radius: 14px;
+  background: var(--en-surface-2);
+  border: 1px solid var(--en-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.en-tree-branch::before {
+  content: "";
+  position: absolute;
+  left: -15px;
+  top: 20px;
+  width: 14px;
+  height: 2px;
+  background: var(--en-border);
+}
+.en-tree-branch-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.en-tree-lvl-tag {
+  flex-shrink: 0;
+  padding: 2.5px 7px;
+  border-radius: 999px;
+  background: var(--en-accent);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+}
+.en-tree-leaves {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 12px;
+  margin-left: 8px;
+  border-left: 2px dashed var(--en-border);
+}
+.en-tree-leaf {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: var(--en-surface);
+  border: 1px solid var(--en-border);
+}
+.en-tree-leaf::before {
+  content: "";
+  position: absolute;
+  left: -13px;
+  top: 50%;
+  width: 12px;
+  height: 1.5px;
+  background: var(--en-border);
+}
+.en-tree-leaf-in {
+  flex: 1;
+  min-width: 0;
+  border: none !important;
+  background: transparent !important;
+  color: var(--en-text) !important;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 4px !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.en-tree-mini-btn {
+  flex-shrink: 0;
+  padding: 3.5px 7px;
+  border-radius: 8px;
+  border: 1px solid var(--en-border);
+  background: var(--en-surface-2);
+  color: var(--en-text);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.en-tree-mini-btn:hover {
+  border-color: var(--en-accent);
+  color: var(--en-accent);
+}
+
+/* =========================================================
+   2. ビジュアル魚の骨（SVGフィッシュボーン＋要因リスト）
+   ========================================================= */
+.en-fish-stage {
+  width: 100%;
+  border-radius: 15px;
+  background: var(--en-surface-2);
+  border: 1.5px solid var(--en-border);
+  padding: 8px 6px;
+  box-sizing: border-box;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.en-fish-svg {
+  width: 100%;
+  min-width: 460px;
+  height: auto;
+  display: block;
+}
+.en-fish-head-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+}
+.en-fish-head-tag {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 900;
+  color: #dc2626;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.14);
+}
+html[data-en-color="dark"] .en-fish-head-tag,
+html[data-en-color="cool"] .en-fish-head-tag { color: #f87171; }
+
+.en-fish-bone-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+@media (max-width: 460px) {
+  .en-fish-bone-list { grid-template-columns: 1fr; }
+}
+.en-fish-bone-box {
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: var(--en-surface-2);
+  border: 1px solid var(--en-border);
+  border-top: 3px solid var(--bone-col, var(--en-accent));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.en-fish-bone-title {
+  font-size: 11.5px;
+  font-weight: 900;
+  color: var(--bone-col, var(--en-accent));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.en-fish-factor-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  padding: 5px 7px;
+  border-radius: 8px;
+  background: var(--en-surface);
+  border: 1px solid var(--en-border);
+  font-size: 11.5px;
+}
+.en-fish-factor-txt {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+/* =========================================================
+   3. ポジショニングマトリクス（ドラッグ式 2軸プロット図）
+   ========================================================= */
+.en-pos-axes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.en-pos-axis-in {
+  padding: 5.5px 8px !important;
+  font-size: 11.5px !important;
+}
+
+.en-pos-board-outer {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  margin: 2px auto;
+  padding: 24px 10px;
+  box-sizing: border-box;
+}
+.en-pos-canvas {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: 360px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 75% 25%, rgba(249, 115, 22, 0.12), transparent 52%),
+    var(--en-surface-2);
+  border: 1.5px solid var(--en-border);
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* 中央クロス軸 */
+.en-pos-axis-x {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1.5px;
+  background: var(--en-border);
+  pointer-events: none;
+}
+.en-pos-axis-y {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1.5px;
+  background: var(--en-border);
+  pointer-events: none;
+}
+/* 4方向軸ラベル */
+.en-pos-lbl {
+  position: absolute;
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--en-muted);
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--en-surface);
+  border: 1px solid var(--en-border);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 2;
+}
+.en-pos-lbl.top    { top: 2px; left: 50%; transform: translateX(-50%); }
+.en-pos-lbl.bottom { bottom: 2px; left: 50%; transform: translateX(-50%); }
+.en-pos-lbl.left   { top: 50%; left: 14px; transform: translateY(-50%); opacity: 0.9; }
+.en-pos-lbl.right  { top: 50%; right: 14px; transform: translateY(-50%); opacity: 0.9; }
+
+/* ドラッグできるプロット点 */
+.en-pos-dot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--en-surface);
+  border: 2px solid #64748b;
+  color: var(--en-text);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.18);
+  cursor: grab;
+  touch-action: none;
+}
+.en-pos-dot:active {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.08);
+  z-index: 20;
+}
+.en-pos-dot.is-ours {
+  background: linear-gradient(135deg, #f97316, #f59e0b);
+  border-color: #ffffff;
+  color: #ffffff;
+  font-weight: 900;
+  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.25), 0 8px 20px rgba(249, 115, 22, 0.4);
+  z-index: 10;
+}
+.en-pos-dot.is-comp {
+  border-color: #3b82f6;
+}
+.en-pos-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.en-pos-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 9px;
+  border-radius: 10px;
+  background: var(--en-surface-2);
+  border: 1px solid var(--en-border);
+  font-size: 11.5px;
+}
+.en-pos-badge {
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 900;
+  background: rgba(59, 130, 246, 0.14);
+  color: #2563eb;
+  flex-shrink: 0;
+}
+.en-pos-badge.ours {
+  background: rgba(249, 115, 22, 0.16);
+  color: #ea580c;
+}
