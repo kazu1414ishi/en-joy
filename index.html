@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -16,6 +16,15 @@
   <link rel="stylesheet" href="./patch_header.css?v=4">
   <link rel="stylesheet" href="./patch_room_mobile.css?v=5">
   
+  <!-- PWA 全画面アプリ化設定 -->
+<link rel="manifest" href="./manifest.json?v=1">
+<meta name="theme-color" content="#f7f4ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="EN•joy">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="stylesheet" href="./patch_pwa.css?v=1">
 </head>
 <body>
   <!-- 開発用フローティングバー（PCでスマホ幅プレビュー中＋登録集中モード中でもリセット＆PC復帰できる） -->
