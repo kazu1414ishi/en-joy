@@ -1,7 +1,8 @@
 /* =========================================================
-   EN•joy スリム統合ヘッダー＆ハンバーガーメニュー（patch_header.css v1）
-   ・ヘッダー内は「EN•joyロゴ」＋「☰」の2要素のみ（スマホ分厚い問題解消）
-   ・スクロール時は消さず、42pxすりガラスでロゴ＆☰をスマートに残す
+   EN•joy スリム統合ヘッダー＆ハンバーガーメニュー（patch_header.css v2）
+   ・最上部：50pxのスリム1行ヘッダー（「ロゴ」＋「☰」の2要素のみ）
+   ・スクロール時：ヘッダー背景は完全透明＆クリック透過
+     → ロゴと☰だけが立体フローティングカプセルでくっきり浮上！
    ========================================================= */
 
 /* --- 🔝 スリム固定ヘッダー（スマホ・PC共通） --- */
@@ -21,26 +22,22 @@
   pointer-events: auto !important;
   background: var(--en-surface) !important;
   border-bottom: 1px solid var(--en-border) !important;
-  transition: height 0.22s ease, background 0.22s ease, box-shadow 0.22s ease, backdrop-filter 0.22s ease !important;
+  box-shadow: none !important;
+  transition: height 0.24s ease, background 0.24s ease, border-color 0.24s ease !important;
 }
 
-/* スクロール時：完全に消さず、さらに薄く(42px)＆すりガラスでロゴ＋☰を残す */
+/* ★スクロール時：ヘッダー背景・線・ぼかしを完全透明化（中央はクリック透過） */
 html.en-hdr-scrolled #topHeader.top-header {
-  height: 42px !important;
-  background: rgba(255, 255, 255, 0.78) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(140%) !important;
-  backdrop-filter: blur(12px) saturate(140%) !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07) !important;
-}
-html[data-en-color="wa"].en-hdr-scrolled #topHeader.top-header {
-  background: rgba(248, 244, 236, 0.82) !important;
-}
-html[data-en-color="dark"].en-hdr-scrolled #topHeader.top-header,
-html[data-en-color="cool"].en-hdr-scrolled #topHeader.top-header {
-  background: rgba(15, 23, 42, 0.78) !important;
+  height: 54px !important;
+  background: transparent !important;
+  border-bottom-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  pointer-events: none !important;
 }
 
-/* 中身は「ロゴ」と「☰」の2つだけに強制整理（分厚くなる要素を排除） */
+/* 中身は「ロゴ」と「☰」の2つだけに強制整理 */
 #topHeader .header-inner {
   height: 100% !important;
   min-height: 0 !important;
@@ -52,73 +49,122 @@ html[data-en-color="cool"].en-hdr-scrolled #topHeader.top-header {
   align-items: center !important;
   justify-content: space-between !important;
   gap: 8px !important;
+  pointer-events: inherit;
 }
 html.en-pc-mode #topHeader .header-inner {
   padding: 0 20px !important;
 }
 
-/* 旧ヘッダー内ボタン群＆重複ボタンは見た目だけ隠す（DOMは残してメニューから呼び出し） */
+/* 旧ヘッダー内ボタン群＆重複ボタンは見た目だけ隠す（DOMは生かす） */
 #topHeader .header-inner > :not(.brand-wrap):not(#enUnifiedBurgerBtn),
 #enPcBurgerBtn {
   display: none !important;
 }
 
-/* ロゴ周り：絶対に1行スリムに収める */
+/* --- 🏷️ ロゴ（スクロール時に高視認性フローティングピルへ変身） --- */
 #topHeader .brand-wrap {
   display: inline-flex !important;
   align-items: center !important;
   gap: 7px !important;
   margin: 0 !important;
-  padding: 0 !important;
+  padding: 4px 2px !important;
   min-width: 0;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
   cursor: pointer;
-  transform-origin: left center;
-  transition: transform 0.22s ease;
+  pointer-events: auto !important;
+  transition: padding 0.24s ease, background 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease, transform 0.2s ease !important;
 }
 #topHeader .brand-wrap small,
 #topHeader .brand-wrap .brand-sub,
 #topHeader .brand-wrap .brand-tagline {
   display: none !important;
 }
+
 html.en-hdr-scrolled #topHeader .brand-wrap {
-  transform: scale(0.9);
+  padding: 5px 13px 5px 11px !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+  border-color: var(--en-border) !important;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14), 0 1px 3px rgba(15, 23, 42, 0.08) !important;
+}
+html[data-en-color="wa"].en-hdr-scrolled #topHeader .brand-wrap {
+  background: rgba(250, 246, 238, 0.94) !important;
+}
+html[data-en-color="dark"].en-hdr-scrolled #topHeader .brand-wrap,
+html[data-en-color="cool"].en-hdr-scrolled #topHeader .brand-wrap {
+  background: rgba(15, 23, 42, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45) !important;
+}
+html.en-hdr-scrolled #topHeader .brand-wrap:hover {
+  border-color: var(--en-accent) !important;
+  transform: translateY(-1px);
 }
 
-/* ☰ 統合ハンバーガーボタン */
+/* --- ☰ 統合ハンバーガー（スクロール時にアクセント強調の浮遊タブへ変身） --- */
 #enUnifiedBurgerBtn {
   position: relative;
-  display: inline-grid !important;
-  place-items: center;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: 11px;
   border: 1px solid var(--en-border);
   background: var(--en-surface-2);
   color: var(--en-text);
   cursor: pointer;
   flex-shrink: 0;
   padding: 0;
-  transition: width 0.2s, height 0.2s, background 0.15s, border-color 0.15s;
-}
-html.en-hdr-scrolled #enUnifiedBurgerBtn {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
+  pointer-events: auto !important;
+  transition: width 0.24s ease, height 0.24s ease, padding 0.24s ease, border-radius 0.24s ease, background 0.24s ease, color 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease, transform 0.2s ease !important;
 }
 #enUnifiedBurgerBtn:hover {
   border-color: var(--en-accent);
   background: var(--en-accent-soft);
 }
+
+/* スクロール時：アクセント色でくっきり目立つフローティングタブ化 */
+html.en-hdr-scrolled #enUnifiedBurgerBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--en-accent) !important;
+  color: #ffffff !important;
+  border: 2px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.24), 0 0 0 3px var(--en-accent-soft) !important;
+}
+html[data-en-color="dark"].en-hdr-scrolled #enUnifiedBurgerBtn,
+html[data-en-color="cool"].en-hdr-scrolled #enUnifiedBurgerBtn {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55), 0 0 0 3px var(--en-accent-soft) !important;
+}
+html.en-hdr-scrolled #enUnifiedBurgerBtn:hover {
+  transform: scale(1.06);
+  filter: brightness(1.06);
+}
+
 #enUnifiedBurgerBtn .en-uhdr-badge {
   position: absolute;
-  top: 5px;
-  right: 5px;
+  top: 4px;
+  right: 4px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: #ef4444;
   border: 1.5px solid var(--en-surface);
   display: none;
+}
+html.en-hdr-scrolled #enUnifiedBurgerBtn .en-uhdr-badge {
+  top: 3px;
+  right: 3px;
+  width: 9px;
+  height: 9px;
+  border-color: #ffffff;
 }
 #enUnifiedBurgerBtn.has-unread .en-uhdr-badge {
   display: block;
@@ -134,11 +180,11 @@ html.en-pc-mode body:not(.en-in-register) main.main-container {
 html.en-pc-mode body:not(.en-in-register) nav#bottomNav.bottom-nav {
   top: 50px !important;
   height: calc(100vh - 50px) !important;
-  transition: top 0.22s ease, height 0.22s ease, transform 0.24s cubic-bezier(.22,1,.36,1) !important;
+  transition: top 0.24s ease, height 0.24s ease, transform 0.24s cubic-bezier(.22,1,.36,1) !important;
 }
 html.en-pc-mode.en-hdr-scrolled body:not(.en-in-register) nav#bottomNav.bottom-nav {
-  top: 42px !important;
-  height: calc(100vh - 42px) !important;
+  top: 56px !important;
+  height: calc(100vh - 56px) !important;
 }
 
 /* --- 🍔 スライド式ハンバーガーメニュー（右からスッと展開） --- */
