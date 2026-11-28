@@ -1,7 +1,7 @@
 /* =========================================================
-   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.js v2）
-   ・1枚目：⚡いま動くべきハイライト（各行タップで直接移動／企画書撤去）
-   ・2枚目：📅月間カレンダー（上下スワイプ月切替＋◀前日/翌日▶で横干渉ゼロ）
+   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.js v3）
+   ・カルーセル配置：左(0)＝✅やること・ハイライト ／ 真ん中(1・初期表示)＝📅カレンダー ／ 右(2)＝📊ラボ現在地
+   ・カレンダー：上下スワイプで月切替＋◀前日/翌日▶で横カルーセルと干渉ゼロ
    ・進行：🗺️「いまここカード」フォーカス型ロードマップ（往復自由＋推奨ボード案内）
    ・ボード：🧰入口「カテゴリ別2列カード一覧」→ 選んだら全画面作業
    ・トーク：🔒完全ルーム内完結（公開ストーリー転送廃止）＋「＋」展開トレイ
@@ -46,7 +46,7 @@
       idx: 4, icon: '🎉', label: '巣立ち', full: 'STEP 5：完成・巣立ちお披露目',
       desc: '準備バッチリ！販促コピーを整えたら、商品完成登録からEN•マルシェ＆各販路へ羽ばたかせよう！',
       boards: [
-        { id: 'promo',  label: '📣 販促・パッケージ計画を仕上げる' },
+        { id: 'promo',   label: '📣 販促・パッケージ計画を仕上げる' },
         { id: '_launch', label: '🍊 商品完成登録を開いてお披露目する', orange: true }
       ]
     }
@@ -62,8 +62,9 @@
 
   const calState = { year: 2026, month: 10, selectedDate: '2026-11-29' };
   const uiState = {
-    boardViewMode: 'list', // 'list'（2列カード一覧） | 'detail'（選んだボード全画面）
-    talkPlusOpen: false
+    boardViewMode: 'list',
+    talkPlusOpen: false,
+    _staySlide: 1 // ★デフォルト初期表示＝真ん中(1)のカレンダー！
   };
 
   function isMobileRoomMode() {
@@ -116,16 +117,11 @@
     return d;
   }
 
-  // 安全表記変換（「公開ストーリー」をスマホではルーム内非公開メモとして表示）
-  function safeBoardName(b) {
-    return b.id === 'story' ? 'ルーム内決定メモ' : b.name;
-  }
-  function safeBoardDesc(b) {
-    return b.id === 'story' ? '外部非公開・チームで決まった方針の記録' : (b.desc || '');
-  }
+  function safeBoardName(b) { return b.id === 'story' ? 'ルーム内決定メモ' : b.name; }
+  function safeBoardDesc(b) { return b.id === 'story' ? '外部非公開・チームで決まった方針の記録' : (b.desc || ''); }
 
   // =========================================================
-  // 📄 作成日時つき企画書履歴シート（ルーム詳細から呼び出し）
+  // 📄 作成日時つき企画書履歴シート
   // =========================================================
   function generateAndSaveReport(lab, d) {
     const now = new Date();
@@ -210,7 +206,56 @@
   }
 
   // =========================================================
-  // 📅 2枚目：Googleカレンダー風 月間カレンダー（縦スワイプ＆前日翌日送り）
+  // ✅ 左(0枚目)：やることリスト＆即ワープハイライト
+  // =========================================================
+  function buildHighlightSlide(lab, d) {
+    const st = STAGES[d.stage] || STAGES[1];
+    const pendingTasks = enViewState.roomTasks.filter(t => !t.done);
+    const p0 = d.polls[0];
+    const lastMsg = enViewState.roomMessages[enViewState.roomMessages.length - 1];
+    const firstRecBoard = st.boards[0];
+
+    const rows = [];
+    pendingTasks.slice(0, 2).forEach(t => {
+      rows.push({ ico: '✅', tag: 'やること（未完了）', main: t.text, action: 'progress', accent: true });
+    });
+    if (p0) {
+      rows.push({ ico: '🗳️', tag: `多数決（${p0.deadline}）`, main: p0.title, action: 'progress' });
+    }
+    if (firstRecBoard) {
+      rows.push({
+        ico: st.icon, tag: `今のフェーズおすすめ（${st.label}）`, main: firstRecBoard.label,
+        action: firstRecBoard.id === '_launch' ? 'launch' : `board:${firstRecBoard.id}`
+      });
+    }
+    if (lastMsg) {
+      rows.push({ ico: '💬', tag: `最新トーク｜${lastMsg.sender}`, main: lastMsg.text, action: 'talk' });
+    }
+
+    return `
+      <div class="en-mrm-slide">
+        <div class="en-between">
+          <strong style="font-size:14px;">✅ やることリスト・注目</strong>
+          <span class="en-pill">残り ${pendingTasks.length}件</span>
+        </div>
+        <div class="en-hl-list">
+          ${rows.slice(0, 4).map(r => `
+            <button type="button" class="en-hl-row ${r.accent ? 'accent' : ''}" data-hljump="${r.action}">
+              <span class="en-hl-ico">${r.ico}</span>
+              <span class="en-hl-txt">
+                <span class="en-hl-tag">${esc(r.tag)}</span>
+                <span class="en-hl-main">${esc(r.main)}</span>
+              </span>
+              <span class="en-hl-go">➔</span>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // =========================================================
+  // 📅 真ん中(1枚目・初期表示)：Googleカレンダー風 月間カレンダー
   // =========================================================
   function buildMonthlyCalendarSlide(lab, d) {
     const y = calState.year;
@@ -283,7 +328,6 @@
           }).join('')}
         </div>
 
-        <!-- カルーセルを動かさずに前日・翌日をサクサク送れるミニバー -->
         <div class="en-gcal-daybar">
           <button type="button" class="en-gcal-btn" id="enGcalPrevDay" aria-label="前日">◀</button>
           <button type="button" class="en-gcal-dayinfo" id="enGcalManageBtn">
@@ -322,7 +366,9 @@
       btn.onclick = () => {
         const id = btn.getAttribute('data-delcalev');
         d.calEvents = d.calEvents.filter(x => x.id !== id);
-        safeSave(); openAddCalEventSheet(labId, d, dateStr); window.renderEnRoomModal();
+        safeSave(); uiState._staySlide = 1;
+        openAddCalEventSheet(labId, d, dateStr);
+        window.renderEnRoomModal();
       };
     });
     document.getElementById('enCalEvSaveBtn')?.addEventListener('click', () => {
@@ -330,70 +376,10 @@
       const tone = Number(document.getElementById('enCalEvToneIn')?.value || 1);
       if (!title) return enToast('⚠️ 予定タイトルを入力してください');
       d.calEvents.push({ id: 'ev-' + Date.now(), date: dateStr, title, tone });
-      safeSave(); closeEnSheet(); enToast(`📅 ${dateStr} に予定を追加しました！`); window.renderEnRoomModal();
+      safeSave(); closeEnSheet(); uiState._staySlide = 1;
+      enToast(`📅 ${dateStr} に予定を追加しました！`);
+      window.renderEnRoomModal();
     });
-  }
-
-  // =========================================================
-  // ⚡ 1枚目：いま動くべきハイライト（タップでその場所へ即ワープ！）
-  // =========================================================
-  function buildHighlightSlide(lab, d) {
-    const st = STAGES[d.stage] || STAGES[1];
-    const pendingTasks = enViewState.roomTasks.filter(t => !t.done);
-    const p0 = d.polls[0];
-    const lastMsg = enViewState.roomMessages[enViewState.roomMessages.length - 1];
-    const firstRecBoard = st.boards[0];
-
-    const rows = [];
-    // 未完了やること（上位2件）
-    pendingTasks.slice(0, 2).forEach(t => {
-      rows.push({
-        ico: '✅', tag: 'やること（未完了）', main: t.text,
-        action: 'progress', accent: true
-      });
-    });
-    // 実施中の多数決
-    if (p0) {
-      rows.push({
-        ico: '🗳️', tag: `多数決（${p0.deadline}）`, main: p0.title,
-        action: 'progress'
-      });
-    }
-    // 今のフェーズで使うおすすめボードへ直通
-    if (firstRecBoard) {
-      rows.push({
-        ico: st.icon, tag: `今のフェーズおすすめ（${st.label}）`, main: firstRecBoard.label,
-        action: firstRecBoard.id === '_launch' ? 'launch' : `board:${firstRecBoard.id}`
-      });
-    }
-    // 最新トーク
-    if (lastMsg) {
-      rows.push({
-        ico: '💬', tag: `最新トーク｜${lastMsg.sender}`, main: lastMsg.text,
-        action: 'talk'
-      });
-    }
-
-    return `
-      <div class="en-mrm-slide">
-        <div class="en-between">
-          <strong style="font-size:14px;">⚡ いま動くべきハイライト</strong>
-          <span class="en-pill">${st.icon} ${st.label}</span>
-        </div>
-        <div class="en-hl-list">
-          ${rows.slice(0, 4).map(r => `
-            <button type="button" class="en-hl-row ${r.accent ? 'accent' : ''}" data-hljump="${r.action}">
-              <span class="en-hl-ico">${r.ico}</span>
-              <span class="en-hl-txt">
-                <span class="en-hl-tag">${esc(r.tag)}</span>
-                <span class="en-hl-main">${esc(r.main)}</span>
-              </span>
-              <span class="en-hl-go">➔</span>
-            </button>
-          `).join('')}
-        </div>
-      </div>
-    `;
   }
 
   // =========================================================
@@ -407,7 +393,6 @@
 
     return `
       <div class="en-focus-rm" id="enMrmFocusRoadmap">
-        <!-- 細い5段階バー（どのステップもタップで往復OK／将来SVG化しやすい構成） -->
         <div class="en-rm-rail">
           <div class="en-rm-rail-fill" style="width:calc((100% - 36px) * ${fillPct / 100});"></div>
           ${STAGES.map(s => {
@@ -421,7 +406,6 @@
           }).join('')}
         </div>
 
-        <!-- 今いるフェーズ1つだけにフォーカスした親切ガイドカード -->
         <div class="en-rm-focus-card">
           <div class="en-between">
             <span class="en-pill">いまここ</span>
@@ -473,11 +457,7 @@
     root.querySelectorAll('[data-rmjump]').forEach(btn => {
       btn.onclick = () => {
         const tid = btn.getAttribute('data-rmjump');
-        if (tid === '_launch') {
-          enViewState.roomTab = 'launch';
-          window.renderEnRoomModal();
-          return;
-        }
+        if (tid === '_launch') { enViewState.roomTab = 'launch'; window.renderEnRoomModal(); return; }
         if (!d.activeTools.includes(tid)) d.activeTools.push(tid);
         d.selectedTool = tid;
         safeSave();
@@ -489,7 +469,7 @@
   }
 
   // =========================================================
-  // 🧰 ボード入口：カテゴリ別「2列カード一覧」（案B）
+  // 🧰 ボード入口：カテゴリ別「2列カード一覧」
   // =========================================================
   function renderMobileBoardHubList(modal, lab, d) {
     const allBoards = getAllActiveBoardDefs(d);
@@ -562,7 +542,7 @@
   }
 
   // =========================================================
-  // 🏠 スマホ版 ルームホーム画面
+  // 🏠 スマホ版 ルームホーム画面（真ん中＝カレンダー初期表示！）
   // =========================================================
   function renderMobileRoomHub(modal, lab, d) {
     const c = d.cost;
@@ -576,7 +556,8 @@
     const st = STAGES[d.stage] || STAGES[1];
     const isUnlocked = d.stage >= 2;
 
-    const slide3 = `
+    // 📊 右(2枚目)：ラボ現在地サマリー
+    const slideRight = `
       <div class="en-mrm-slide">
         <div class="en-between">
           <strong style="font-size:14px;">📊 ラボ現在地サマリー</strong>
@@ -612,17 +593,17 @@
       </div>
 
       <div class="en-room-body" id="enRoomBody">
-        <!-- 1×1 横スワイプ（1:ハイライト即ワープ / 2:Googleカレンダー風月間カレンダー / 3:サマリー） -->
+        <!-- 1×1 横スワイプ：左(0)やること ／ 真ん中(1・初期表示)カレンダー ／ 右(2)ラボ現在地 -->
         <div class="en-mrm-carousel-wrap">
           <div class="en-mrm-carousel" id="enMrmCarousel">
             ${buildHighlightSlide(lab, d)}
             ${buildMonthlyCalendarSlide(lab, d)}
-            ${slide3}
+            ${slideRight}
           </div>
           <div class="en-mrm-dots" id="enMrmDots">
-            <button type="button" class="en-mrm-dot active" data-dot="0" aria-label="ハイライト"></button>
-            <button type="button" class="en-mrm-dot" data-dot="1" aria-label="カレンダー"></button>
-            <button type="button" class="en-mrm-dot" data-dot="2" aria-label="サマリー"></button>
+            <button type="button" class="en-mrm-dot" data-dot="0" aria-label="やることリスト"></button>
+            <button type="button" class="en-mrm-dot active" data-dot="1" aria-label="カレンダー"></button>
+            <button type="button" class="en-mrm-dot" data-dot="2" aria-label="ラボ現在地"></button>
           </div>
         </div>
 
@@ -673,7 +654,7 @@
           </button>
         </div>
 
-        <!-- 1列フル幅：商品完成登録（試作フェーズ到達でオレンジ解放！） -->
+        <!-- 1列フル幅：商品完成登録（試作到達でオレンジ解放！） -->
         <button type="button" class="en-mrm-complete-card ${isUnlocked ? 'unlocked' : 'locked'}" id="enMrmCompleteBtn">
           <span class="en-mrm-complete-ico">${isUnlocked ? '🍊' : '🔒'}</span>
           <span class="en-mrm-complete-txt">
@@ -690,23 +671,41 @@
       ${buildMobileDock('hub')}
     `;
 
-    // カルーセルのドット連動 ＆ カレンダー操作後に2枚目位置を維持
+    // カルーセルをピタッと中央（デフォルト1:カレンダー）へ配置＆ドット同期
     const car = document.getElementById('enMrmCarousel');
     const dots = modal.querySelectorAll('#enMrmDots .en-mrm-dot');
     if (car) {
-      if (uiState._staySlide === 1) {
-        car.scrollLeft = car.clientWidth * 0.92 + 10;
-        dots.forEach((dt, i) => dt.classList.toggle('active', i === 1));
-        uiState._staySlide = null;
-      }
+      const slides = Array.from(car.querySelectorAll('.en-mrm-slide'));
+      const centerScrollOf = (idx) => {
+        const el = slides[idx];
+        if (!el) return 0;
+        return Math.max(0, el.offsetLeft - (car.clientWidth - el.clientWidth) / 2);
+      };
+      const updateDots = (idx) => dots.forEach((dt, i) => dt.classList.toggle('active', i === idx));
+
+      const startIdx = typeof uiState._staySlide === 'number' ? uiState._staySlide : 1;
+      const snapInitial = () => {
+        car.scrollLeft = centerScrollOf(startIdx);
+        updateDots(startIdx);
+      };
+      snapInitial();
+      requestAnimationFrame(snapInitial);
+
       car.addEventListener('scroll', () => {
-        const w = car.clientWidth * 0.92 || 1;
-        const idx = Math.min(2, Math.max(0, Math.round(car.scrollLeft / w)));
-        dots.forEach((dt, i) => dt.classList.toggle('active', i === idx));
+        const centerX = car.scrollLeft + car.clientWidth / 2;
+        let bestIdx = 1, bestDist = Infinity;
+        slides.forEach((sl, i) => {
+          const dist = Math.abs((sl.offsetLeft + sl.clientWidth / 2) - centerX);
+          if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+        });
+        uiState._staySlide = bestIdx;
+        updateDots(bestIdx);
       }, { passive: true });
+
       dots.forEach(dt => dt.onclick = () => {
         const idx = Number(dt.getAttribute('data-dot'));
-        car.scrollTo({ left: idx * (car.clientWidth * 0.92 + 10), behavior: 'smooth' });
+        uiState._staySlide = idx;
+        car.scrollTo({ left: centerScrollOf(idx), behavior: 'smooth' });
       });
     }
 
@@ -728,7 +727,7 @@
       };
     });
 
-    // カレンダー操作（月移動・前日翌日・上下スワイプでカルーセルを動かさない）
+    // カレンダー操作（常に真ん中位置を維持）
     const rerenderOnCal = () => { uiState._staySlide = 1; window.renderEnRoomModal(); };
     document.getElementById('enGcalPrevM')?.addEventListener('click', () => { shiftCalMonth(-1); rerenderOnCal(); });
     document.getElementById('enGcalNextM')?.addEventListener('click', () => { shiftCalMonth(1); rerenderOnCal(); });
@@ -745,7 +744,6 @@
       };
     });
 
-    // カレンダー内の上下スワイプ検知（横カルーセルと完全分離）
     const gcalGrid = document.getElementById('enGcalGrid');
     if (gcalGrid) {
       let sx = 0, sy = 0;
@@ -904,17 +902,14 @@
   function enhanceMobileTalk(modal, lab, d) {
     const body = modal.querySelector('#enRoomBody');
     if (body) {
-      // 先頭に「完全非公開」の安心バーを追加
       const priv = document.createElement('div');
       priv.className = 'en-talk-private-bar';
       priv.innerHTML = '🔒 ルーム内限定トーク（外部へ自動公開されることはありません）';
       body.insertBefore(priv, body.firstChild);
 
-      // 末尾の旧ヒント文を安全表現へ差替
       const lastMeta = body.querySelector('.en-meta:last-child');
       if (lastMeta) lastMeta.textContent = '💡 発言タップ → ルーム内メモ / やること / なぜなぜ分析へ（完全非公開）';
 
-      // 発言タップ時の転送先から「公開ストーリー」を完全撤去！
       body.querySelectorAll('[data-msgaction]').forEach(b => {
         b.onclick = () => {
           const m = enViewState.roomMessages[Number(b.getAttribute('data-msgaction'))];
@@ -935,7 +930,6 @@
       });
     }
 
-    // 入力欄の左に「＋」ボタン＆展開トレイを装着
     const composer = modal.querySelector('.en-room-composer');
     if (composer) {
       const tray = document.createElement('div');
@@ -973,7 +967,6 @@
     }
   }
 
-  // 下部5アイコン親指ドック
   function buildMobileDock(activeKey) {
     const tabs = [
       ['hub',      '🏠', 'ホーム'],
@@ -998,6 +991,7 @@
       btn.onclick = () => {
         const next = btn.getAttribute('data-mrmdock');
         if (next === 'board') uiState.boardViewMode = 'list';
+        if (next === 'hub') uiState._staySlide = 1;
         uiState.talkPlusOpen = false;
         enViewState.roomTab = next;
         window.renderEnRoomModal();
@@ -1013,7 +1007,7 @@
         <strong style="font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:center;">${esc(subTitle || lab.title)}</strong>
         <button type="button" class="en-act-btn" id="enMrmCloseAll" title="ラボ一覧へ戻る">✕</button>
       `;
-      document.getElementById('enMrmBackBtn').onclick = backFn || (() => { enViewState.roomTab = 'hub'; window.renderEnRoomModal(); });
+      document.getElementById('enMrmBackBtn').onclick = backFn || (() => { uiState._staySlide = 1; enViewState.roomTab = 'hub'; window.renderEnRoomModal(); });
       document.getElementById('enMrmCloseAll').onclick = () => modal.classList.remove('open');
     }
     const oldNav = modal.querySelector('.en-room-nav');
@@ -1032,6 +1026,7 @@
       const wrappedOpen = function (labId, initialTab, asFan) {
         uiState.boardViewMode = 'list';
         uiState.talkPlusOpen = false;
+        uiState._staySlide = 1; // ★ルームを開いたら真ん中のカレンダーからスタート
         const targetTab = (isMobileRoomMode() && !asFan) ? 'hub' : initialTab;
         return origOpen.call(this, labId, targetTab, asFan);
       };
@@ -1062,7 +1057,6 @@
         if (rt === 'hub') { renderMobileRoomHub(modal, lab, d); return; }
         if (rt === 'detail') { renderMobileRoomSettings(modal, lab, d); return; }
 
-        // 🍊 商品完成登録
         if (rt === 'launch') {
           enViewState.roomTab = 'detail';
           origRender.apply(this, arguments);
@@ -1073,7 +1067,6 @@
           return;
         }
 
-        // ✅ 進行（「いまここカード」フォーカス型ロードマップ ＋ 多数決 ＋ やること）
         if (rt === 'progress') {
           origRender.apply(this, arguments);
           const body = modal.querySelector('#enRoomBody');
@@ -1093,7 +1086,6 @@
           return;
         }
 
-        // 🧰 ボード（list＝カテゴリ別2列カード一覧 / detail＝選択ボード全画面）
         if (rt === 'board') {
           if (uiState.boardViewMode === 'list') {
             renderMobileBoardHubList(modal, lab, d);
@@ -1103,7 +1095,6 @@
           modal.classList.add('en-mrm-board-detail');
           const curDef = getAllActiveBoardDefs(d).find(b => b.id === d.selectedTool);
           const titleStr = curDef ? `${curDef.icon} ${safeBoardName(curDef)}` : '🧰 開発ボード';
-          // 決定メモ（旧公開ストーリー）の表記を安全化
           modal.querySelectorAll('#enRoomBody .en-title').forEach(el => {
             if (el.textContent.includes('公開ストーリー')) el.textContent = '📌 ルーム内決定メモ（非公開）';
           });
@@ -1117,7 +1108,6 @@
           return;
         }
 
-        // 💬 トーク（完全非公開＋「＋」展開トレイ）
         origRender.apply(this, arguments);
         modal.classList.add('en-mrm-talk');
         enhanceMobileTalk(modal, lab, d);

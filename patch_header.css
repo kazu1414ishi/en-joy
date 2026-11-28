@@ -1,9 +1,9 @@
 /* =========================================================
-   EN•joy スリム統合ヘッダー＆ハンバーガーメニュー（patch_header.css v3）
-   ・最上部：50pxのスリム1行ヘッダー（「ロゴ」＋「☰」の2要素のみ）
-   ・スクロール時：ヘッダー背景は完全透明＆クリック透過
-     → ロゴと☰だけが立体フローティングカプセルでくっきり浮上
-   ・タブ切替時の上隙間ゼロ化（余白の二重掛けを全リセット＆一本化）
+   EN•joy スリム統合ヘッダー＆スマホ入力ズーム防止（patch_header.css v4）
+   ・最上部：50pxスリム1行ヘッダー（「ロゴ」＋「☰」のみ）
+   ・スクロール時：背景完全透明＆クリック透過 → ロゴと☰だけ立体浮上
+   ・タブ切替時の上隙間ゼロ化
+   ・スマホ全画面：文字入力タップ時の強制拡大（iOSオートズーム）完全防止
    ========================================================= */
 
 /* --- 🔝 スリム固定ヘッダー（スマホ・PC共通） --- */
@@ -28,7 +28,6 @@
   transition: height 0.24s ease, background 0.24s ease, border-color 0.24s ease !important;
 }
 
-/* ★スクロール時：ヘッダー背景・線・ぼかしを完全透明化（中央はクリック透過） */
 html.en-hdr-scrolled #topHeader.top-header {
   height: 54px !important;
   background: transparent !important;
@@ -39,7 +38,6 @@ html.en-hdr-scrolled #topHeader.top-header {
   pointer-events: none !important;
 }
 
-/* 中身は「ロゴ」と「☰」の2つだけに強制整理 */
 #topHeader .header-inner {
   height: 100% !important;
   min-height: 0 !important;
@@ -57,7 +55,6 @@ html.en-pc-mode #topHeader .header-inner {
   padding: 0 20px !important;
 }
 
-/* 旧ヘッダー内ボタン群＆重複ボタンは見た目だけ隠す（DOMは生かす） */
 #topHeader .header-inner > :not(.brand-wrap):not(#enUnifiedBurgerBtn),
 #enPcBurgerBtn {
   display: none !important;
@@ -106,7 +103,7 @@ html.en-hdr-scrolled #topHeader .brand-wrap:hover {
   transform: translateY(-1px);
 }
 
-/* --- ☰ 統合ハンバーガー（スクロール時にアクセント強調の浮遊タブへ変身） --- */
+/* --- ☰ 統合ハンバーガー --- */
 #enUnifiedBurgerBtn {
   position: relative;
   display: inline-flex !important;
@@ -129,7 +126,6 @@ html.en-hdr-scrolled #topHeader .brand-wrap:hover {
   border-color: var(--en-accent);
   background: var(--en-accent-soft);
 }
-
 html.en-hdr-scrolled #enUnifiedBurgerBtn {
   width: 40px;
   height: 40px;
@@ -148,7 +144,6 @@ html.en-hdr-scrolled #enUnifiedBurgerBtn:hover {
   transform: scale(1.06);
   filter: brightness(1.06);
 }
-
 #enUnifiedBurgerBtn .en-uhdr-badge {
   position: absolute;
   top: 4px;
@@ -167,21 +162,10 @@ html.en-hdr-scrolled #enUnifiedBurgerBtn .en-uhdr-badge {
   height: 9px;
   border-color: #ffffff;
 }
-#enUnifiedBurgerBtn.has-unread .en-uhdr-badge {
-  display: block;
-}
+#enUnifiedBurgerBtn.has-unread .en-uhdr-badge { display: block; }
 
-/* =========================================================
-   📐 隙間ゼロ化：上余白の二重掛けを全リセット＆1箇所に統一
-   ========================================================= */
-body,
-#appShell,
-.app-shell {
-  padding-top: 0 !important;
-  margin-top: 0 !important;
-}
-
-/* 唯一のヘッダー逃げ余白（ヘッダー50px ＋ ちょうどいい呼吸余白6〜8px） */
+/* --- 📐 隙間ゼロ化 --- */
+body, #appShell, .app-shell { padding-top: 0 !important; margin-top: 0 !important; }
 main.main-container,
 body:not(.en-in-register) main.main-container,
 body.en-in-register main.main-container {
@@ -193,8 +177,6 @@ html.en-pc-mode body.en-in-register main.main-container {
   margin-top: 0 !important;
   padding-top: 58px !important;
 }
-
-/* 各タブ・ラッパー・先頭要素の上余白を完全ゼロ化（タブ切替時の段差・隙間を根絶） */
 main.main-container > .view-section,
 .view-section,
 .view-section > .en-wrap,
@@ -210,7 +192,6 @@ main.main-container > .view-section,
   margin-top: 0 !important;
 }
 
-/* PCサイドバー上端合わせ */
 html.en-pc-mode body:not(.en-in-register) nav#bottomNav.bottom-nav {
   top: 50px !important;
   height: calc(100vh - 50px) !important;
@@ -221,158 +202,60 @@ html.en-pc-mode.en-hdr-scrolled body:not(.en-in-register) nav#bottomNav.bottom-n
   height: calc(100vh - 56px) !important;
 }
 
-/* --- 🍔 スライド式ハンバーガーメニュー（右からスッと展開） --- */
+/* --- 🍔 スライド式ハンバーガーメニュー --- */
 #en-hdr-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.42);
-  backdrop-filter: blur(3px);
-  z-index: 10010;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.22s ease, visibility 0.22s ease;
+  position: fixed; inset: 0; background: rgba(15, 23, 42, 0.42); backdrop-filter: blur(3px);
+  z-index: 10010; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.22s ease, visibility 0.22s ease;
 }
-#en-hdr-backdrop.open {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
-
+#en-hdr-backdrop.open { opacity: 1; visibility: visible; pointer-events: auto; }
 #en-hdr-drawer {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: min(320px, 86vw);
-  background: var(--en-surface);
-  color: var(--en-text);
-  border-left: 1px solid var(--en-border);
-  box-shadow: -12px 0 36px rgba(0, 0, 0, 0.18);
-  z-index: 10020;
-  display: flex;
-  flex-direction: column;
-  transform: translateX(104%);
-  transition: transform 0.25s cubic-bezier(.22, 1, .36, 1);
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(320px, 86vw);
+  background: var(--en-surface); color: var(--en-text); border-left: 1px solid var(--en-border);
+  box-shadow: -12px 0 36px rgba(0, 0, 0, 0.18); z-index: 10020; display: flex; flex-direction: column;
+  transform: translateX(104%); transition: transform 0.25s cubic-bezier(.22, 1, .36, 1);
 }
-#en-hdr-drawer.open {
-  transform: translateX(0);
+#en-hdr-drawer.open { transform: translateX(0); }
+.en-hdr-d-head { height: 54px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--en-border); flex-shrink: 0; }
+.en-hdr-d-brand { font-size: 15px; font-weight: 900; letter-spacing: 0.02em; }
+.en-hdr-d-close { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--en-border); background: var(--en-surface-2); color: var(--en-text); font-size: 15px; cursor: pointer; }
+.en-hdr-d-body { flex: 1; overflow-y: auto; padding: 14px 14px 28px; display: flex; flex-direction: column; gap: 16px; }
+.en-hdr-d-sec-title { font-size: 11px; font-weight: 800; color: var(--en-muted); margin: 0 0 6px 4px; letter-spacing: 0.04em; }
+.en-hdr-d-group { display: flex; flex-direction: column; gap: 6px; }
+.en-hdr-d-item { width: 100%; display: flex; align-items: center; gap: 11px; padding: 11px 12px; border-radius: 13px; border: 1px solid var(--en-border); background: var(--en-surface-2); color: var(--en-text); text-align: left; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.en-hdr-d-item:hover, .en-hdr-d-item.highlight { border-color: var(--en-accent); background: var(--en-accent-soft); }
+.en-hdr-d-ico { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+.en-hdr-d-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.en-hdr-d-txt strong { font-size: 13px; font-weight: 800; line-height: 1.25; }
+.en-hdr-d-txt small { font-size: 11px; color: var(--en-muted); line-height: 1.35; }
+.en-hdr-d-arrow { font-size: 12px; color: var(--en-muted); font-weight: 800; }
+.en-hdr-d-pill { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; background: #ef4444; color: #fff; }
+.en-hdr-d-guide { padding: 10px 12px; border-radius: 12px; background: var(--en-surface-2); border: 1px dashed var(--en-border); font-size: 11.5px; color: var(--en-muted); line-height: 1.5; }
+.en-hdr-d-guide strong { color: var(--en-text); }
+
+/* =========================================================
+   📱 アプリ全体：スマホ文字入力時の勝手な拡大（オートズーム）完全防止
+   ========================================================= */
+html:not(.en-pc-mode) {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+html:not(.en-pc-mode) button,
+html:not(.en-pc-mode) a,
+html:not(.en-pc-mode) input,
+html:not(.en-pc-mode) textarea,
+html:not(.en-pc-mode) select {
+  touch-action: manipulation;
 }
 
-.en-hdr-d-head {
-  height: 54px;
-  padding: 0 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--en-border);
-  flex-shrink: 0;
+/* iOS Safariは16px未満のフォーム要素にフォーカスすると自動拡大するため16pxに統一 */
+html:not(.en-pc-mode) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+html:not(.en-pc-mode) textarea,
+html:not(.en-pc-mode) select {
+  font-size: 16px !important;
+  line-height: 1.4 !important;
+  box-sizing: border-box;
 }
-.en-hdr-d-brand {
-  font-size: 15px;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-}
-.en-hdr-d-close {
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  border: 1px solid var(--en-border);
-  background: var(--en-surface-2);
-  color: var(--en-text);
-  font-size: 15px;
-  cursor: pointer;
-}
-.en-hdr-d-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 14px 14px 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.en-hdr-d-sec-title {
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--en-muted);
-  margin: 0 0 6px 4px;
-  letter-spacing: 0.04em;
-}
-.en-hdr-d-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.en-hdr-d-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 11px 12px;
-  border-radius: 13px;
-  border: 1px solid var(--en-border);
-  background: var(--en-surface-2);
-  color: var(--en-text);
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-}
-.en-hdr-d-item:hover {
-  border-color: var(--en-accent);
-  background: var(--en-accent-soft);
-}
-.en-hdr-d-item.highlight {
-  border-color: var(--en-accent);
-  background: var(--en-accent-soft);
-}
-.en-hdr-d-ico {
-  font-size: 18px;
-  width: 24px;
-  text-align: center;
-  flex-shrink: 0;
-}
-.en-hdr-d-txt {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.en-hdr-d-txt strong {
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.25;
-}
-.en-hdr-d-txt small {
-  font-size: 11px;
-  color: var(--en-muted);
-  line-height: 1.35;
-}
-.en-hdr-d-arrow {
-  font-size: 12px;
-  color: var(--en-muted);
-  font-weight: 800;
-}
-.en-hdr-d-pill {
-  font-size: 10px;
-  font-weight: 800;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: #ef4444;
-  color: #fff;
-}
-
-.en-hdr-d-guide {
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: var(--en-surface-2);
-  border: 1px dashed var(--en-border);
-  font-size: 11.5px;
-  color: var(--en-muted);
-  line-height: 1.5;
-}
-.en-hdr-d-guide strong {
-  color: var(--en-text);
+html:not(.en-pc-mode) .en-cost-input {
+  min-width: 96px;
+  padding: 6px 8px !important;
 }
