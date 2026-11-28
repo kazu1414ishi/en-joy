@@ -1,11 +1,8 @@
 /* =========================================================
-   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.js v7）
-   ・LINE式トーク入力物理：
-     - 下に落ちて上がる二度動きを撲滅（visualViewport実縮小と同時フレームで切替）
-     - 最新コメント表示中(atBottom) → 入力ボックスと一緒に上に追従
-     - 過去ログをスクロール中 → トーク表示位置を完全固定したまま入力
-   ・通常入力ボックス(ボード/詳細/シート/一般画面)：
-     - キーボード展開後に隠れた場合だけ見やすい位置へ1回だけ配置（どっか行く防止）
+   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.js v9）
+   ・MutationObserver完全撤去＆PCモード即バイパス（PC/スマホ戻りフリーズ根治）
+   ・外見え／巣立ち公開を含む全終了ルートでカーテン＆スクロールロックを確実に解除
+   ・今日の日付を動的取得／トーク転送をイベントリスナー化（引用符・改行安全）
    ========================================================= */
 
 (function () {
@@ -60,20 +57,24 @@
     { key: 'カスタム',   title: '📝 オリジナルボード' }
   ];
 
-  const calState = { year: 2026, month: 10, selectedDate: '2026-11-29' };
-  const uiState = {
-    boardViewMode: 'list',
-    talkPlusOpen: false,
-    _staySlide: 1
-  };
+  function pad2(n) { return String(n).padStart(2, '0'); }
+  function ymd(y, m, d) { return `${y}-${pad2(m + 1)}-${pad2(d)}`; }
+  function getTodayStr() {
+    const t = new Date();
+    return ymd(t.getFullYear(), t.getMonth(), t.getDate());
+  }
 
-  // ★LINE式トーク＆通常入力の安定化ステート
+  const initNow = new Date();
+  const calState = {
+    year: initNow.getFullYear(),
+    month: initNow.getMonth(),
+    selectedDate: getTodayStr()
+  };
+  const uiState = { boardViewMode: 'list', talkPlusOpen: false, _staySlide: 1 };
   const vpState = {
     baseHeight: window.innerHeight || 800,
     kbdActive: false,
     isSyncing: false,
-    savedPageScrollY: 0,
-    bodyLocked: false,
     talkAtBottom: true,
     talkSavedScrollTop: 0,
     settleTimer: null
@@ -82,12 +83,13 @@
   function isMobileRoomMode() {
     return !document.documentElement.classList.contains('en-pc-mode');
   }
+  function isRoomModalOpenMobile() {
+    const modal = document.getElementById('en-room-modal');
+    return !!(isMobileRoomMode() && modal && modal.classList.contains('open'));
+  }
   function esc(str) {
     return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
-  function pad2(n) { return String(n).padStart(2, '0'); }
-  function ymd(y, m, d) { return `${y}-${pad2(m + 1)}-${pad2(d)}`; }
-
   function shiftSelectedDate(deltaDays) {
     const [y, m, d] = calState.selectedDate.split('-').map(Number);
     const dt = new Date(y, m - 1, d + deltaDays);
@@ -95,108 +97,63 @@
     calState.month = dt.getMonth();
     calState.selectedDate = ymd(dt.getFullYear(), dt.getMonth(), dt.getDate());
   }
-
   function shiftCalMonth(deltaMonths) {
     const dt = new Date(calState.year, calState.month + deltaMonths, 1);
     calState.year = dt.getFullYear();
     calState.month = dt.getMonth();
   }
-
   function safeSave() {
     if (typeof saveRoomProStore === 'function') saveRoomProStore();
   }
-
   function isTextInputEl(el) {
     if (!el) return false;
     if (el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
-    if (el.tagName === 'INPUT') {
-      return !/checkbox|radio|range|file|button|submit|reset|color/i.test(el.type || 'text');
-    }
+    if (el.tagName === 'INPUT') return !/checkbox|radio|range|file|button|submit|reset|color/i.test(el.type || 'text');
     return false;
   }
 
-  // =========================================================
-  // 🛡️ 遮光カーテン ＆ 裏ページ固定（元のスクロール位置を完全復元）
-  // =========================================================
-  function lockBodyScroll() {
-    if (vpState.bodyLocked) return;
-    vpState.savedPageScrollY = window.scrollY || document.documentElement.scrollTop || 0;
-    vpState.bodyLocked = true;
-    document.documentElement.classList.add('en-mrm-locked');
-    document.body.classList.add('en-mrm-locked');
-    document.body.style.top = `-${vpState.savedPageScrollY}px`;
-  }
-
-  function unlockBodyScroll() {
-    if (!vpState.bodyLocked) return;
-    vpState.bodyLocked = false;
-    document.documentElement.classList.remove('en-mrm-locked', 'en-kbd-open');
-    document.body.classList.remove('en-mrm-locked');
-    document.body.style.top = '';
-    window.scrollTo(0, vpState.savedPageScrollY);
-  }
-
-  function ensureModalObserver(modal) {
-    if (!modal || modal._enCurtainObserved) return;
-    modal._enCurtainObserved = true;
-    const mo = new MutationObserver(() => syncModalCurtain(false));
-    mo.observe(modal, { attributes: true, attributeFilter: ['class'] });
-  }
-
-  function syncModalCurtain(forceOff) {
+  // --- カーテン＆スクロールロック（全終了経路で確実解除） ---
+  function setCurtainState(isOn) {
     const modal = document.getElementById('en-room-modal');
-    if (modal) ensureModalObserver(modal);
-
-    const isOpenMobile = !forceOff && !!(modal && modal.classList.contains('open') && isMobileRoomMode());
-
     let curtain = document.getElementById('en-mrm-curtain');
-    if (isOpenMobile && !curtain) {
-      curtain = document.createElement('div');
-      curtain.id = 'en-mrm-curtain';
-      document.body.appendChild(curtain);
-    }
-
-    if (curtain) {
-      if (isOpenMobile && modal) {
+    if (isOn) {
+      if (!curtain) {
+        curtain = document.createElement('div');
+        curtain.id = 'en-mrm-curtain';
+        document.body.appendChild(curtain);
+      }
+      if (modal) {
         const mz = parseInt(window.getComputedStyle(modal).zIndex, 10) || 9990;
         curtain.style.zIndex = String(mz - 1);
       }
-      curtain.classList.toggle('active', isOpenMobile);
-    }
-
-    if (isOpenMobile) {
-      lockBodyScroll();
-      syncViewportNow();
+      curtain.classList.add('active');
+      document.documentElement.classList.add('en-mrm-locked');
+      document.body.classList.add('en-mrm-locked');
     } else {
-      unlockBodyScroll();
+      if (curtain) curtain.classList.remove('active');
+      document.documentElement.classList.remove('en-mrm-locked', 'en-kbd-open');
+      document.body.classList.remove('en-mrm-locked');
+      document.documentElement.style.removeProperty('--en-vvh');
+      document.documentElement.style.removeProperty('--en-vvt');
       vpState.kbdActive = false;
-      if (modal) {
-        modal.classList.remove('en-mrm-active', 'en-mrm-board-detail', 'en-mrm-talk');
-      }
     }
   }
 
   function closeMobileRoomModal() {
-    document.activeElement?.blur();
+    if (document.activeElement && typeof document.activeElement.blur === 'function') {
+      document.activeElement.blur();
+    }
     uiState.talkPlusOpen = false;
-    vpState.kbdActive = false;
     const modal = document.getElementById('en-room-modal');
     if (modal) {
       modal.classList.remove('open', 'en-mrm-active', 'en-mrm-board-detail', 'en-mrm-talk');
     }
-    if (typeof enViewState !== 'undefined') {
-      enViewState.roomViewAsFan = false;
-    }
-    syncModalCurtain(true);
-    const enSec = document.getElementById('view-en');
-    if (enSec && !enSec.classList.contains('active') && typeof window.enGoTab === 'function') {
-      window.enGoTab('en');
-    }
+    if (typeof enViewState !== 'undefined') enViewState.roomViewAsFan = false;
+    setCurtainState(false);
   }
+  window.closeMobileRoomModal = closeMobileRoomModal;
 
-  // =========================================================
-  // ⌨️ LINE式トーク固定 ＆ 通常入力ボックス追従エンジン
-  // =========================================================
+  // --- スマホ・ルーム内専用のキーボード安定化 ---
   function captureTalkScrollState() {
     const modal = document.getElementById('en-room-modal');
     const body = document.getElementById('enRoomBody');
@@ -206,32 +163,19 @@
     vpState.talkSavedScrollTop = body.scrollTop;
   }
 
-  // 通常ボックスがキーボード裏に隠れないよう、必要なときだけ見やすい位置へ1回調整
-  function keepNormalInputInView(inputEl) {
-    if (!inputEl || !isTextInputEl(inputEl)) return;
-    if (inputEl.id === 'enRoomInput') return; // トーク入力欄は下部固定なので対象外
+  function keepRoomInputInView(inputEl) {
+    if (!inputEl || !isTextInputEl(inputEl) || inputEl.id === 'enRoomInput') return;
+    const container = inputEl.closest('#enRoomBody') || inputEl.closest('#en-sheet-backdrop .en-sheet-card');
+    if (!container) return;
 
     const vv = window.visualViewport;
-    const visTop = (vv ? vv.offsetTop : 0) + 56;
+    const visTop = (vv ? vv.offsetTop : 0) + 54;
     const visBottom = (vv ? vv.offsetTop + vv.height : window.innerHeight) - 24;
     const rect = inputEl.getBoundingClientRect();
-
-    // すでに気持ちよく見えているなら画面を1ミリも動かさない！
     if (rect.top >= visTop && rect.bottom <= visBottom) return;
 
-    // 入力欄が入っているスクロール可能コンテナを探索
-    const container =
-      inputEl.closest('#enRoomBody') ||
-      inputEl.closest('.en-sheet-box, .en-sheet-card, .en-sheet-panel');
-
     const targetY = visTop + (visBottom - visTop) * 0.42;
-    const delta = rect.top - targetY;
-
-    if (container) {
-      container.scrollTop += delta;
-    } else if (!vpState.bodyLocked) {
-      window.scrollBy({ top: delta, behavior: 'auto' });
-    }
+    container.scrollTop += (rect.top - targetY);
   }
 
   let vpRaf = 0;
@@ -240,11 +184,8 @@
     vpRaf = requestAnimationFrame(() => {
       vpRaf = 0;
       const root = document.documentElement;
-      if (!isMobileRoomMode()) {
-        root.classList.remove('en-kbd-open');
-        root.style.removeProperty('--en-vvh');
-        root.style.removeProperty('--en-vvt');
-        root.style.removeProperty('--en-kbd-h');
+      if (!isRoomModalOpenMobile()) {
+        if (vpState.kbdActive || document.body.classList.contains('en-mrm-locked')) setCurtainState(false);
         return;
       }
 
@@ -252,113 +193,85 @@
       const curH = Math.round(vv ? vv.height : window.innerHeight);
       const curTop = Math.round(vv ? vv.offsetTop : 0);
 
-      // 基準画面高（キーボード閉じ状態の最大高さ）を保持
       if (curH > vpState.baseHeight || !vpState.kbdActive) {
         vpState.baseHeight = Math.max(vpState.baseHeight, curH);
       }
 
       const ae = document.activeElement;
-      const hasInputFocus = isTextInputEl(ae);
+      const inRoomOrSheet = !!(ae && (ae.closest('#en-room-modal') || ae.closest('#en-sheet-backdrop')) && isTextInputEl(ae));
       const kbdH = Math.max(0, vpState.baseHeight - curH);
-
-      // ★重要：実際にキーボードがせり上がって画面が100px以上縮んだ瞬間だけ en-kbd-open をON！
-      // （focusin直後の「下に落ちてから上がる」二度動きを完全に防止）
-      const isKbdNowOpen = hasInputFocus && kbdH > 100;
-      const prevKbdOpen = vpState.kbdActive;
+      const isKbdNowOpen = inRoomOrSheet && kbdH > 100;
       vpState.kbdActive = isKbdNowOpen;
 
       vpState.isSyncing = true;
-
-      // ルーム展開中はiOSのルートページ勝手スクロールを0に抑え込む
-      if (vpState.bodyLocked && curTop > 0 && window.scrollY > 0) {
-        window.scrollTo(0, 0);
-      }
-
       root.style.setProperty('--en-vvh', curH + 'px');
       root.style.setProperty('--en-vvt', curTop + 'px');
-      root.style.setProperty('--en-kbd-h', (isKbdNowOpen ? kbdH : 0) + 'px');
       root.classList.toggle('en-kbd-open', isKbdNowOpen);
 
-      // ★トーク画面のスクロール制御（LINE方式）
       const modal = document.getElementById('en-room-modal');
       const body = document.getElementById('enRoomBody');
-      if (modal && body && modal.classList.contains('en-mrm-talk')) {
-        if (vpState.talkAtBottom) {
-          // 最新コメント表示中 → 入力ボックスと一緒に最新コメントがそのまま上へ上がる
-          body.scrollTop = body.scrollHeight - body.clientHeight;
-        } else {
-          // 過去ログをスクロール中 → トーク位置は一切動かさない！
-          body.scrollTop = vpState.talkSavedScrollTop;
-        }
-      } else if (isKbdNowOpen && hasInputFocus) {
-        // 通常入力ボックス（ボード・詳細・シート・一般画面）
-        keepNormalInputInView(ae);
+      if (modal && body && modal.classList.contains('en-mrm-talk') && !ae?.closest('#en-sheet-backdrop')) {
+        if (vpState.talkAtBottom) body.scrollTop = body.scrollHeight - body.clientHeight;
+        else body.scrollTop = vpState.talkSavedScrollTop;
+      } else if (isKbdNowOpen && inRoomOrSheet) {
+        keepRoomInputInView(ae);
       }
 
-      // キーボードが完全に落ち着いたタイミングで通常入力欄を念押し1回チェック
       clearTimeout(vpState.settleTimer);
-      if (isKbdNowOpen && hasInputFocus && ae.id !== 'enRoomInput') {
+      if (isKbdNowOpen && inRoomOrSheet && ae.id !== 'enRoomInput') {
         vpState.settleTimer = setTimeout(() => {
-          if (vpState.kbdActive && document.activeElement === ae) {
-            keepNormalInputInView(ae);
-          }
+          if (vpState.kbdActive && document.activeElement === ae) keepRoomInputInView(ae);
         }, 160);
       }
-
-      setTimeout(() => { vpState.isSyncing = false; }, 120);
-      if (prevKbdOpen && !isKbdNowOpen && vpState.bodyLocked) {
-        window.scrollTo(0, 0);
-      }
+      setTimeout(() => { vpState.isSyncing = false; }, 100);
     });
   }
 
   function installKeyboardObservers() {
-    const modal = document.getElementById('en-room-modal');
-    if (modal) ensureModalObserver(modal);
-
     if (window._enKbdObsInstalled) return;
     window._enKbdObsInstalled = true;
 
-    // 入力欄タップ直前（キーボードが動く前）にトークの現在位置を確実に記録
     document.addEventListener('pointerdown', e => {
-      if (e.target && e.target.id === 'enRoomInput') {
-        captureTalkScrollState();
-      }
+      if (e.target && e.target.id === 'enRoomInput') captureTalkScrollState();
     }, true);
 
     document.addEventListener('focusin', e => {
       const t = e.target;
-      if (!isMobileRoomMode() || !isTextInputEl(t)) return;
-
+      if (!isRoomModalOpenMobile() || !t || !isTextInputEl(t)) return;
+      if (!t.closest('#en-room-modal') && !t.closest('#en-sheet-backdrop')) return;
       if (t.id === 'enRoomInput') {
         captureTalkScrollState();
-        // ＋トレイが開いていたら閉じる
         if (uiState.talkPlusOpen) {
           uiState.talkPlusOpen = false;
           document.querySelector('#en-room-modal .en-talk-plus-btn')?.classList.remove('open');
           document.querySelector('#en-room-modal .en-talk-plus-tray')?.classList.remove('open');
         }
       }
-
-      // すでにキーボードが開いた状態で別の通常ボックスへ移動したときも即追従
-      if (vpState.kbdActive && t.id !== 'enRoomInput') {
-        requestAnimationFrame(() => keepNormalInputInView(t));
-      }
       syncViewportNow();
     });
 
-    document.addEventListener('focusout', e => {
-      if (!isMobileRoomMode() || !isTextInputEl(e.target)) return;
+    document.addEventListener('focusout', () => {
+      if (!isRoomModalOpenMobile()) return;
       setTimeout(syncViewportNow, 120);
     });
 
+    // 外見えモード等の本体側ボタンでモーダルが閉じた場合も必ず後片付けする保険
+    document.addEventListener('click', () => {
+      if (document.body.classList.contains('en-mrm-locked')) {
+        setTimeout(() => {
+          const modal = document.getElementById('en-room-modal');
+          if (!modal || !modal.classList.contains('open')) setCurtainState(false);
+        }, 0);
+      }
+    });
+
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', syncViewportNow);
-      window.visualViewport.addEventListener('scroll', syncViewportNow);
+      window.visualViewport.addEventListener('resize', () => { if (isRoomModalOpenMobile()) syncViewportNow(); });
+      window.visualViewport.addEventListener('scroll', () => { if (isRoomModalOpenMobile()) syncViewportNow(); });
     }
     window.addEventListener('orientationchange', () => {
       vpState.baseHeight = 0;
-      setTimeout(syncViewportNow, 300);
+      setTimeout(() => { if (isRoomModalOpenMobile()) syncViewportNow(); }, 300);
     });
   }
 
@@ -388,9 +301,7 @@
   function safeBoardName(b) { return b.id === 'story' ? 'ルーム内決定メモ' : b.name; }
   function safeBoardDesc(b) { return b.id === 'story' ? '外部非公開・チームで決まった方針の記録' : (b.desc || ''); }
 
-  // =========================================================
-  // 📄 作成日時つき企画書履歴シート
-  // =========================================================
+  // --- 作成日時つき企画書履歴 ---
   function generateAndSaveReport(lab, d) {
     const now = new Date();
     const createdAt = `${now.getFullYear()}/${pad2(now.getMonth() + 1)}/${pad2(now.getDate())} ${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
@@ -473,9 +384,7 @@
     });
   }
 
-  // =========================================================
-  // ✅ 左(0枚目)：やることリスト＆即ワープハイライト
-  // =========================================================
+  // --- 左(0枚目)：やることリスト・注目 ---
   function buildHighlightSlide(lab, d) {
     const st = STAGES[d.stage] || STAGES[1];
     const pendingTasks = enViewState.roomTasks.filter(t => !t.done);
@@ -484,36 +393,24 @@
     const firstRecBoard = st.boards[0];
 
     const rows = [];
-    pendingTasks.slice(0, 2).forEach(t => {
-      rows.push({ ico: '✅', tag: 'やること（未完了）', main: t.text, action: 'progress', accent: true });
-    });
-    if (p0) {
-      rows.push({ ico: '🗳️', tag: `多数決（${p0.deadline}）`, main: p0.title, action: 'progress' });
-    }
+    pendingTasks.slice(0, 2).forEach(t => rows.push({ ico: '✅', tag: 'やること（未完了）', main: t.text, action: 'progress', accent: true }));
+    if (p0) rows.push({ ico: '🗳️', tag: `多数決（${p0.deadline}）`, main: p0.title, action: 'progress' });
     if (firstRecBoard) {
       rows.push({
         ico: st.icon, tag: `今のフェーズおすすめ（${st.label}）`, main: firstRecBoard.label,
         action: firstRecBoard.id === '_launch' ? 'launch' : `board:${firstRecBoard.id}`
       });
     }
-    if (lastMsg) {
-      rows.push({ ico: '💬', tag: `最新トーク｜${lastMsg.sender}`, main: lastMsg.text, action: 'talk' });
-    }
+    if (lastMsg) rows.push({ ico: '💬', tag: `最新トーク｜${lastMsg.sender}`, main: lastMsg.text, action: 'talk' });
 
     return `
       <div class="en-mrm-slide">
-        <div class="en-between">
-          <strong style="font-size:14px;">✅ やることリスト・注目</strong>
-          <span class="en-pill">残り ${pendingTasks.length}件</span>
-        </div>
+        <div class="en-between"><strong style="font-size:14px;">✅ やることリスト・注目</strong><span class="en-pill">残り ${pendingTasks.length}件</span></div>
         <div class="en-hl-list">
           ${rows.slice(0, 4).map(r => `
             <button type="button" class="en-hl-row ${r.accent ? 'accent' : ''}" data-hljump="${r.action}">
               <span class="en-hl-ico">${r.ico}</span>
-              <span class="en-hl-txt">
-                <span class="en-hl-tag">${esc(r.tag)}</span>
-                <span class="en-hl-main">${esc(r.main)}</span>
-              </span>
+              <span class="en-hl-txt"><span class="en-hl-tag">${esc(r.tag)}</span><span class="en-hl-main">${esc(r.main)}</span></span>
               <span class="en-hl-go">➔</span>
             </button>
           `).join('')}
@@ -522,22 +419,16 @@
     `;
   }
 
-  // =========================================================
-  // 📅 真ん中(1枚目・初期表示)：Googleカレンダー風 月間カレンダー
-  // =========================================================
+  // --- 真ん中(1枚目)：月間カレンダー ---
   function buildMonthlyCalendarSlide(lab, d) {
-    const y = calState.year;
-    const m = calState.month;
+    const y = calState.year, m = calState.month;
     const firstDow = new Date(y, m, 1).getDay();
     const daysInMonth = new Date(y, m + 1, 0).getDate();
     const prevMonthDays = new Date(y, m, 0).getDate();
-    const todayStr = '2026-11-28';
+    const todayStr = getTodayStr();
 
     const evMap = {};
-    d.calEvents.forEach(ev => {
-      if (!evMap[ev.date]) evMap[ev.date] = [];
-      evMap[ev.date].push(ev);
-    });
+    d.calEvents.forEach(ev => { if (!evMap[ev.date]) evMap[ev.date] = []; evMap[ev.date].push(ev); });
 
     const cells = [];
     for (let i = firstDow - 1; i >= 0; i--) {
@@ -565,26 +456,18 @@
         <div class="en-gcal-head">
           <span class="en-gcal-month">📅 ${y}年${m + 1}月</span>
           <div class="en-gcal-nav">
-            <button type="button" class="en-gcal-btn" id="enGcalPrevM" title="前の月（下スワイプでも切替）">▲</button>
-            <button type="button" class="en-gcal-btn" id="enGcalNextM" title="次の月（上スワイプでも切替）">▼</button>
+            <button type="button" class="en-gcal-btn" id="enGcalPrevM">▲</button>
+            <button type="button" class="en-gcal-btn" id="enGcalNextM">▼</button>
             <button type="button" class="en-gcal-btn primary" id="enGcalAddBtn">＋予定</button>
           </div>
         </div>
-
-        <div class="en-gcal-dow">
-          <span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span>
-        </div>
-
-        <div class="en-gcal-grid" id="enGcalGrid" title="上下スワイプで月切替">
+        <div class="en-gcal-dow"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
+        <div class="en-gcal-grid" id="enGcalGrid">
           ${cells.map(c => {
             const evs = evMap[c.date] || [];
             const cls = [
-              'en-gcal-cell',
-              c.other ? 'other' : '',
-              c.dow === 0 ? 'is-sun' : '',
-              c.dow === 6 ? 'is-sat' : '',
-              c.date === todayStr ? 'is-today' : '',
-              c.date === calState.selectedDate ? 'selected' : ''
+              'en-gcal-cell', c.other ? 'other' : '', c.dow === 0 ? 'is-sun' : '', c.dow === 6 ? 'is-sat' : '',
+              c.date === todayStr ? 'is-today' : '', c.date === calState.selectedDate ? 'selected' : ''
             ].filter(Boolean).join(' ');
             const firstEv = evs[0];
             return `
@@ -595,13 +478,12 @@
             `;
           }).join('')}
         </div>
-
         <div class="en-gcal-daybar">
-          <button type="button" class="en-gcal-btn" id="enGcalPrevDay" aria-label="前日">◀</button>
+          <button type="button" class="en-gcal-btn" id="enGcalPrevDay">◀</button>
           <button type="button" class="en-gcal-dayinfo" id="enGcalManageBtn">
             <strong>${selDisp}</strong>：${selEvents.length ? selEvents.map(e => esc(e.title)).join(' / ') : '予定なし（タップで追加）'}
           </button>
-          <button type="button" class="en-gcal-btn" id="enGcalNextDay" aria-label="翌日">▶</button>
+          <button type="button" class="en-gcal-btn" id="enGcalNextDay">▶</button>
         </div>
       </div>
     `;
@@ -632,11 +514,8 @@
 
     document.querySelectorAll('[data-delcalev]').forEach(btn => {
       btn.onclick = () => {
-        const id = btn.getAttribute('data-delcalev');
-        d.calEvents = d.calEvents.filter(x => x.id !== id);
-        safeSave(); uiState._staySlide = 1;
-        openAddCalEventSheet(labId, d, dateStr);
-        window.renderEnRoomModal();
+        d.calEvents = d.calEvents.filter(x => x.id !== btn.getAttribute('data-delcalev'));
+        safeSave(); uiState._staySlide = 1; openAddCalEventSheet(labId, d, dateStr); window.renderEnRoomModal();
       };
     });
     document.getElementById('enCalEvSaveBtn')?.addEventListener('click', () => {
@@ -644,15 +523,11 @@
       const tone = Number(document.getElementById('enCalEvToneIn')?.value || 1);
       if (!title) return enToast('⚠️ 予定タイトルを入力してください');
       d.calEvents.push({ id: 'ev-' + Date.now(), date: dateStr, title, tone });
-      safeSave(); closeEnSheet(); uiState._staySlide = 1;
-      enToast(`📅 ${dateStr} に予定を追加しました！`);
-      window.renderEnRoomModal();
+      safeSave(); closeEnSheet(); uiState._staySlide = 1; enToast(`📅 ${dateStr} に予定を追加しました！`); window.renderEnRoomModal();
     });
   }
 
-  // =========================================================
-  // 🗺️ 進行トップ：「いまここカード」フォーカス型ロードマップ
-  // =========================================================
+  // --- 進行：「いまここカード」フォーカス型ロードマップ ---
   function buildFocusRoadmapHtml(lab, d) {
     const st = STAGES[d.stage] || STAGES[1];
     const fillPct = (d.stage / (STAGES.length - 1)) * 100;
@@ -666,38 +541,27 @@
           ${STAGES.map(s => {
             const cls = s.idx < d.stage ? 'done' : s.idx === d.stage ? 'current' : '';
             return `
-              <button type="button" class="en-rm-node ${cls}" data-setstage="${s.idx}" title="${s.full}">
+              <button type="button" class="en-rm-node ${cls}" data-setstage="${s.idx}">
                 <span class="en-rm-dot">${s.idx < d.stage ? '✓' : s.icon}</span>
                 <span class="en-rm-node-lbl">${s.label}</span>
               </button>
             `;
           }).join('')}
         </div>
-
         <div class="en-rm-focus-card">
-          <div class="en-between">
-            <span class="en-pill">いまここ</span>
-            <span class="en-meta">${d.stage + 1} / ${STAGES.length} ステップ</span>
-          </div>
+          <div class="en-between"><span class="en-pill">いまここ</span><span class="en-meta">${d.stage + 1} / ${STAGES.length} ステップ</span></div>
           <div class="en-rm-focus-title">${st.icon} ${esc(st.full)}</div>
           <div class="en-rm-focus-desc">${esc(st.desc)}</div>
-
           <div class="en-rm-rec-boards">
             ${st.boards.map(b => `
               <button type="button" class="en-rm-rec-btn ${b.orange ? 'orange' : ''}" data-rmjump="${b.id}">
-                <span>${esc(b.label)}</span>
-                <span>開く ➔</span>
+                <span>${esc(b.label)}</span><span>開く ➔</span>
               </button>
             `).join('')}
           </div>
-
           <div class="en-rm-foot-nav">
-            <button type="button" class="en-rm-nav-btn" id="enRmPrevBtn" ${!prevSt ? 'disabled' : ''}>
-              ${prevSt ? `← ${prevSt.label}へ戻す` : '← 最初'}
-            </button>
-            <button type="button" class="en-rm-nav-btn next" id="enRmNextBtn" ${!nextSt ? 'disabled' : ''}>
-              ${nextSt ? `${nextSt.icon}「${nextSt.label}」へ進む ➔` : '🎉 最終ステップ到達！'}
-            </button>
+            <button type="button" class="en-rm-nav-btn" id="enRmPrevBtn" ${!prevSt ? 'disabled' : ''}>${prevSt ? `← ${prevSt.label}へ戻す` : '← 最初'}</button>
+            <button type="button" class="en-rm-nav-btn next" id="enRmNextBtn" ${!nextSt ? 'disabled' : ''}>${nextSt ? `${nextSt.icon}「${nextSt.label}」へ進む ➔` : '🎉 最終ステップ到達！'}</button>
           </div>
         </div>
       </div>
@@ -708,18 +572,13 @@
     const wasLocked = d.stage < 2;
     d.stage = Math.max(0, Math.min(STAGES.length - 1, nextIdx));
     safeSave();
-    if (wasLocked && d.stage >= 2) {
-      enToast('🍊「試作」フェーズ到達！ホームの商品完成登録がオレンジ解放されました！');
-    } else {
-      enToast(`🗺️ ${STAGES[d.stage].full} に切り替えました`);
-    }
+    if (wasLocked && d.stage >= 2) enToast('🍊「試作」フェーズ到達！商品完成登録がオレンジ解放されました！');
+    else enToast(`🗺️ ${STAGES[d.stage].full} に切り替えました`);
     window.renderEnRoomModal();
   }
 
   function bindFocusRoadmapEvents(root, lab, d) {
-    root.querySelectorAll('[data-setstage]').forEach(btn => {
-      btn.onclick = () => setStageAndNotify(d, Number(btn.getAttribute('data-setstage')));
-    });
+    root.querySelectorAll('[data-setstage]').forEach(btn => btn.onclick = () => setStageAndNotify(d, Number(btn.getAttribute('data-setstage'))));
     root.querySelector('#enRmPrevBtn')?.addEventListener('click', () => setStageAndNotify(d, d.stage - 1));
     root.querySelector('#enRmNextBtn')?.addEventListener('click', () => setStageAndNotify(d, d.stage + 1));
     root.querySelectorAll('[data-rmjump]').forEach(btn => {
@@ -727,18 +586,13 @@
         const tid = btn.getAttribute('data-rmjump');
         if (tid === '_launch') { enViewState.roomTab = 'launch'; window.renderEnRoomModal(); return; }
         if (!d.activeTools.includes(tid)) d.activeTools.push(tid);
-        d.selectedTool = tid;
-        safeSave();
-        uiState.boardViewMode = 'detail';
-        enViewState.roomTab = 'board';
-        window.renderEnRoomModal();
+        d.selectedTool = tid; safeSave();
+        uiState.boardViewMode = 'detail'; enViewState.roomTab = 'board'; window.renderEnRoomModal();
       };
     });
   }
 
-  // =========================================================
-  // 🧰 ボード入口：カテゴリ別「2列カード一覧」
-  // =========================================================
+  // --- ボード入口：カテゴリ別2列カード一覧 ---
   function renderMobileBoardHubList(modal, lab, d) {
     const allBoards = getAllActiveBoardDefs(d);
     const st = STAGES[d.stage] || STAGES[1];
@@ -749,10 +603,7 @@
       if (!list.length) return '';
       return `
         <div>
-          <div class="en-bcat-head">
-            <span>${cat.title}</span>
-            <span>${list.length}個</span>
-          </div>
+          <div class="en-bcat-head"><span>${cat.title}</span><span>${list.length}個</span></div>
           <div class="en-bcat-grid">
             ${list.map(b => {
               const isRec = recIds.includes(b.id);
@@ -781,7 +632,6 @@
         <strong style="font-size:13.5px;flex:1;text-align:center;">🧰 開発ボード一覧（${allBoards.length}）</strong>
         <button type="button" class="en-act-btn primary" style="padding:5px 10px;font-size:11.5px;" onclick="openToolPickerSheet('${lab.id}')">＋ 追加</button>
       </div>
-
       <div class="en-room-body" id="enRoomBody">
         <div class="en-bcat-wrap">
           ${groupsHtml}
@@ -790,17 +640,11 @@
           </button>
         </div>
       </div>
-
       ${buildMobileDock('board')}
     `;
 
     modal.querySelectorAll('[data-openboard]').forEach(btn => {
-      btn.onclick = () => {
-        d.selectedTool = btn.getAttribute('data-openboard');
-        safeSave();
-        uiState.boardViewMode = 'detail';
-        window.renderEnRoomModal();
-      };
+      btn.onclick = () => { d.selectedTool = btn.getAttribute('data-openboard'); safeSave(); uiState.boardViewMode = 'detail'; window.renderEnRoomModal(); };
     });
     modal.querySelectorAll('[data-mrmgo]').forEach(btn => {
       btn.onclick = () => { uiState._staySlide = 1; enViewState.roomTab = btn.getAttribute('data-mrmgo'); window.renderEnRoomModal(); };
@@ -809,9 +653,7 @@
     if (typeof enSyncTheme === 'function') enSyncTheme();
   }
 
-  // =========================================================
-  // 🏠 スマホ版 ルームホーム画面（真ん中＝カレンダー初期表示）
-  // =========================================================
+  // --- ルームホーム画面 ---
   function renderMobileRoomHub(modal, lab, d) {
     const c = d.cost;
     const unitCost = Number(c.material) + Number(c.process) + Number(c.pack) + Number(c.ship);
@@ -826,27 +668,12 @@
 
     const slideRight = `
       <div class="en-mrm-slide">
-        <div class="en-between">
-          <strong style="font-size:14px;">📊 ラボ現在地サマリー</strong>
-          <span class="en-pill">${st.icon} ${st.label}</span>
-        </div>
+        <div class="en-between"><strong style="font-size:14px;">📊 ラボ現在地サマリー</strong><span class="en-pill">${st.icon} ${st.label}</span></div>
         <div class="en-mrm-stat-grid">
-          <div class="en-mrm-stat-box">
-            <small>💰 現在の原価率</small>
-            <strong style="color:${costRate <= 55 ? '#10b981' : '#f97316'};">${costRate}%</strong>
-          </div>
-          <div class="en-mrm-stat-box">
-            <small>✨ 直販1個粗利</small>
-            <strong>¥${profit}</strong>
-          </div>
-          <div class="en-mrm-stat-box">
-            <small>🧪 試作パターン</small>
-            <strong>${d.protos.length}案</strong>
-          </div>
-          <div class="en-mrm-stat-box">
-            <small>📋 食品表示・法規</small>
-            <strong>${d.legal.filter(x => x.done).length}/${d.legal.length}済</strong>
-          </div>
+          <div class="en-mrm-stat-box"><small>💰 現在の原価率</small><strong style="color:${costRate <= 55 ? '#10b981' : '#f97316'};">${costRate}%</strong></div>
+          <div class="en-mrm-stat-box"><small>✨ 直販1個粗利</small><strong>¥${profit}</strong></div>
+          <div class="en-mrm-stat-box"><small>🧪 試作パターン</small><strong>${d.protos.length}案</strong></div>
+          <div class="en-mrm-stat-box"><small>📋 食品表示・法規</small><strong>${d.legal.filter(x => x.done).length}/${d.legal.length}済</strong></div>
         </div>
         <div class="en-meta" style="font-size:11px;">🎯 目標：${esc(d.roomMeta.goal)}</div>
       </div>
@@ -858,7 +685,6 @@
         <strong style="font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:center;">${esc(lab.title)}</strong>
         <button type="button" class="en-act-btn" id="enMrmFanBtn">👀 外見え</button>
       </div>
-
       <div class="en-room-body" id="enRoomBody">
         <div class="en-mrm-carousel-wrap">
           <div class="en-mrm-carousel" id="enMrmCarousel">
@@ -867,71 +693,38 @@
             ${slideRight}
           </div>
           <div class="en-mrm-dots" id="enMrmDots">
-            <button type="button" class="en-mrm-dot" data-dot="0" aria-label="やることリスト"></button>
-            <button type="button" class="en-mrm-dot active" data-dot="1" aria-label="カレンダー"></button>
-            <button type="button" class="en-mrm-dot" data-dot="2" aria-label="ラボ現在地"></button>
+            <button type="button" class="en-mrm-dot" data-dot="0"></button>
+            <button type="button" class="en-mrm-dot active" data-dot="1"></button>
+            <button type="button" class="en-mrm-dot" data-dot="2"></button>
           </div>
         </div>
-
         <div class="en-mrm-tile-grid">
           <button type="button" class="en-mrm-tile" data-mrmgo="talk">
-            <div class="en-mrm-tile-top">
-              <span class="en-mrm-tile-ico">💬</span>
-              <span class="en-mrm-tile-badge">🔒 ${enViewState.roomMessages.length}件</span>
-            </div>
-            <div>
-              <div class="en-mrm-tile-title">トーク</div>
-              <div class="en-mrm-tile-sub">${lastMsg ? esc(lastMsg.text) : 'ルーム内限定で相談する'}</div>
-            </div>
+            <div class="en-mrm-tile-top"><span class="en-mrm-tile-ico">💬</span><span class="en-mrm-tile-badge">🔒 ${enViewState.roomMessages.length}件</span></div>
+            <div><div class="en-mrm-tile-title">トーク</div><div class="en-mrm-tile-sub">${lastMsg ? esc(lastMsg.text) : 'ルーム内限定で相談する'}</div></div>
           </button>
-
           <button type="button" class="en-mrm-tile" data-mrmgo="progress">
-            <div class="en-mrm-tile-top">
-              <span class="en-mrm-tile-ico">✅</span>
-              <span class="en-mrm-tile-badge">${st.icon} ${st.label}</span>
-            </div>
-            <div>
-              <div class="en-mrm-tile-title">進行</div>
-              <div class="en-mrm-tile-sub">ロードマップ・やること${pendingTasks}件・多数決</div>
-            </div>
+            <div class="en-mrm-tile-top"><span class="en-mrm-tile-ico">✅</span><span class="en-mrm-tile-badge">${st.icon} ${st.label}</span></div>
+            <div><div class="en-mrm-tile-title">進行</div><div class="en-mrm-tile-sub">ロードマップ・やること${pendingTasks}件・多数決</div></div>
           </button>
-
           <button type="button" class="en-mrm-tile" data-mrmgo="board">
-            <div class="en-mrm-tile-top">
-              <span class="en-mrm-tile-ico">🧰</span>
-              <span class="en-mrm-tile-badge">${allBoards.length}種</span>
-            </div>
-            <div>
-              <div class="en-mrm-tile-title">ボード</div>
-              <div class="en-mrm-tile-sub">2列一覧から選んで全画面で作業</div>
-            </div>
+            <div class="en-mrm-tile-top"><span class="en-mrm-tile-ico">🧰</span><span class="en-mrm-tile-badge">${allBoards.length}種</span></div>
+            <div><div class="en-mrm-tile-title">ボード</div><div class="en-mrm-tile-sub">2列一覧から選んで全画面で作業</div></div>
           </button>
-
           <button type="button" class="en-mrm-tile" data-mrmgo="detail">
-            <div class="en-mrm-tile-top">
-              <span class="en-mrm-tile-ico">⚙️</span>
-              <span class="en-mrm-tile-badge">${lab.fanPublic ? '公開ON' : '非公開'}</span>
-            </div>
-            <div>
-              <div class="en-mrm-tile-title">ルーム詳細</div>
-              <div class="en-mrm-tile-sub">設定・企画書履歴(${d.reportHistory.length}件)・参加ルール</div>
-            </div>
+            <div class="en-mrm-tile-top"><span class="en-mrm-tile-ico">⚙️</span><span class="en-mrm-tile-badge">${lab.fanPublic ? '公開ON' : '非公開'}</span></div>
+            <div><div class="en-mrm-tile-title">ルーム詳細</div><div class="en-mrm-tile-sub">設定・企画書履歴(${d.reportHistory.length}件)・参加ルール</div></div>
           </button>
         </div>
-
         <button type="button" class="en-mrm-complete-card ${isUnlocked ? 'unlocked' : 'locked'}" id="enMrmCompleteBtn">
           <span class="en-mrm-complete-ico">${isUnlocked ? '🍊' : '🔒'}</span>
           <span class="en-mrm-complete-txt">
             <strong>商品完成登録${isUnlocked ? '（解放中！）' : ''}</strong>
-            <small>${isUnlocked
-              ? `試作フェーズ到達で解放！完成写真・価格・販路を登録しよう（現在 ${gate.pct}%）`
-              : `進捗が「🧪 試作」になるとオレンジ解放されます（タップして進行へ）`
-            }</small>
+            <small>${isUnlocked ? `試作フェーズ到達で解放！完成登録へ（現在 ${gate.pct}%）` : `進捗が「🧪 試作」になるとオレンジ解放されます`}</small>
           </span>
           <span class="en-mrm-complete-pill">${isUnlocked ? '登録する ➔' : '試作で解放'}</span>
         </button>
       </div>
-
       ${buildMobileDock('hub')}
     `;
 
@@ -941,11 +734,9 @@
       const slides = Array.from(car.querySelectorAll('.en-mrm-slide'));
       const centerScrollOf = (idx) => {
         const el = slides[idx];
-        if (!el) return 0;
-        return Math.max(0, el.offsetLeft - (car.clientWidth - el.clientWidth) / 2);
+        return el ? Math.max(0, el.offsetLeft - (car.clientWidth - el.clientWidth) / 2) : 0;
       };
       const updateDots = (idx) => dots.forEach((dt, i) => dt.classList.toggle('active', i === idx));
-
       const startIdx = typeof uiState._staySlide === 'number' ? uiState._staySlide : 1;
       const snapInitial = () => { car.scrollLeft = centerScrollOf(startIdx); updateDots(startIdx); };
       snapInitial();
@@ -961,7 +752,6 @@
         uiState._staySlide = bestIdx;
         updateDots(bestIdx);
       }, { passive: true });
-
       dots.forEach(dt => dt.onclick = () => {
         const idx = Number(dt.getAttribute('data-dot'));
         uiState._staySlide = idx;
@@ -975,13 +765,9 @@
         if (act.startsWith('board:')) {
           const tid = act.slice(6);
           if (!d.activeTools.includes(tid)) d.activeTools.push(tid);
-          d.selectedTool = tid;
-          safeSave();
-          uiState.boardViewMode = 'detail';
-          enViewState.roomTab = 'board';
-        } else {
-          enViewState.roomTab = act;
-        }
+          d.selectedTool = tid; safeSave();
+          uiState.boardViewMode = 'detail'; enViewState.roomTab = 'board';
+        } else { enViewState.roomTab = act; }
         window.renderEnRoomModal();
       };
     });
@@ -1008,15 +794,13 @@
       gcalGrid.addEventListener('touchstart', e => { if (!e.touches[0]) return; sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
       gcalGrid.addEventListener('touchend', e => {
         if (!e.changedTouches[0]) return;
-        const dx = e.changedTouches[0].clientX - sx;
-        const dy = e.changedTouches[0].clientY - sy;
+        const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
         if (Math.abs(dy) > 40 && Math.abs(dy) > Math.abs(dx) * 1.4) { shiftCalMonth(dy < 0 ? 1 : -1); rerenderOnCal(); }
       }, { passive: true });
     }
 
     document.getElementById('enMrmExitBtn').onclick = closeMobileRoomModal;
     document.getElementById('enMrmFanBtn').onclick = () => { enViewState.roomViewAsFan = true; window.renderEnRoomModal(); };
-
     modal.querySelectorAll('[data-mrmgo]').forEach(btn => {
       btn.onclick = () => {
         const next = btn.getAttribute('data-mrmgo');
@@ -1026,19 +810,15 @@
         window.renderEnRoomModal();
       };
     });
-
     document.getElementById('enMrmCompleteBtn')?.addEventListener('click', () => {
       if (isUnlocked) { enViewState.roomTab = 'launch'; window.renderEnRoomModal(); }
       else { enToast('🧪 進行のロードマップで「試作」に進めるとオレンジ解放されます！'); enViewState.roomTab = 'progress'; window.renderEnRoomModal(); }
     });
-
     bindMobileDock(modal);
     if (typeof enSyncTheme === 'function') enSyncTheme();
   }
 
-  // =========================================================
-  // ⚙️ ルーム詳細
-  // =========================================================
+  // --- ルーム詳細 ---
   function renderMobileRoomSettings(modal, lab, d) {
     const latestRep = d.reportHistory[0];
     modal.innerHTML = `
@@ -1047,111 +827,53 @@
         <strong style="font-size:13.5px;flex:1;text-align:center;">⚙️ ルーム詳細・設定</strong>
         <button type="button" class="en-act-btn" id="enMrmCloseAll">✕</button>
       </div>
-
       <div class="en-room-body" id="enRoomBody">
         <div class="card en-card">
           <div class="en-title">🏷️ 基本情報・開発ゴール</div>
-          <div>
-            <div class="en-meta" style="font-weight:800;margin-bottom:3px;">プロジェクト名</div>
-            <input id="enSetLabTitle" class="en-input-field" value="${esc(lab.title)}">
-          </div>
-          <div>
-            <div class="en-meta" style="font-weight:800;margin-bottom:3px;">開発ゴール・目指す姿</div>
-            <textarea id="enSetLabGoal" class="en-input-field" rows="2">${esc(d.roomMeta.goal)}</textarea>
-          </div>
+          <div><div class="en-meta" style="font-weight:800;margin-bottom:3px;">プロジェクト名</div><input id="enSetLabTitle" class="en-input-field" value="${esc(lab.title)}"></div>
+          <div><div class="en-meta" style="font-weight:800;margin-bottom:3px;">開発ゴール・目指す姿</div><textarea id="enSetLabGoal" class="en-input-field" rows="2">${esc(d.roomMeta.goal)}</textarea></div>
           <div class="en-form-grid-2">
-            <div>
-              <div class="en-meta" style="font-weight:800;margin-bottom:3px;">現在の進捗フェーズ</div>
-              <select id="enSetLabStage" class="en-input-field">
-                ${STAGES.map(s => `<option value="${s.idx}" ${d.stage === s.idx ? 'selected' : ''}>${s.icon} ${s.label}</option>`).join('')}
-              </select>
-            </div>
-            <div>
-              <div class="en-meta" style="font-weight:800;margin-bottom:3px;">試作予算上限（円）</div>
-              <input id="enSetLabBudget" class="en-input-field" type="number" value="${esc(d.roomMeta.budgetCap)}">
-            </div>
+            <div><div class="en-meta" style="font-weight:800;margin-bottom:3px;">現在の進捗フェーズ</div><select id="enSetLabStage" class="en-input-field">${STAGES.map(s => `<option value="${s.idx}" ${d.stage === s.idx ? 'selected' : ''}>${s.icon} ${s.label}</option>`).join('')}</select></div>
+            <div><div class="en-meta" style="font-weight:800;margin-bottom:3px;">試作予算上限（円）</div><input id="enSetLabBudget" class="en-input-field" type="number" value="${esc(d.roomMeta.budgetCap)}"></div>
           </div>
         </div>
-
         <div class="card en-card">
-          <div class="en-between">
-            <div class="en-title">📄 商品企画書・履歴</div>
-            <button type="button" class="en-act-btn primary" style="padding:5px 10px;font-size:11.5px;" id="enSetOpenRepBtn">作成・履歴 ➔</button>
-          </div>
-          <div class="en-meta">
-            ${latestRep
-              ? `最終作成：<strong>${latestRep.ver}</strong>（${latestRep.createdAt}｜${latestRep.stage}）`
-              : 'まだ未作成です。必要なタイミングで日時つき企画書を保存できます。'}
-          </div>
+          <div class="en-between"><div class="en-title">📄 商品企画書・履歴</div><button type="button" class="en-act-btn primary" style="padding:5px 10px;font-size:11.5px;" id="enSetOpenRepBtn">作成・履歴 ➔</button></div>
+          <div class="en-meta">${latestRep ? `最終作成：<strong>${latestRep.ver}</strong>（${latestRep.createdAt}｜${latestRep.stage}）` : 'まだ未作成です。必要なタイミングで日時つき企画書を保存できます。'}</div>
         </div>
-
         <div class="card en-card">
           <div class="en-title">🔐 公開範囲・参加・通知設定</div>
-          <div class="en-between">
-            <span>🌐 ファン公開（外からの見え方）</span>
-            <button type="button" class="en-act-btn ${lab.fanPublic ? 'primary' : ''}" id="enSetFanPubBtn">${lab.fanPublic ? '公開 ON' : '非公開 OFF'}</button>
-          </div>
-          <div class="en-between">
-            <span>🔔 トーク・締切リマインド通知</span>
-            <button type="button" class="en-act-btn ${d.roomMeta.notify ? 'primary' : ''}" id="enSetNotifyBtn">${d.roomMeta.notify ? '通知 ON' : '通知 OFF'}</button>
-          </div>
-          <div class="en-between">
-            <span>👥 新規メンバー参加ルール</span>
-            <select id="enSetJoinPolicy" class="en-input-field" style="width:140px;">
-              <option value="approval" ${d.roomMeta.joinPolicy === 'approval' ? 'selected' : ''}>承認制（おすすめ）</option>
-              <option value="open" ${d.roomMeta.joinPolicy === 'open' ? 'selected' : ''}>だれでも参加OK</option>
-              <option value="invite" ${d.roomMeta.joinPolicy === 'invite' ? 'selected' : ''}>招待のみ（非公開）</option>
-            </select>
-          </div>
+          <div class="en-between"><span>🌐 ファン公開</span><button type="button" class="en-act-btn ${lab.fanPublic ? 'primary' : ''}" id="enSetFanPubBtn">${lab.fanPublic ? '公開 ON' : '非公開 OFF'}</button></div>
+          <div class="en-between"><span>🔔 通知リマインド</span><button type="button" class="en-act-btn ${d.roomMeta.notify ? 'primary' : ''}" id="enSetNotifyBtn">${d.roomMeta.notify ? '通知 ON' : '通知 OFF'}</button></div>
+          <div class="en-between"><span>👥 参加ルール</span><select id="enSetJoinPolicy" class="en-input-field" style="width:140px;"><option value="approval" ${d.roomMeta.joinPolicy === 'approval' ? 'selected' : ''}>承認制</option><option value="open" ${d.roomMeta.joinPolicy === 'open' ? 'selected' : ''}>だれでもOK</option><option value="invite" ${d.roomMeta.joinPolicy === 'invite' ? 'selected' : ''}>招待のみ</option></select></div>
         </div>
-
         <div class="card en-card">
           <div class="en-title">🤖 ツール・元ネタ管理</div>
-          <div class="en-between">
-            <span>✨ 実運用Proモード（AI伴走）</span>
-            <button type="button" class="en-pro-pill ${enAiProEnabled ? '' : 'off'}" id="enSetProBtn">${enAiProEnabled ? 'Pro ON' : '無料モード'}</button>
-          </div>
-          <div class="en-between">
-            <span>🔗 元ネタつぶやきへ移動</span>
-            <button type="button" class="en-act-btn" id="enSetOriginBtn">元ネタへ ➔</button>
-          </div>
+          <div class="en-between"><span>✨ 実運用Proモード</span><button type="button" class="en-pro-pill ${enAiProEnabled ? '' : 'off'}" id="enSetProBtn">${enAiProEnabled ? 'Pro ON' : '無料モード'}</button></div>
+          <div class="en-between"><span>🔗 元ネタつぶやき</span><button type="button" class="en-act-btn" id="enSetOriginBtn">元ネタへ ➔</button></div>
         </div>
       </div>
-
       ${buildMobileDock('detail')}
     `;
 
     document.getElementById('enMrmCloseAll').onclick = closeMobileRoomModal;
     document.getElementById('enSetOpenRepBtn').onclick = () => openReportHistorySheet(lab, d);
-    document.getElementById('enSetLabTitle').onchange = e => {
-      const v = e.target.value.trim();
-      if (v) { lab.title = v; enToast('🏷️ プロジェクト名を更新しました'); if (typeof renderEnLab === 'function') renderEnLab(); }
-    };
+    document.getElementById('enSetLabTitle').onchange = e => { const v = e.target.value.trim(); if (v) { lab.title = v; enToast('🏷️ プロジェクト名を更新しました'); if (typeof renderEnLab === 'function') renderEnLab(); } };
     document.getElementById('enSetLabGoal').onchange = e => { d.roomMeta.goal = e.target.value; safeSave(); };
     document.getElementById('enSetLabBudget').onchange = e => { d.roomMeta.budgetCap = e.target.value; safeSave(); };
     document.getElementById('enSetLabStage').onchange = e => setStageAndNotify(d, Number(e.target.value));
-    document.getElementById('enSetFanPubBtn').onclick = () => {
-      if (typeof toggleLabFanPublic === 'function') toggleLabFanPublic(lab.id);
-      else { lab.fanPublic = !lab.fanPublic; window.renderEnRoomModal(); }
-    };
+    document.getElementById('enSetFanPubBtn').onclick = () => { if (typeof toggleLabFanPublic === 'function') toggleLabFanPublic(lab.id); else { lab.fanPublic = !lab.fanPublic; window.renderEnRoomModal(); } };
     document.getElementById('enSetNotifyBtn').onclick = () => { d.roomMeta.notify = !d.roomMeta.notify; safeSave(); window.renderEnRoomModal(); };
     document.getElementById('enSetJoinPolicy').onchange = e => { d.roomMeta.joinPolicy = e.target.value; safeSave(); enToast('👥 参加ルールを更新しました'); };
     document.getElementById('enSetProBtn').onclick = () => { enAiProEnabled = !enAiProEnabled; window.renderEnRoomModal(); };
-    document.getElementById('enSetOriginBtn').onclick = () => {
-      closeMobileRoomModal();
-      enViewState.enSubTab = 'tweet';
-      if (typeof renderEnFeed === 'function') renderEnFeed();
-      if (typeof enGoTab === 'function') enGoTab('feed');
-    };
+    document.getElementById('enSetOriginBtn').onclick = () => { closeMobileRoomModal(); enViewState.enSubTab = 'tweet'; if (typeof renderEnFeed === 'function') renderEnFeed(); if (typeof enGoTab === 'function') enGoTab('feed'); };
     modal.querySelectorAll('[data-mrmgo]').forEach(btn => btn.onclick = () => { uiState._staySlide = 1; enViewState.roomTab = btn.getAttribute('data-mrmgo'); window.renderEnRoomModal(); });
     bindMobileDock(modal);
     if (typeof enSyncTheme === 'function') enSyncTheme();
   }
 
-  // =========================================================
-  // 💬 トーク機能強化：完全非公開 ＋ LINE式スクロール監視 ＋「＋」トレイ
-  // =========================================================
-  function enhanceMobileTalk(modal, lab, d) {
+  // --- トーク機能強化（安全イベントリスナー化＆正確な送信ボタンID） ---
+  function enhanceMobileTalk(modal, lab) {
     const body = modal.querySelector('#enRoomBody');
     if (body) {
       const priv = document.createElement('div');
@@ -1162,25 +884,15 @@
       const lastMeta = body.querySelector('.en-meta:last-child');
       if (lastMeta) lastMeta.textContent = '💡 発言タップ → ルーム内メモ・やること・なぜなぜへ（完全非公開）';
 
-      // トーク表示直後は最新コメントが見える最下部へセット
       requestAnimationFrame(() => {
         body.scrollTop = body.scrollHeight;
         vpState.talkAtBottom = true;
         vpState.talkSavedScrollTop = body.scrollTop;
       });
-
-      // ユーザーの手動スクロールを常に記録（リサイズ中の自動調整とは分離）
-      body.addEventListener('scroll', () => {
-        if (vpState.isSyncing) return;
-        captureTalkScrollState();
-      }, { passive: true });
-
-      // 余白タップでキーボードをスッと閉じる
+      body.addEventListener('scroll', () => { if (!vpState.isSyncing) captureTalkScrollState(); }, { passive: true });
       body.addEventListener('click', e => {
-        if (!e.target.closest('.en-chat-bubble, button, a, input, textarea')) {
-          if (vpState.kbdActive) {
-            document.activeElement?.blur();
-          }
+        if (!e.target.closest('.en-chat-bubble, button, a, input, textarea') && vpState.kbdActive) {
+          document.activeElement?.blur();
         }
       });
 
@@ -1188,18 +900,21 @@
         b.onclick = () => {
           const m = enViewState.roomMessages[Number(b.getAttribute('data-msgaction'))];
           if (!m) return;
-          const safe = m.text.replace(/'/g, '');
           openEnSheetHtml('🔒 ルーム内ツールへメモ転送（非公開）', m.text, `
-            <button class="en-sheet-item" onclick="sendMsgToBoard('${safe}');enToast('📌 ルーム内決定メモに保存しました（非公開）');">
-              <span>📌 ルーム内決定メモに保存<br><small class="en-meta">※外部には公開されません</small></span><span>➔</span>
-            </button>
-            <button class="en-sheet-item" onclick="sendMsgToTask('${safe}')">
-              <span>✅ やることリストに追加</span><span>➔</span>
-            </button>
-            <button class="en-sheet-item" onclick="sendMsgToWhy('${lab.id}','${safe}')">
-              <span>❓ なぜなぜ分析の課題に追加</span><span>➔</span>
-            </button>
+            <button type="button" class="en-sheet-item" id="enMrmToMemoBtn"><span>📌 ルーム内決定メモに保存<br><small class="en-meta">※外部非公開</small></span><span>➔</span></button>
+            <button type="button" class="en-sheet-item" id="enMrmToTaskBtn"><span>✅ やることリストに追加</span><span>➔</span></button>
+            <button type="button" class="en-sheet-item" id="enMrmToWhyBtn"><span>❓ なぜなぜ分析の課題に追加</span><span>➔</span></button>
           `);
+          document.getElementById('enMrmToMemoBtn')?.addEventListener('click', () => {
+            if (typeof sendMsgToBoard === 'function') sendMsgToBoard(m.text);
+            enToast('📌 ルーム内決定メモに保存しました（非公開）');
+          });
+          document.getElementById('enMrmToTaskBtn')?.addEventListener('click', () => {
+            if (typeof sendMsgToTask === 'function') sendMsgToTask(m.text);
+          });
+          document.getElementById('enMrmToWhyBtn')?.addEventListener('click', () => {
+            if (typeof sendMsgToWhy === 'function') sendMsgToWhy(lab.id, m.text);
+          });
         };
       });
     }
@@ -1213,12 +928,8 @@
         roomInp.setAttribute('spellcheck', 'false');
         roomInp.setAttribute('enterkeyhint', 'send');
       }
-
-      // 送信ボタンを押したら最新メッセージが見えるよう最下部追従モードに戻す
-      const sendBtn = composer.querySelector('button[type="submit"], #enRoomSendBtn, .en-act-btn.primary');
-      if (sendBtn) {
-        sendBtn.addEventListener('click', () => { vpState.talkAtBottom = true; }, true);
-      }
+      const sendBtn = composer.querySelector('#enRoomSend, .en-act-btn.primary');
+      if (sendBtn) sendBtn.addEventListener('click', () => { vpState.talkAtBottom = true; }, true);
 
       const tray = document.createElement('div');
       tray.className = `en-talk-plus-tray ${uiState.talkPlusOpen ? 'open' : ''}`;
@@ -1233,7 +944,6 @@
       const plusBtn = document.createElement('button');
       plusBtn.type = 'button';
       plusBtn.className = `en-talk-plus-btn ${uiState.talkPlusOpen ? 'open' : ''}`;
-      plusBtn.setAttribute('aria-label', '便利機能を開く');
       plusBtn.textContent = '+';
       plusBtn.onclick = () => {
         document.activeElement?.blur();
@@ -1247,8 +957,7 @@
       tray.querySelector('#enTrayPoll').onclick = () => { uiState.talkPlusOpen = false; openNewPollSheet(lab.id); };
       tray.querySelectorAll('[data-traymsg]').forEach(btn => {
         btn.onclick = () => {
-          uiState.talkPlusOpen = false;
-          vpState.talkAtBottom = true;
+          uiState.talkPlusOpen = false; vpState.talkAtBottom = true;
           enViewState.roomMessages.push({ sender: 'あなた', me: true, text: btn.getAttribute('data-traymsg') });
           window.renderEnRoomModal();
         };
@@ -1257,20 +966,10 @@
   }
 
   function buildMobileDock(activeKey) {
-    const tabs = [
-      ['hub',      '🏠', 'ホーム'],
-      ['talk',     '💬', 'トーク'],
-      ['progress', '✅', '進行'],
-      ['board',    '🧰', 'ボード'],
-      ['detail',   '⚙️', '詳細']
-    ];
+    const tabs = [['hub','🏠','ホーム'], ['talk','💬','トーク'], ['progress','✅','進行'], ['board','🧰','ボード'], ['detail','⚙️','詳細']];
     return `
       <div class="en-room-nav en-mrm-dock">
-        ${tabs.map(([k, ic, lb]) => `
-          <button type="button" class="en-room-tab ${activeKey === k ? 'active' : ''}" data-mrmdock="${k}">
-            <span style="font-size:17px;line-height:1;">${ic}</span><span>${lb}</span>
-          </button>
-        `).join('')}
+        ${tabs.map(([k, ic, lb]) => `<button type="button" class="en-room-tab ${activeKey === k ? 'active' : ''}" data-mrmdock="${k}"><span style="font-size:17px;line-height:1;">${ic}</span><span>${lb}</span></button>`).join('')}
       </div>
     `;
   }
@@ -1295,33 +994,43 @@
       head.innerHTML = `
         <button type="button" class="en-act-btn" id="enMrmBackBtn">${backLabel || '← ホーム'}</button>
         <strong style="font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:center;">${esc(subTitle || lab.title)}</strong>
-        <button type="button" class="en-act-btn" id="enMrmCloseAll" title="ラボ一覧へ戻る">✕</button>
+        <button type="button" class="en-act-btn" id="enMrmCloseAll">✕</button>
       `;
       document.getElementById('enMrmBackBtn').onclick = backFn || (() => { document.activeElement?.blur(); uiState._staySlide = 1; enViewState.roomTab = 'hub'; window.renderEnRoomModal(); });
       document.getElementById('enMrmCloseAll').onclick = closeMobileRoomModal;
     }
     const oldNav = modal.querySelector('.en-room-nav');
-    if (oldNav) {
-      oldNav.outerHTML = buildMobileDock(activeKey);
-      bindMobileDock(modal);
-    }
+    if (oldNav) { oldNav.outerHTML = buildMobileDock(activeKey); bindMobileDock(modal); }
   }
 
-  // =========================================================
-  // 🔌 既存フック
-  // =========================================================
+  // --- 既存フック（PCモード即バイパス＆巣立ち完了時クリーンアップ付き） ---
   function installHooks() {
     installKeyboardObservers();
+
+    if (typeof window.completeProGraduation === 'function' && !window.completeProGraduation._enMrmWrapped) {
+      const origGrad = window.completeProGraduation;
+      const wrappedGrad = function () {
+        setCurtainState(false);
+        return origGrad.apply(this, arguments);
+      };
+      wrappedGrad._enMrmWrapped = true;
+      window.completeProGraduation = wrappedGrad;
+    }
 
     if (typeof window.openEnRoomModal === 'function' && !window.openEnRoomModal._enMrmWrapped) {
       const origOpen = window.openEnRoomModal;
       const wrappedOpen = function (labId, initialTab, asFan) {
+        if (!isMobileRoomMode()) {
+          setCurtainState(false);
+          return origOpen.call(this, labId, initialTab, asFan);
+        }
         uiState.boardViewMode = 'list';
         uiState.talkPlusOpen = false;
         uiState._staySlide = 1;
-        const targetTab = (isMobileRoomMode() && !asFan) ? 'hub' : initialTab;
+        const targetTab = !asFan ? 'hub' : initialTab;
         const res = origOpen.call(this, labId, targetTab, asFan);
-        syncModalCurtain(false);
+        setCurtainState(true);
+        syncViewportNow();
         return res;
       };
       wrappedOpen._enMrmWrapped = true;
@@ -1332,13 +1041,27 @@
       const origRender = window.renderEnRoomModal;
       const wrappedRender = function () {
         const modal = document.getElementById('en-room-modal');
-        if (!modal || !isMobileRoomMode() || enViewState.roomViewAsFan) {
-          if (modal) modal.classList.remove('en-mrm-active', 'en-mrm-board-detail', 'en-mrm-talk');
-          if (!isMobileRoomMode() && (enViewState.roomTab === 'hub' || enViewState.roomTab === 'launch')) {
+
+        if (!isMobileRoomMode()) {
+          if (modal && modal.classList.contains('en-mrm-active')) {
+            modal.classList.remove('en-mrm-active', 'en-mrm-board-detail', 'en-mrm-talk');
+          }
+          setCurtainState(false);
+          if (typeof enViewState !== 'undefined' && (enViewState.roomTab === 'hub' || enViewState.roomTab === 'launch')) {
             enViewState.roomTab = enViewState.roomTab === 'launch' ? 'detail' : 'board';
           }
-          syncModalCurtain(false);
           return origRender.apply(this, arguments);
+        }
+
+        if (!modal || enViewState.roomViewAsFan) {
+          if (modal) modal.classList.remove('en-mrm-active', 'en-mrm-board-detail', 'en-mrm-talk');
+          const res = origRender.apply(this, arguments);
+          // 外見えモードの「← 一覧」ボタンにも確実な後片付けを紐付け
+          const fanBack = modal?.querySelector('.en-room-head button');
+          if (fanBack && fanBack.textContent.includes('一覧')) {
+            fanBack.onclick = closeMobileRoomModal;
+          }
+          return res;
         }
 
         const lab = enViewState.labs.find(l => l.id === enViewState.roomOpenId) || enViewState.labs[0];
@@ -1348,7 +1071,7 @@
 
         modal.classList.add('en-mrm-active');
         modal.classList.remove('en-mrm-board-detail', 'en-mrm-talk');
-        syncModalCurtain(false);
+        if (modal.classList.contains('open')) setCurtainState(true);
 
         if (rt === 'hub') { renderMobileRoomHub(modal, lab, d); return; }
         if (rt === 'detail') { renderMobileRoomSettings(modal, lab, d); return; }
@@ -1383,10 +1106,7 @@
         }
 
         if (rt === 'board') {
-          if (uiState.boardViewMode === 'list') {
-            renderMobileBoardHubList(modal, lab, d);
-            return;
-          }
+          if (uiState.boardViewMode === 'list') { renderMobileBoardHubList(modal, lab, d); return; }
           origRender.apply(this, arguments);
           modal.classList.add('en-mrm-board-detail');
           const curDef = getAllActiveBoardDefs(d).find(b => b.id === d.selectedTool);
@@ -1407,7 +1127,7 @@
 
         origRender.apply(this, arguments);
         modal.classList.add('en-mrm-talk');
-        enhanceMobileTalk(modal, lab, d);
+        enhanceMobileTalk(modal, lab);
         applyMobileChrome(modal, lab, d, 'talk', '💬 トーク（非公開）');
       };
       wrappedRender._enMrmWrapped = true;

@@ -1,12 +1,7 @@
 /* =========================================================
-   EN•joy スリム統合ヘッダー＆スマホ入力ズーム防止（patch_header.css v4）
-   ・最上部：50pxスリム1行ヘッダー（「ロゴ」＋「☰」のみ）
-   ・スクロール時：背景完全透明＆クリック透過 → ロゴと☰だけ立体浮上
-   ・タブ切替時の上隙間ゼロ化
-   ・スマホ全画面：文字入力タップ時の強制拡大（iOSオートズーム）完全防止
+   EN•joy スリム統合ヘッダー＆登録画面クリアパッチ（patch_header.css v5）
    ========================================================= */
 
-/* --- 🔝 スリム固定ヘッダー（スマホ・PC共通） --- */
 #topHeader.top-header {
   position: fixed !important;
   top: 0 !important;
@@ -51,16 +46,14 @@ html.en-hdr-scrolled #topHeader.top-header {
   gap: 8px !important;
   pointer-events: inherit;
 }
-html.en-pc-mode #topHeader .header-inner {
-  padding: 0 20px !important;
-}
+html.en-pc-mode #topHeader .header-inner { padding: 0 20px !important; }
 
 #topHeader .header-inner > :not(.brand-wrap):not(#enUnifiedBurgerBtn),
 #enPcBurgerBtn {
   display: none !important;
 }
 
-/* --- 🏷️ ロゴ（スクロール時に高視認性フローティングピルへ変身） --- */
+/* --- ロゴ --- */
 #topHeader .brand-wrap {
   display: inline-flex !important;
   align-items: center !important;
@@ -77,9 +70,7 @@ html.en-pc-mode #topHeader .header-inner {
 }
 #topHeader .brand-wrap small,
 #topHeader .brand-wrap .brand-sub,
-#topHeader .brand-wrap .brand-tagline {
-  display: none !important;
-}
+#topHeader .brand-wrap .brand-tagline { display: none !important; }
 
 html.en-hdr-scrolled #topHeader .brand-wrap {
   padding: 5px 13px 5px 11px !important;
@@ -89,9 +80,7 @@ html.en-hdr-scrolled #topHeader .brand-wrap {
   border-color: var(--en-border) !important;
   box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14), 0 1px 3px rgba(15, 23, 42, 0.08) !important;
 }
-html[data-en-color="wa"].en-hdr-scrolled #topHeader .brand-wrap {
-  background: rgba(250, 246, 238, 0.94) !important;
-}
+html[data-en-color="wa"].en-hdr-scrolled #topHeader .brand-wrap { background: rgba(250, 246, 238, 0.94) !important; }
 html[data-en-color="dark"].en-hdr-scrolled #topHeader .brand-wrap,
 html[data-en-color="cool"].en-hdr-scrolled #topHeader .brand-wrap {
   background: rgba(15, 23, 42, 0.9) !important;
@@ -103,13 +92,12 @@ html.en-hdr-scrolled #topHeader .brand-wrap:hover {
   transform: translateY(-1px);
 }
 
-/* --- ☰ 統合ハンバーガー --- */
+/* --- 統合ハンバーガー --- */
 #enUnifiedBurgerBtn {
   position: relative;
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  gap: 5px;
   width: 36px;
   height: 36px;
   border-radius: 11px;
@@ -120,7 +108,7 @@ html.en-hdr-scrolled #topHeader .brand-wrap:hover {
   flex-shrink: 0;
   padding: 0;
   pointer-events: auto !important;
-  transition: width 0.24s ease, height 0.24s ease, padding 0.24s ease, border-radius 0.24s ease, background 0.24s ease, color 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease, transform 0.2s ease !important;
+  transition: width 0.24s ease, height 0.24s ease, border-radius 0.24s ease, background 0.24s ease, color 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease, transform 0.2s ease !important;
 }
 #enUnifiedBurgerBtn:hover {
   border-color: var(--en-accent);
@@ -145,26 +133,15 @@ html.en-hdr-scrolled #enUnifiedBurgerBtn:hover {
   filter: brightness(1.06);
 }
 #enUnifiedBurgerBtn .en-uhdr-badge {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #ef4444;
-  border: 1.5px solid var(--en-surface);
-  display: none;
+  position: absolute; top: 4px; right: 4px; width: 8px; height: 8px;
+  border-radius: 50%; background: #ef4444; border: 1.5px solid var(--en-surface); display: none;
 }
 html.en-hdr-scrolled #enUnifiedBurgerBtn .en-uhdr-badge {
-  top: 3px;
-  right: 3px;
-  width: 9px;
-  height: 9px;
-  border-color: #ffffff;
+  top: 3px; right: 3px; width: 9px; height: 9px; border-color: #ffffff;
 }
 #enUnifiedBurgerBtn.has-unread .en-uhdr-badge { display: block; }
 
-/* --- 📐 隙間ゼロ化 --- */
+/* --- 上隙間ゼロ化 --- */
 body, #appShell, .app-shell { padding-top: 0 !important; margin-top: 0 !important; }
 main.main-container,
 body:not(.en-in-register) main.main-container,
@@ -185,36 +162,78 @@ main.main-container > .view-section,
   padding-top: 0 !important;
 }
 .view-section > :first-child,
-.view-section > .en-wrap > :first-child,
-.en-wrap > .en-subtabs:first-child,
-.en-wrap > .card:first-child,
-.en-wrap > .en-prof-slider:first-child {
-  margin-top: 0 !important;
-}
+.view-section > .en-wrap > :first-child { margin-top: 0 !important; }
 
 html.en-pc-mode body:not(.en-in-register) nav#bottomNav.bottom-nav {
   top: 50px !important;
   height: calc(100vh - 50px) !important;
-  transition: top 0.24s ease, height 0.24s ease, transform 0.24s cubic-bezier(.22,1,.36,1) !important;
 }
 html.en-pc-mode.en-hdr-scrolled body:not(.en-in-register) nav#bottomNav.bottom-nav {
   top: 56px !important;
   height: calc(100vh - 56px) !important;
 }
 
-/* --- 🍔 スライド式ハンバーガーメニュー --- */
+/* --- 登録画面の邪魔要素（下タブ・フロートボタン）を完全非表示 --- */
+body.en-in-register nav#bottomNav,
+body.en-in-register .bottom-nav,
+body:has(#view-register.active) nav#bottomNav,
+body:has(#view-register.active) .bottom-nav,
+body:has(#registerView.active) nav#bottomNav,
+body:has(#registerView.active) .bottom-nav,
+body.en-in-register #en-theme-fab,
+body:has(#view-register.active) #en-theme-fab,
+body.en-in-register #en-action-fab,
+body:has(#view-register.active) #en-action-fab,
+body.en-in-register #en-dev-fab,
+body.en-in-register #enDevFloatTab,
+body.en-in-register .en-dev-float,
+body.en-in-register .en-float-tab,
+body:has(#view-register.active) #en-dev-fab,
+body:has(#view-register.active) #enDevFloatTab,
+body:has(#view-register.active) .en-dev-float,
+body:has(#view-register.active) .en-float-tab {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/* スマホ通常画面でもメニュー統合済みの着せ替えフロートを非表示 */
+html:not(.en-pc-mode) #en-theme-fab {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/* 登録フォーム下部の余白＆操作保証 */
+body.en-in-register main.main-container,
+body:has(#view-register.active) main.main-container,
+#view-register.active {
+  padding-bottom: 110px !important;
+}
+#view-register input,
+#view-register textarea,
+#view-register select,
+#view-register button,
+#view-register label {
+  pointer-events: auto !important;
+  max-width: 100%;
+}
+
+/* --- スライド式ハンバーガーメニュー（閉時は完全クリック透過） --- */
 #en-hdr-backdrop {
   position: fixed; inset: 0; background: rgba(15, 23, 42, 0.42); backdrop-filter: blur(3px);
-  z-index: 10010; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.22s ease, visibility 0.22s ease;
+  z-index: 10010; opacity: 0; visibility: hidden; pointer-events: none !important;
+  display: none; transition: opacity 0.22s ease, visibility 0.22s ease;
 }
-#en-hdr-backdrop.open { opacity: 1; visibility: visible; pointer-events: auto; }
+#en-hdr-backdrop.open {
+  display: block; opacity: 1; visibility: visible; pointer-events: auto !important;
+}
 #en-hdr-drawer {
   position: fixed; top: 0; right: 0; bottom: 0; width: min(320px, 86vw);
   background: var(--en-surface); color: var(--en-text); border-left: 1px solid var(--en-border);
   box-shadow: -12px 0 36px rgba(0, 0, 0, 0.18); z-index: 10020; display: flex; flex-direction: column;
-  transform: translateX(104%); transition: transform 0.25s cubic-bezier(.22, 1, .36, 1);
+  transform: translateX(104%); pointer-events: none;
+  transition: transform 0.25s cubic-bezier(.22, 1, .36, 1);
 }
-#en-hdr-drawer.open { transform: translateX(0); }
+#en-hdr-drawer.open { transform: translateX(0); pointer-events: auto; }
 .en-hdr-d-head { height: 54px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--en-border); flex-shrink: 0; }
 .en-hdr-d-brand { font-size: 15px; font-weight: 900; letter-spacing: 0.02em; }
 .en-hdr-d-close { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--en-border); background: var(--en-surface-2); color: var(--en-text); font-size: 15px; cursor: pointer; }
@@ -232,30 +251,20 @@ html.en-pc-mode.en-hdr-scrolled body:not(.en-in-register) nav#bottomNav.bottom-n
 .en-hdr-d-guide { padding: 10px 12px; border-radius: 12px; background: var(--en-surface-2); border: 1px dashed var(--en-border); font-size: 11.5px; color: var(--en-muted); line-height: 1.5; }
 .en-hdr-d-guide strong { color: var(--en-text); }
 
-/* =========================================================
-   📱 アプリ全体：スマホ文字入力時の勝手な拡大（オートズーム）完全防止
-   ========================================================= */
-html:not(.en-pc-mode) {
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-}
+/* --- スマホ文字入力ズーム防止 --- */
+html:not(.en-pc-mode) { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 html:not(.en-pc-mode) button,
 html:not(.en-pc-mode) a,
 html:not(.en-pc-mode) input,
 html:not(.en-pc-mode) textarea,
-html:not(.en-pc-mode) select {
-  touch-action: manipulation;
-}
+html:not(.en-pc-mode) select { touch-action: manipulation; }
 
-/* iOS Safariは16px未満のフォーム要素にフォーカスすると自動拡大するため16pxに統一 */
-html:not(.en-pc-mode) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+html:not(.en-pc-mode) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]),
 html:not(.en-pc-mode) textarea,
 html:not(.en-pc-mode) select {
   font-size: 16px !important;
   line-height: 1.4 !important;
+  max-width: 100%;
   box-sizing: border-box;
 }
-html:not(.en-pc-mode) .en-cost-input {
-  min-width: 96px;
-  padding: 6px 8px !important;
-}
+html:not(.en-pc-mode) .en-cost-input { min-width: 88px; padding: 6px 8px !important; }

@@ -1,20 +1,19 @@
 /* =========================================================
-   EN•joy 人間工学PCデスクトップ コントローラー（patch_pc.js v4）
-   ・☰ 三本線開閉式サイドバー ＋「最近のEN•ラボ（最新順）」履歴直通
-   ・開発ルーム5段→1本統合ヘッダー ＋ 境界線ドラッグリサイズ2画面↔フル集中
-   ・ボードタブ自動スリム化（現在＋ピン留め上位だけ表示で認知負荷ゼロ）
+   EN•joy 人間工学PCデスクトップ コントローラー（patch_pc.js v6）
+   ・mobile-preview状態を一本化＆MutationObserver無駄発火を完全防止
+   ・左ペイン発言転送の安全なイベントリスナー化＆完全非公開表記統一
    ========================================================= */
 
 (function () {
-  let forceMobilePreview = false;
-  let sidebarOpen = localStorage.getItem('en_pc_sb_open') === '1'; // デフォルトは閉じて広々
+  let sidebarOpen = localStorage.getItem('en_pc_sb_open') === '1';
   let recentRoomIds = [];
+  let lastPreviewState = false;
   try { recentRoomIds = JSON.parse(localStorage.getItem('en_pc_recent_rooms') || '[]'); } catch (e) {}
 
   const pcWs = {
-    layout: 'split', // 'split'（左右2画面） | 'single'（1画面フル集中）
-    leftPct: 36,     // 境界線ドラッグで24〜58%まで自由調整（ダブルクリックで36%復帰）
-    leftTab: 'talk'  // 'talk' | 'progress' | 'story'
+    layout: 'split',
+    leftPct: 36,
+    leftTab: 'talk'
   };
 
   function pcEsc(str) {
@@ -25,38 +24,18 @@
     const bodyCls = document.body ? document.body.className : '';
     const shell = document.getElementById('appShell');
     const shellCls = shell ? shell.className : '';
-    return forceMobilePreview || /mobile-preview|mobile-mode|is-mobile|preview-mobile/i.test(bodyCls + ' ' + shellCls);
+    return /mobile-preview|mobile-mode|is-mobile|preview-mobile/i.test(bodyCls + ' ' + shellCls);
   }
 
   function isPcActive() {
     return document.documentElement.classList.contains('en-pc-mode');
   }
 
-  // ☰ サイドバー開閉切替
   function applySidebarState() {
+    sidebarOpen = localStorage.getItem('en_pc_sb_open') === '1';
     document.documentElement.classList.toggle('en-pc-sb-open', sidebarOpen);
-    localStorage.setItem('en_pc_sb_open', sidebarOpen ? '1' : '0');
-    const btn = document.getElementById('enPcBurgerBtn');
-    if (btn) btn.setAttribute('aria-expanded', sidebarOpen ? 'true' : 'false');
   }
 
-  function mountBurgerButton() {
-    const brand = document.querySelector('#topHeader .brand-wrap');
-    if (!brand || document.getElementById('enPcBurgerBtn')) return;
-    const btn = document.createElement('button');
-    btn.id = 'enPcBurgerBtn';
-    btn.type = 'button';
-    btn.className = 'en-pc-burger-btn';
-    btn.title = 'メニューを開閉（サイドバー）';
-    btn.innerHTML = `<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>`;
-    btn.onclick = () => {
-      sidebarOpen = !sidebarOpen;
-      applySidebarState();
-    };
-    brand.parentNode.insertBefore(btn, brand);
-  }
-
-  // 🧪 最近のEN•ラボを最新順で記録 ＆ サイドバーへ描画（Gemini風！）
   function recordRecentRoom(labId) {
     if (!labId) return;
     recentRoomIds = [labId, ...recentRoomIds.filter(id => id !== labId)].slice(0, 12);
@@ -76,11 +55,9 @@
       nav.appendChild(box);
     }
 
-    // 自分の進行中・1人準備中ラボを「最近開いた順」にソート
     const myLabs = enViewState.labs.filter(l => l.mode === 'my_active' || l.mode === 'my_solo');
     myLabs.sort((a, b) => {
-      const ia = recentRoomIds.indexOf(a.id);
-      const ib = recentRoomIds.indexOf(b.id);
+      const ia = recentRoomIds.indexOf(a.id), ib = recentRoomIds.indexOf(b.id);
       if (ia === -1 && ib === -1) return 0;
       if (ia === -1) return 1;
       if (ib === -1) return -1;
@@ -120,7 +97,6 @@
     });
   }
 
-  // 左サイドバー5タブのフル表記化＆ヘッダー文字付きボタン化
   const NAV_META = {
     home: { short: 'ホーム',   full: 'ホーム',         sub: '名刺・全体状況' },
     feed: { short: '縁',       full: '縁を繋げる',     sub: 'つぶやき・人材' },
@@ -149,27 +125,15 @@
     });
   }
 
-  function syncHeaderLabels() {
-    [['enHdrAskBtn','ちょっと聞く'],['enHdrBellBtn','通知'],['enHdrSetBtn','設定・名刺']].forEach(([id, txt]) => {
-      const btn = document.getElementById(id);
-      if (!btn || btn.querySelector('.en-pc-hdr-txt')) return;
-      const span = document.createElement('span');
-      span.className = 'en-pc-hdr-txt';
-      span.textContent = txt;
-      const dot = btn.querySelector('.en-hdr-dot');
-      if (dot) btn.insertBefore(span, dot);
-      else btn.appendChild(span);
-    });
-  }
-
   function syncPcMode() {
     const wasPc = isPcActive();
-    const isPc = window.innerWidth >= 820 && !isMobilePreviewActive();
+    const previewNow = isMobilePreviewActive();
+    lastPreviewState = previewNow;
+    const isPc = window.innerWidth >= 820 && !previewNow;
+
     document.documentElement.classList.toggle('en-pc-mode', isPc);
     applySidebarState();
-    mountBurgerButton();
     syncNavLabels(isPc);
-    syncHeaderLabels();
     renderSidebarRooms();
 
     const modal = document.getElementById('en-room-modal');
@@ -178,9 +142,6 @@
     }
   }
 
-  // =========================================================
-  // 🤖 AI伴走ポップシート（常駐帯を廃止して必要なときだけ呼ぶ）
-  // =========================================================
   function openAiAssistantSheet(lab, d) {
     const guide = typeof getAiCopilotGuidance === 'function'
       ? getAiCopilotGuidance(d)
@@ -210,7 +171,6 @@
     });
   }
 
-  // ⋯ ルームその他メニュー（ヘッダーからボタンを減らしてスッキリ格納）
   function openRoomMoreSheet(lab) {
     openEnSheetHtml('⋯ ルームメニュー', lab.title, `
       <button class="en-sheet-item" onclick="closeEnSheet();openProjectReportSheet('${lab.id}')">
@@ -228,15 +188,15 @@
     `);
   }
 
-  // =========================================================
-  // 左ペイン（💬 トーク / ✅ 進行 / 📌 記録 の3つだけに厳選）
-  // =========================================================
   function renderLeftPaneBody(container, lab, d) {
     const lt = pcWs.leftTab;
 
     if (lt === 'talk') {
       container.innerHTML = `
         <div class="en-pc-pane-scroll" id="enPcLeftScroll">
+          <div class="en-meta" style="text-align:center;font-size:11px;padding:4px 8px;border-radius:8px;background:var(--en-surface);border:1px dashed var(--en-border);">
+            🔒 ルーム内限定トーク（外部非公開）
+          </div>
           ${enViewState.roomMessages.map((m, i) => `
             <div class="en-chat-bubble ${m.me ? 'me' : ''}" data-pcmsg="${i}">
               ${!m.me ? `<strong style="font-size:11px;opacity:0.8;">${pcEsc(m.sender)}</strong><br>` : ''}${pcEsc(m.text)}
@@ -258,12 +218,23 @@
       container.querySelectorAll('[data-pcmsg]').forEach(b => {
         b.onclick = () => {
           const m = enViewState.roomMessages[Number(b.getAttribute('data-pcmsg'))];
-          const safe = m.text.replace(/'/g, '');
-          openEnSheetHtml('発言をボードへ活かす', m.text, `
-            <button class="en-sheet-item" onclick="sendMsgToBoard('${safe}');renderEnRoomModal();"><span>📌 公開ストーリーに記録</span><span>➔</span></button>
-            <button class="en-sheet-item" onclick="sendMsgToTask('${safe}');renderEnRoomModal();"><span>✅ やることリストに追加</span><span>➔</span></button>
-            <button class="en-sheet-item" onclick="sendMsgToWhy('${lab.id}','${safe}')"><span>❓ なぜなぜ分析の課題にセット</span><span>➔</span></button>
+          if (!m) return;
+          openEnSheetHtml('🔒 ルーム内ツールへメモ転送（非公開）', m.text, `
+            <button type="button" class="en-sheet-item" id="enPcMsgToMemo"><span>📌 ルーム内決定メモに保存（非公開）</span><span>➔</span></button>
+            <button type="button" class="en-sheet-item" id="enPcMsgToTask"><span>✅ やることリストに追加</span><span>➔</span></button>
+            <button type="button" class="en-sheet-item" id="enPcMsgToWhy"><span>❓ なぜなぜ分析の課題にセット</span><span>➔</span></button>
           `);
+          document.getElementById('enPcMsgToMemo')?.addEventListener('click', () => {
+            if (typeof sendMsgToBoard === 'function') sendMsgToBoard(m.text);
+            window.renderEnRoomModal();
+          });
+          document.getElementById('enPcMsgToTask')?.addEventListener('click', () => {
+            if (typeof sendMsgToTask === 'function') sendMsgToTask(m.text);
+            window.renderEnRoomModal();
+          });
+          document.getElementById('enPcMsgToWhy')?.addEventListener('click', () => {
+            if (typeof sendMsgToWhy === 'function') sendMsgToWhy(lab.id, m.text);
+          });
         };
       });
       const send = () => {
@@ -284,7 +255,7 @@
         <div class="en-pc-pane-scroll">
           <div class="card en-card">
             <div class="en-between">
-              <div class="en-title">🗳️ 多数決（${d.polls.length}件）</div>
+              <div class="en-title">🗳️ ルーム内多数決（${d.polls.length}件）</div>
               <button class="en-act-btn" style="padding:4px 9px;font-size:11px;" onclick="openNewPollSheet('${lab.id}')">＋ 新規</button>
             </div>
             ${d.polls.map(pl => {
@@ -336,13 +307,12 @@
       return;
     }
 
-    // story（決定事項＆共有画像）
     const items = enViewState.roomBoards[0].items;
     const shots = d.storyShots || [];
     container.innerHTML = `
       <div class="en-pc-pane-scroll">
         <div class="card en-card">
-          <div class="en-title">📌 決定事項・ストーリー</div>
+          <div class="en-title">📌 ルーム内決定メモ（非公開）</div>
           ${items.map(it => `<div class="en-formula">📌 ${pcEsc(it)}</div>`).join('')}
           ${shots.length ? `<div class="en-story-shots">${shots.map(sh => `<div class="en-story-shot" data-pczoom="${sh.img}"><img src="${sh.img}" alt=""><span>🎨 ${pcEsc(sh.memo)}</span></div>`).join('')}</div>` : ''}
           <div class="en-row">
@@ -361,9 +331,6 @@
     });
   }
 
-  // =========================================================
-  // 🧠 人間工学的PC開発ルーム構築（5段→たった1本の統合ヘッダー）
-  // =========================================================
   function enhancePcRoomWorkspace() {
     const modal = document.getElementById('en-room-modal');
     if (!modal || !modal.classList.contains('open')) return;
@@ -376,7 +343,6 @@
     if (!lab) return;
     const d = getRoomProData(lab.id);
 
-    // 2画面モード初回：左がトークなら右はボードを開く（重複しない）
     if (pcWs.layout === 'split' && enViewState.roomTab === 'talk' && pcWs.leftTab === 'talk') {
       enViewState.roomTab = 'board';
       window.renderEnRoomModal();
@@ -394,7 +360,6 @@
     const isSplit = pcWs.layout === 'split';
     const rt = enViewState.roomTab;
 
-    // 1) 上部バーを「たった1本のスリム統合ヘッダー」へ置換
     const midTabs = isSplit
       ? [['board','🧰 ボード'], ['detail','🎉 巣立ち'], ['progress','✅ 進行']]
       : [['talk','💬 トーク'], ['board','🧰 ボード'], ['progress','✅ 進行'], ['detail','🎉 巣立ち']];
@@ -416,7 +381,6 @@
       </div>
     `;
 
-    // 2) ボードタブの乱立を自動スリム化（選択中＋ピン留め上位3つだけ見せて認知負荷カット！）
     const toolTabs = Array.from(bodyEl.querySelectorAll('.en-tool-strip .en-tool-tab'));
     if (toolTabs.length > 4) {
       let shown = 0;
@@ -427,7 +391,6 @@
       });
     }
 
-    // 3) 左右2ペイン ＋ ドラッグできる境界線リサイザーを構築
     const grid = document.createElement('div');
     grid.className = `en-pc-ws-grid ${!isSplit ? 'is-single' : ''}`;
     grid.style.setProperty('--en-left-w', pcWs.leftPct + '%');
@@ -461,11 +424,8 @@
     grid.appendChild(rightPane);
     head.after(grid);
 
-    if (isSplit) {
-      renderLeftPaneBody(leftPane.querySelector('#enPcLeftContent'), lab, d);
-    }
+    if (isSplit) renderLeftPaneBody(leftPane.querySelector('#enPcLeftContent'), lab, d);
 
-    // --- ドラッグ幅リサイズ（人間工学的な無段階調整） ---
     resizer.addEventListener('pointerdown', e => {
       e.preventDefault();
       resizer.classList.add('dragging');
@@ -488,16 +448,12 @@
       grid.style.setProperty('--en-left-w', '36%');
     });
 
-    // --- ヘッダー＆左ペインのイベント ---
     document.getElementById('enErgoBackBtn').onclick = () => {
       modal.classList.remove('open');
       renderSidebarRooms();
     };
     head.querySelectorAll('[data-ergotab]').forEach(btn => {
-      btn.onclick = () => {
-        enViewState.roomTab = btn.getAttribute('data-ergotab');
-        window.renderEnRoomModal();
-      };
+      btn.onclick = () => { enViewState.roomTab = btn.getAttribute('data-ergotab'); window.renderEnRoomModal(); };
     });
     document.getElementById('enErgoSplitBtn').onclick = () => {
       pcWs.layout = isSplit ? 'single' : 'split';
@@ -507,10 +463,7 @@
     document.getElementById('enErgoMoreBtn').onclick = () => openRoomMoreSheet(lab);
 
     leftPane.querySelectorAll('[data-pcleft]').forEach(btn => {
-      btn.onclick = () => {
-        pcWs.leftTab = btn.getAttribute('data-pcleft');
-        window.renderEnRoomModal();
-      };
+      btn.onclick = () => { pcWs.leftTab = btn.getAttribute('data-pcleft'); window.renderEnRoomModal(); };
     });
     document.getElementById('enPcCloseLeftBtn').onclick = () => {
       pcWs.layout = 'single';
@@ -518,7 +471,6 @@
     };
   }
 
-  // フック：ルームを開くたびに最新履歴を更新＋サイドバー反映
   if (typeof window.openEnRoomModal === 'function') {
     const origOpen = window.openEnRoomModal;
     window.openEnRoomModal = function (labId, initialTab, asFan) {
@@ -549,20 +501,17 @@
     };
   }
 
-  // 初期化・監視
   syncPcMode();
   window.addEventListener('DOMContentLoaded', () => {
     syncPcMode();
     setTimeout(syncPcMode, 300);
-    setTimeout(syncPcMode, 650);
     window.addEventListener('resize', syncPcMode);
 
-    const mobBtn = document.getElementById('toggleMobileBtn');
-    if (mobBtn) mobBtn.addEventListener('click', () => { forceMobilePreview = !forceMobilePreview; setTimeout(syncPcMode, 50); });
-    const exitMobBtn = document.getElementById('devExitMobileBtn');
-    if (exitMobBtn) exitMobBtn.addEventListener('click', () => { forceMobilePreview = false; setTimeout(syncPcMode, 50); });
-
-    const obs = new MutationObserver(syncPcMode);
+    // mobile-preview状態が実際に変わったときだけ反応（en-mrm-locked等の無駄発火を防止）
+    const checkPreviewChanged = () => {
+      if (isMobilePreviewActive() !== lastPreviewState) syncPcMode();
+    };
+    const obs = new MutationObserver(checkPreviewChanged);
     if (document.body) obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     const shell = document.getElementById('appShell');
     if (shell) obs.observe(shell, { attributes: true, attributeFilter: ['class'] });

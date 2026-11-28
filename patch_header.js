@@ -309,7 +309,6 @@
     const main = document.querySelector('main.main-container');
     if (main) main.addEventListener('scroll', onScrollHeader, { passive: true });
 
-    setTimeout(() => { mountUnifiedHeader(); hookTabSwitchers(); }, 300);
-    setTimeout(() => { mountUnifiedHeader(); hookTabSwitchers(); }, 700);
+  setTimeout(() => { mountUnifiedHeader(); hookTabSwitchers(); }, 300);
   });
 })();

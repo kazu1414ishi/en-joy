@@ -1,0 +1,192 @@
+/* =========================================================
+   EN•joy STEP A クリーンアップ ＆ SVG統一スタイル（patch_cleanup_svg.css v2）
+   ・登録モーダル(.modal-backdrop)のz-index逆転バグ修正（最前面へ）
+   ・登録画面の下タブ・全フロート完全非表示＆選択表示復活
+   ・ダーク／クールテーマ時の登録フォーム入力欄＆カード視認性修正
+   ・PCヘッダー＆サイドバー高さ50px統一
+   ========================================================= */
+
+/* 1. 登録モーダル＆トーストをヘッダー/下タブより確実に前面へ */
+.modal-backdrop {
+  z-index: 10050 !important;
+}
+.toast {
+  z-index: 10065 !important;
+}
+
+/* 2. 登録画面：下タブ＆全フロートボタンを確実に非表示 */
+body.en-in-register nav#bottomNav.bottom-nav,
+body:has(#view-register.active) nav#bottomNav.bottom-nav,
+body.en-in-register #v6DevDock,
+body:has(#view-register.active) #v6DevDock,
+body.en-in-register #v6FabBtn,
+body:has(#view-register.active) #v6FabBtn,
+body.en-in-register #en-action-fab,
+body:has(#view-register.active) #en-action-fab,
+body.en-in-register #en-theme-fab,
+body:has(#view-register.active) #en-theme-fab {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/* 3. 全画面共通：旧v6系の重複フロートを常時非表示 */
+#v6FabBtn,
+#v6DevDock {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/* 4. 登録フォーム：選択状態の復活 */
+#view-register .stage-choice-card,
+#view-register .role-tile,
+#view-register .account-tile {
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 1;
+}
+#view-register .stage-choice-card.selected,
+#view-register .role-tile.selected,
+#view-register .account-tile.active {
+  background: #e4f0e7 !important;
+  border: 2px solid #3d664a !important;
+  box-shadow: 0 4px 12px rgba(61, 102, 74, 0.22) !important;
+}
+#view-register .diag-result-card {
+  background: linear-gradient(135deg, #eaf1ec, #fdf6ec) !important;
+  border: 1.5px solid #3d664a !important;
+}
+#view-register .select-chip.selected,
+#view-register .diag-opt-btn.selected,
+#view-register .diag-scale-btn.selected {
+  background: var(--en-accent, #3d664a) !important;
+  border-color: var(--en-accent, #3d664a) !important;
+  color: #ffffff !important;
+}
+
+/* 5. ダーク／クールテーマ時の登録フォーム＆モーダル文字見やすさ修正 */
+html[data-en-color="dark"] .text-input,
+html[data-en-color="dark"] .text-area,
+html[data-en-color="dark"] select.text-input,
+html[data-en-color="cool"] .text-input,
+html[data-en-color="cool"] .text-area,
+html[data-en-color="cool"] select.text-input {
+  background: var(--en-surface-2) !important;
+  border: 1.5px solid var(--en-border) !important;
+  color: var(--en-text) !important;
+  box-shadow: none !important;
+}
+html[data-en-color="dark"] .text-input:focus,
+html[data-en-color="dark"] .text-area:focus,
+html[data-en-color="cool"] .text-input:focus,
+html[data-en-color="cool"] .text-area:focus {
+  background: var(--en-surface) !important;
+  border-color: var(--en-accent) !important;
+}
+html[data-en-color="dark"] #view-register .field-group,
+html[data-en-color="dark"] #view-register .subrole-box,
+html[data-en-color="dark"] #view-register .photo-row,
+html[data-en-color="dark"] #view-register .diag-q-box,
+html[data-en-color="dark"] #view-register .diag-detail-item,
+html[data-en-color="cool"] #view-register .field-group,
+html[data-en-color="cool"] #view-register .subrole-box,
+html[data-en-color="cool"] #view-register .photo-row,
+html[data-en-color="cool"] #view-register .diag-q-box,
+html[data-en-color="cool"] #view-register .diag-detail-item {
+  background: var(--en-surface-2) !important;
+  border-color: var(--en-border) !important;
+  color: var(--en-text) !important;
+}
+html[data-en-color="dark"] .select-chip,
+html[data-en-color="dark"] .diag-opt-btn,
+html[data-en-color="dark"] .diag-scale-btn,
+html[data-en-color="dark"] .role-tile,
+html[data-en-color="dark"] .stage-choice-card,
+html[data-en-color="dark"] .account-tile,
+html[data-en-color="cool"] .select-chip,
+html[data-en-color="cool"] .diag-opt-btn,
+html[data-en-color="cool"] .diag-scale-btn,
+html[data-en-color="cool"] .role-tile,
+html[data-en-color="cool"] .stage-choice-card,
+html[data-en-color="cool"] .account-tile {
+  background: var(--en-surface) !important;
+  border-color: var(--en-border) !important;
+  color: var(--en-text) !important;
+}
+html[data-en-color="dark"] #view-register .stage-choice-card.selected,
+html[data-en-color="dark"] #view-register .role-tile.selected,
+html[data-en-color="dark"] #view-register .account-tile.active,
+html[data-en-color="cool"] #view-register .stage-choice-card.selected,
+html[data-en-color="cool"] #view-register .role-tile.selected,
+html[data-en-color="cool"] #view-register .account-tile.active {
+  background: var(--en-accent-soft) !important;
+  border-color: var(--en-accent) !important;
+}
+html[data-en-color="dark"] #view-register .diag-result-card,
+html[data-en-color="cool"] #view-register .diag-result-card {
+  background: var(--en-surface-2) !important;
+  border-color: var(--en-accent) !important;
+}
+html[data-en-color="dark"] .modal-card,
+html[data-en-color="cool"] .modal-card {
+  background: var(--en-surface) !important;
+  color: var(--en-text) !important;
+}
+html[data-en-color="dark"] .safety-banner,
+html[data-en-color="dark"] .auth-note-banner,
+html[data-en-color="cool"] .safety-banner,
+html[data-en-color="cool"] .auth-note-banner {
+  background: var(--en-surface-2) !important;
+  color: var(--en-text) !important;
+}
+
+/* 6. PCモード：ヘッダー50px基準へ統一（patch_pc.cssの旧58px/76px競合を解消） */
+html.en-pc-mode body:not(.en-in-register) main.main-container {
+  padding-top: 62px !important;
+}
+html.en-pc-mode body.en-in-register main.main-container {
+  padding-top: 62px !important;
+}
+
+/* 7. 全画面統一SVGアイコンのインライン整列 */
+.en-ic-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: -0.16em;
+  line-height: 1;
+}
+.en-svg,
+.en-svg-ic {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: -0.18em;
+  flex-shrink: 0;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.en-ic-wrap .en-svg-ic {
+  vertical-align: middle;
+}
+.en-mrm-tile-ico .en-svg-ic,
+.en-bcat-ico .en-svg-ic,
+.en-mrm-complete-ico .en-svg-ic,
+.en-hl-ico .en-svg-ic,
+.en-hdr-d-ico .en-svg-ic {
+  width: 20px;
+  height: 20px;
+}
+.en-room-tab .en-svg-ic,
+nav#bottomNav .en-svg,
+nav#bottomNav .en-svg-ic {
+  width: 18px;
+  height: 18px;
+}
+.en-rm-dot .en-svg-ic {
+  width: 15px;
+  height: 15px;
+}

@@ -1,12 +1,10 @@
 /* =========================================================
-   EN•joy PWA全画面アプリ専用パッチ（patch_pwa.css v1）
-   ・ホーム画面から起動した「standalone（全画面）」時だけ適用
-   ・iPhone上部の時計/ノッチ＆下部のホームバーとヘッダー・モーダルが被るのを防止
+   EN•joy PWA全画面アプリ専用パッチ（patch_pwa.css v2）
    ========================================================= */
 
 @media (display-mode: standalone) {
-  /* トップヘッダーをノッチ(safe-area-inset-top)ぶん下に逃がして綺麗に馴染ませる */
   #topHeader.top-header {
+    box-sizing: border-box !important;
     padding-top: env(safe-area-inset-top, 0px) !important;
     height: calc(50px + env(safe-area-inset-top, 0px)) !important;
   }
@@ -14,30 +12,27 @@
     height: calc(54px + env(safe-area-inset-top, 0px)) !important;
   }
 
-  /* メイン領域の上余白もノッチぶん自動加算 */
   main.main-container,
   body:not(.en-in-register) main.main-container,
   body.en-in-register main.main-container {
     padding-top: calc(56px + env(safe-area-inset-top, 0px)) !important;
   }
 
-  /* 下部ナビバーがiPhoneのホームバー(白い線)に被らないよう調整 */
   html:not(.en-pc-mode) nav#bottomNav.bottom-nav {
     padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  /* 進行中ラボのルームモーダルもノッチぶん綺麗に逃がす */
   html:not(.en-pc-mode) #en-room-modal.en-mrm-active {
+    box-sizing: border-box !important;
     padding-top: env(safe-area-inset-top, 0px) !important;
   }
   html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-room-head {
     padding-top: 0 !important;
   }
-  html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-room-composer {
+  html:not(.en-pc-mode) #en-room-modal.en-mrm-active.en-mrm-talk .en-room-composer {
     padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
   }
-  /* キーボード展開中はホームバー余白をゼロにしてトーク画面をさらに広く確保 */
-  html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-composer {
-    padding-bottom: 5px !important;
+  html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active.en-mrm-talk .en-room-composer {
+    padding-bottom: 6px !important;
   }
 }

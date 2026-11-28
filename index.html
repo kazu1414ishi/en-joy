@@ -3,19 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="EN•joy">
   <title>EN•joy｜異業種コラボ開発プラットフォーム（Stage 1 テスト2）</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="v6.css" />
   <!-- EN•joy UI/UXパッチ（見た目オーバーホール） -->
   <link rel="stylesheet" href="./patch_ui.css?v=1">
   <link rel="stylesheet" href="./patch_pc.css?v=5">
-  <link rel="stylesheet" href="./patch_header.css?v=4">
-  <link rel="stylesheet" href="./patch_room_mobile.css?v=6">
-  
+  <link rel="stylesheet" href="./patch_header.css?v=5">
+  <link rel="stylesheet" href="./patch_room_mobile.css?v=8">
+  <link rel="stylesheet" href="./patch_cleanup_svg.css?v=2">
   <!-- PWA 全画面アプリ化設定 -->
 <link rel="manifest" href="./manifest.json?v=1">
 <meta name="theme-color" content="#f7f4ec">
@@ -24,7 +20,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="EN•joy">
 <link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="stylesheet" href="./patch_pwa.css?v=1">
+<link rel="stylesheet" href="./patch_pwa.css?v=2">
+
 </head>
 <body>
   <!-- 開発用フローティングバー（PCでスマホ幅プレビュー中＋登録集中モード中でもリセット＆PC復帰できる） -->
@@ -69,10 +66,10 @@
           <div class="reg-progress-wrap">
             <div class="reg-progress-top">
               <span class="reg-brand-mini">EN<span class="brand-dot">•</span>joy 登録</span>
-              <span id="regProgressLabel" class="reg-step-count">ステップ 1 / 4</span>
+              <span id="regProgressLabel" class="reg-step-count">ステップ 1 / 5</span>
             </div>
             <div class="reg-progress-track">
-              <div id="regProgressFill" class="reg-progress-fill" style="width: 25%;"></div>
+              <div id="regProgressFill" class="reg-progress-fill" style="width: 20%;"></div>
             </div>
           </div>
 
@@ -1033,16 +1030,16 @@
   <script src="v6_data.js"></script>
   <script src="app.js"></script>
   <script src="v6_part1.js"></script>
-  <script src="v6_part2.js"></script>
   <!-- EN•joy 機能パッチ -->
   <script src="./patch_mock_data.js?v=1"></script>
   <script src="./patch_theme.js?v=1"></script>
-  <script src="./patch_views.js?v=1"></script>
+  <script src="./patch_views.js?v=2"></script>
   <script src="./patch_tips_pro.js?v=1"></script>
-  <script src="./patch_room_pro.js?v=1"></script>
+  <script src="./patch_room_pro.js?v=2"></script>
   <script src="./patch_whiteboard.js?v=1"></script>
-  <script src="./patch_pc.js?v=5"></script>
+  <script src="./patch_pc.js?v=6"></script>
   <script src="./patch_header.js?v=2"></script>
-  <script src="./patch_room_mobile.js?v=7"></script>
+  <script src="./patch_room_mobile.js?v=9"></script>
+  <script src="./patch_svg_icons.js?v=2"></script>
 </body>
 </html>

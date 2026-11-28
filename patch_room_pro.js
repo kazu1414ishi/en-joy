@@ -8,7 +8,7 @@
 const EN_ROOM_PRO_STORAGE_KEY = 'en_joy_room_pro_v2';
 
 const EN_TOOL_CATALOG = [
-  { id: 'story',   icon: '📌', name: '公開ストーリー',       cat: '企画・戦略', desc: '巣立ち時に買い手へ見せる開発秘話・決定事項' },
+  { id: 'story',   icon: '📌', name: 'ルーム内決定メモ（非公開）',       cat: '企画・戦略', desc: 'チーム内で決まった方針・メモの記録（外部非公開）' },
   { id: 'cost',    icon: '💰', name: '原価・販路別粗利',     cat: '経営・試作', desc: '原価率・損益分岐点・マルシェ/EC/卸の手残り比較' },
   { id: 'market',  icon: '📊', name: '市場・ポジショニング', cat: '企画・戦略', desc: 'ターゲット・競合・選ばれる理由・価格帯設計' },
   { id: 'vpc',     icon: '👤', name: '顧客価値(VPC)',        cat: '企画・戦略', desc: '買い手の悩み・理想 × 商品の解決策をピタッと接続' },
@@ -270,7 +270,7 @@ window.openAiTranscriptScan = (labId) => {
   openEnSheetHtml('✨ AI議事録スキャン（Pro）', '直近トークを解析して各ボード＆タスクへ自動振り分けします', `
     <div class="en-formula"><strong>🔍 解析対象（直近${lastMsgs.length}件）</strong><div class="en-meta">${enEsc(combined)}</div></div>
     <div class="en-formula" style="border-color:var(--en-accent);">
-      <div>📌 <strong>公開ストーリー：</strong>「冷蔵便で完熟トマト30kg調達→低温乾燥テスト開始」</div>
+      <div>📌 <strong>ルーム内決定メモ（非公開）：</strong>「冷蔵便で完熟トマト30kg調達→低温乾燥テスト開始」</div>
       <div>✅ <strong>やることリスト：</strong>「ラベル案2パターンの多数決をメンバー全員で締切前に回答」</div>
       <div>🧪 <strong>試作ログ：</strong>「低温60℃・完熟トマト30kg本試作ロット」</div>
     </div>
@@ -313,7 +313,7 @@ window.openProjectReportSheet = (labId) => {
     `・予定売価：¥${c.price} ／ 原価合計：¥${unitCost}（原価率 ${costRate}%）`,
     `・1個粗利：¥${profit} ／ 初回${c.lot}個完売利益：¥${(profit*c.lot - c.fixedCost).toLocaleString()}`,
     ``,
-    `■ 3. 採用試作・公開ストーリー`,
+    `■ 3. 採用試作・ルーム内決定メモ（非公開）`,
     ...d.protos.map(p => `・${p.ver} [${p.score}${p.adopted?'・採用':''}] ${p.cond} (${p.cost})：${p.memo}`),
     ...enViewState.roomBoards[0].items.map(s => `・📌 ${s}`),
     ``,
@@ -517,7 +517,7 @@ window.openToolPickerSheet = (labId) => {
 
 window.toggleRoomTool = (labId, toolId) => {
   const d = getRoomProData(labId);
-  if (toolId === 'story') return enToast('📌 公開ストーリーは基本ボードです');
+  if (toolId === 'story') return enToast('📌 ルーム内決定メモ（非公開）は基本ボードです');
   if (d.activeTools.includes(toolId)) {
     d.activeTools = d.activeTools.filter(x => x !== toolId);
     if (d.selectedTool === toolId) d.selectedTool = d.activeTools[0] || 'story';
@@ -554,7 +554,7 @@ function renderSelectedToolBody(labId, d) {
     const items = enViewState.roomBoards[0].items;
     return `
       <div class="card en-card">
-        <div class="en-between"><div class="en-title">📌 公開ストーリー</div><div class="en-row">${pinBtn}</div></div>
+        <div class="en-between"><div class="en-title">📌 ルーム内決定メモ（非公開）</div><div class="en-row">${pinBtn}</div></div>
         ${items.length ? items.map((it, i) => `
           <div class="en-formula en-list-row-del">
             <span>📌 ${enEsc(it)}</span>
@@ -646,7 +646,7 @@ function renderSelectedToolBody(labId, d) {
             <div class="en-text" style="font-size:12.5px;">${enEsc(p.memo)}</div>
             <div class="en-between" style="margin-top:3px;">
               <button class="en-act-btn" style="padding:3px 9px;font-size:11px;" onclick="toggleProtoAdopt('${labId}',${i})">${p.adopted?'✅ 本採用中':'採用候補にする'}</button>
-              <button class="en-act-btn" style="padding:3px 9px;font-size:11px;" onclick="sendMsgToBoard('【試作採用】${enEsc(p.ver)} ${enEsc(p.cond)}')">📌 ストーリーへ</button>
+              <button class="en-act-btn" style="padding:3px 9px;font-size:11px;" onclick="sendMsgToBoard('【試作採用】${enEsc(p.ver)} ${enEsc(p.cond)}')">📌 決定メモへ</button>
             </div>
           </div>
         `).join('') : '<div class="en-meta">試作ログがありません。下から記録してください。</div>'}
@@ -1054,7 +1054,7 @@ window.completeProGraduation = (labId) => {
 };
 
 window.openNewPollSheet = (labId) => {
-  openEnSheetHtml('🗳️ 新しい公開多数決を立てる', 'メンバーやファンと意見をサクッと決めよう', `
+  openEnSheetHtml('🗳️ 新しいルーム内多数決を立てる', 'メンバーやファンと意見をサクッと決めよう', `
     <input id="enPollTitleIn" class="en-input-field" placeholder="議題（例：初回販売価格をいくらにする？）">
     <input id="enPollOptA" class="en-input-field" placeholder="案A（例：¥480 ワンコイン以下）">
     <input id="enPollOptB" class="en-input-field" placeholder="案B（例：¥550 こだわりプレミアム感）">
@@ -1115,7 +1115,7 @@ window.renderEnRoomModal = function () {
       <div class="en-chat-bubble ${m.me ? 'me' : ''}" data-msgaction="${i}">
         ${!m.me ? `<strong style="font-size:11px;opacity:0.8;">${enEsc(m.sender)}</strong><br>` : ''}${enEsc(m.text)}
       </div>
-    `).join('') + `<div class="en-meta" style="text-align:center;margin-top:6px;">💡 発言タップ → ストーリー / タスク / なぜなぜ分析へ転送</div>`;
+    `).join('') + `<div class="en-meta" style="text-align:center;margin-top:6px;">💡 発言タップ → ルーム内メモ / タスク / なぜなぜ分析へ転送（非公開）</div>`;
   } else if (rt === 'progress') {
     const visibleTasks = enTaskFilterPendingOnly ? enViewState.roomTasks.filter(t => !t.done) : enViewState.roomTasks;
     content = `
@@ -1125,7 +1125,7 @@ window.renderEnRoomModal = function () {
       </div>
 
       <div class="card en-card">
-        <div class="en-between"><div class="en-title">🗳️ 公開多数決（${d.polls.length}件）</div><button class="en-act-btn" style="padding:4px 9px;font-size:11px;" onclick="openNewPollSheet('${lab.id}')">＋ 新規多数決</button></div>
+        <div class="en-between"><div class="en-title">🗳️ ルーム内多数決（${d.polls.length}件）</div><button class="en-act-btn" style="padding:4px 9px;font-size:11px;" onclick="openNewPollSheet('${lab.id}')">＋ 新規多数決</button></div>
         ${d.polls.map((pl, pi) => {
           const tot = pl.options.reduce((s, o) => s + o.votes, 0) || 1;
           return `
@@ -1275,15 +1275,18 @@ window.renderEnRoomModal = function () {
     saveRoomProStore(); enToast('🗑️ カスタムボードを削除しました'); renderEnRoomModal();
   };
 
-  // トーク発言転送
+// トーク発言転送（引用符・改行でも壊れないイベントリスナー化）
   modal.querySelectorAll('[data-msgaction]').forEach(b => b.onclick = () => {
     const m = enViewState.roomMessages[Number(b.getAttribute('data-msgaction'))];
-    const safe = m.text.replace(/'/g, '');
-    openEnSheetHtml('発言を開発ボードへ転送', m.text, `
-      <button class="en-sheet-item" onclick="sendMsgToBoard('${safe}')"><span>📌 公開ストーリーに送る</span><span>➔</span></button>
-      <button class="en-sheet-item" onclick="sendMsgToTask('${safe}')"><span>✅ やることリストに追加</span><span>➔</span></button>
-      <button class="en-sheet-item" onclick="sendMsgToWhy('${lab.id}','${safe}')"><span>❓ なぜなぜ分析に新しい課題として追加</span><span>➔</span></button>
+    if (!m) return;
+    openEnSheetHtml('🔒 ルーム内ツールへメモ転送（非公開）', m.text, `
+      <button type="button" class="en-sheet-item" id="enProToMemoBtn"><span>📌 ルーム内決定メモ（非公開）に送る</span><span>➔</span></button>
+      <button type="button" class="en-sheet-item" id="enProToTaskBtn"><span>✅ やることリストに追加</span><span>➔</span></button>
+      <button type="button" class="en-sheet-item" id="enProToWhyBtn"><span>❓ なぜなぜ分析に新しい課題として追加</span><span>➔</span></button>
     `);
+    document.getElementById('enProToMemoBtn')?.addEventListener('click', () => { sendMsgToBoard(m.text); renderEnRoomModal(); });
+    document.getElementById('enProToTaskBtn')?.addEventListener('click', () => { sendMsgToTask(m.text); renderEnRoomModal(); });
+    document.getElementById('enProToWhyBtn')?.addEventListener('click', () => sendMsgToWhy(lab.id, m.text));
   });
 
   // リアルタイム保存入力（IME途切れ防止）
@@ -1363,7 +1366,7 @@ window.renderEnRoomModal = function () {
     if (btn) btn.onclick = () => { const v = document.getElementById(inId)?.value.trim(); if (!v) return; fn(v); saveRoomProStore(); renderEnRoomModal(); };
   };
   bindAdd('enNewTaskAdd', 'enNewTaskIn', v => { enViewState.roomTasks.unshift({ id: 't-'+Date.now(), text: v, done: false }); enToast('✅ タスクを追加しました！'); });
-  bindAdd('enProStoryAdd', 'enProStoryIn', v => { enViewState.roomBoards[0].items.push(v); enToast('📌 公開ストーリーに追加！'); });
+  bindAdd('enProStoryAdd', 'enProStoryIn', v => { enViewState.roomBoards[0].items.push(v); enToast('📌 ルーム内決定メモ（非公開）に追加！'); });
   bindAdd('enDecCandAdd', 'enDecCandIn', v => { d.decision.candidates.push({ name: v, taste: 3, cost: 3, look: 3, speed: 3 }); enToast('⚖️ 比較案を追加しました！'); });
   bindAdd('enScampAdd', 'enScampIn', v => { const k = document.getElementById('enScampKey')?.value || '✨ 自由'; d.scamper.push({ key: k, text: v }); enToast('💡 SCAMPERに追加！'); });
   bindAdd('enMxAdd', 'enMxIn', v => { const q = document.getElementById('enMxQuad')?.value || 'now'; d.matrix[q].unshift(v); enToast('🎯 マトリクスに追加！'); });

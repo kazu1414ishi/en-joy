@@ -1,49 +1,28 @@
 /* =========================================================
-   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.css v6）
-   ・トーク入力前後のヘッダー／吹き出し／入力バー寸法を完全固定（ガタつきゼロ）
-   ・キーボード実展開(en-kbd-open)と同時フレームで高さ追従（下→上の二度動き撲滅）
-   ・通常入力欄(ボード/設定/シート)のキーボード回避＆安全余白確保
+   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.css v8）
+   ・不要セレクタ(.en-mrm-only 等)を全削除
+   ・body の position:fixed を撤廃し安全な overflow 制御へ変更
+   ・ボトムシート(#en-sheet-backdrop / .en-sheet-card)の正しいIDへ修正
    ========================================================= */
 
-html.en-pc-mode .en-mrm-only,
 html.en-pc-mode #en-mrm-curtain { display: none !important; }
 
-/* 遮光カーテン（モーダル閉鎖時はCSS側でも強制消滅） */
 #en-mrm-curtain {
   position: fixed;
-  inset: -200px 0;
+  inset: -120px 0;
   background: var(--en-bg, #f7f4ec);
   pointer-events: none !important;
-  opacity: 0;
-  visibility: hidden;
   display: none;
 }
-#en-mrm-curtain.active {
-  display: block;
-  opacity: 1;
-  visibility: visible;
-}
-body:not(:has(#en-room-modal.open)) #en-mrm-curtain {
-  display: none !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
-}
+#en-mrm-curtain.active { display: block; }
+body:not(:has(#en-room-modal.open)) #en-mrm-curtain { display: none !important; }
 
-/* ルーム展開中：裏ページのiOS勝手スクロールを完全ロック */
-html.en-mrm-locked {
-  overflow: hidden !important;
-  overscroll-behavior: none !important;
-}
+html.en-mrm-locked,
 body.en-mrm-locked {
-  position: fixed !important;
-  left: 0 !important;
-  right: 0 !important;
-  width: 100% !important;
   overflow: hidden !important;
   overscroll-behavior: none !important;
 }
 
-/* スマホ版ルームモーダル本体 */
 html:not(.en-pc-mode) #en-room-modal.en-mrm-active {
   position: fixed !important;
   left: 0 !important;
@@ -55,11 +34,8 @@ html:not(.en-pc-mode) #en-room-modal.en-mrm-active {
   overscroll-behavior: contain;
   transition: none !important;
 }
-html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-ai-copilot {
-  display: none !important;
-}
+html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-ai-copilot { display: none !important; }
 
-/* ★ヘッダー高さは入力前後で一切変えない（44px固定で上下ガタつきゼロ） */
 html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-room-head {
   height: 44px !important;
   min-height: 44px !important;
@@ -74,7 +50,6 @@ html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-room-head .en-act-btn {
   padding: 5px 10px !important;
   font-size: 12px !important;
 }
-
 html:not(.en-pc-mode) #en-room-modal.en-mrm-active #enRoomBody {
   flex: 1 1 auto !important;
   min-height: 0 !important;
@@ -94,17 +69,10 @@ html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-room-tab {
   padding: 5px 2px;
 }
 
-/* ボード全画面作業時は上部横スクロールタブを非表示 */
-html:not(.en-pc-mode) #en-room-modal.en-mrm-board-detail .en-board-topbar {
-  display: none !important;
-}
+html:not(.en-pc-mode) #en-room-modal.en-mrm-board-detail .en-board-topbar { display: none !important; }
 
-/* =========================================================
-   💬 トーク画面：入力前後でサイズ変化ゼロ（文字リフロー＆ジャンプ完全防止）
-   ========================================================= */
-html:not(.en-pc-mode) #en-room-modal.en-mrm-talk .en-quick-chips {
-  display: none !important;
-}
+/* トーク画面（入力前後でサイズ変化ゼロ） */
+html:not(.en-pc-mode) #en-room-modal.en-mrm-talk .en-quick-chips { display: none !important; }
 html:not(.en-pc-mode) #en-room-modal.en-mrm-talk #enRoomBody {
   padding: 8px 10px 10px !important;
   gap: 7px !important;
@@ -126,104 +94,43 @@ html:not(.en-pc-mode) #en-room-modal.en-mrm-talk .en-room-input {
   min-height: 38px !important;
 }
 
-/* =========================================================
-   ⌨️ キーボード実展開時（visualViewport縮小を検知した瞬間だけ適用）
-   ========================================================= */
-/* 下の5タブだけキーボード出現と同時に消す（下に落ちずに上へスッと追従） */
-html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-nav {
-  display: none !important;
-}
-
-/* ボード・設定・進行の通常入力時：最下部の入力欄もキーボード上に逃げられる余白を確保 */
+/* ルーム内キーボード実展開時のみ適用 */
+html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-nav { display: none !important; }
 html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active:not(.en-mrm-talk) #enRoomBody {
   padding-bottom: 160px !important;
 }
-
-/* 全画面の通常入力欄：フォーカス時に上ヘッダー＆キーボードから安全距離を保つ */
-html:not(.en-pc-mode) input,
-html:not(.en-pc-mode) textarea,
-html:not(.en-pc-mode) select {
-  scroll-margin-top: 76px;
-  scroll-margin-bottom: 140px;
-}
-
-/* ボトムシート（予定追加・多数決作成など）：キーボードの真上にピタッと持ち上げる */
-html:not(.en-pc-mode).en-kbd-open #en-sheet-modal,
-html:not(.en-pc-mode).en-kbd-open .en-sheet-backdrop,
-html:not(.en-pc-mode).en-kbd-open .en-sheet-overlay {
+html:not(.en-pc-mode).en-kbd-open #en-sheet-backdrop {
   top: var(--en-vvt, 0px) !important;
   height: var(--en-vvh, 100dvh) !important;
   bottom: auto !important;
 }
-html:not(.en-pc-mode).en-kbd-open .en-sheet-box,
-html:not(.en-pc-mode).en-kbd-open .en-sheet-card,
-html:not(.en-pc-mode).en-kbd-open .en-sheet-panel {
+html:not(.en-pc-mode).en-kbd-open #en-sheet-backdrop .en-sheet-card {
   max-height: calc(var(--en-vvh, 100dvh) - 24px) !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch;
 }
 
-/* =========================================================
-   🏠 1×1 横スワイプカルーセル
-   ========================================================= */
+/* 1×1 横スワイプカルーセル */
 .en-mrm-carousel-wrap { margin: 0 -12px 4px; }
 .en-mrm-carousel {
-  display: flex;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  gap: 10px;
-  padding: 2px 12px 6px;
-  scrollbar-width: none;
+  display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch; gap: 10px; padding: 2px 12px 6px; scrollbar-width: none;
 }
 .en-mrm-carousel::-webkit-scrollbar { display: none; }
-
 .en-mrm-slide {
-  flex: 0 0 92%;
-  scroll-snap-align: center;
-  aspect-ratio: 1 / 1;
-  max-height: 396px;
-  min-height: 324px;
-  background: var(--en-surface);
-  border: 1px solid var(--en-border);
-  border-radius: 20px;
-  padding: 13px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
-  overflow: hidden;
+  flex: 0 0 92%; scroll-snap-align: center; aspect-ratio: 1 / 1;
+  max-height: 396px; min-height: 324px; background: var(--en-surface);
+  border: 1px solid var(--en-border); border-radius: 20px; padding: 13px;
+  box-sizing: border-box; display: flex; flex-direction: column; gap: 8px;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06); overflow: hidden;
 }
-
-.en-mrm-dots {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 6px;
-  margin: 2px 0 10px;
-}
-.en-mrm-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 99px;
-  background: var(--en-border);
-  transition: width 0.2s ease, background 0.2s ease;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-}
+.en-mrm-dots { display: flex; justify-content: center; align-items: center; gap: 6px; margin: 2px 0 10px; }
+.en-mrm-dot { width: 6px; height: 6px; border-radius: 99px; background: var(--en-border); transition: width 0.2s ease, background 0.2s ease; border: none; padding: 0; cursor: pointer; }
 .en-mrm-dot.active { width: 20px; background: var(--en-accent); }
 
-/* --- ✅ 左：やること・ハイライト --- */
+/* 左：やること・ハイライト */
 .en-hl-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; }
-.en-hl-row {
-  width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 10px;
-  border-radius: 13px; border: 1px solid var(--en-border); background: var(--en-surface-2);
-  color: var(--en-text); text-align: left; cursor: pointer; transition: border-color 0.14s, background 0.14s, transform 0.12s;
-}
-.en-hl-row:active { transform: scale(0.985); }
-.en-hl-row:hover  { border-color: var(--en-accent); background: var(--en-accent-soft); }
+.en-hl-row { width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 13px; border: 1px solid var(--en-border); background: var(--en-surface-2); color: var(--en-text); text-align: left; cursor: pointer; }
 .en-hl-row.accent { border-color: rgba(249, 115, 22, 0.45); background: rgba(249, 115, 22, 0.08); }
 .en-hl-ico { width: 30px; height: 30px; border-radius: 9px; background: var(--en-surface); border: 1px solid var(--en-border); display: grid; place-items: center; font-size: 15px; flex-shrink: 0; }
 .en-hl-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -231,15 +138,15 @@ html:not(.en-pc-mode).en-kbd-open .en-sheet-panel {
 .en-hl-main { font-size: 12px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .en-hl-go { font-size: 12px; color: var(--en-muted); font-weight: 900; flex-shrink: 0; }
 
-/* --- 📅 真ん中：Googleカレンダー風 月間カレンダー --- */
+/* 真ん中：月間カレンダー */
 .en-gcal-head { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
-.en-gcal-month { font-size: 14px; font-weight: 900; letter-spacing: 0.02em; }
-.en-gcal-nav   { display: flex; align-items: center; gap: 4px; }
+.en-gcal-month { font-size: 14px; font-weight: 900; }
+.en-gcal-nav { display: flex; align-items: center; gap: 4px; }
 .en-gcal-btn { border: 1px solid var(--en-border); background: var(--en-surface-2); color: var(--en-text); border-radius: 8px; padding: 4px 7px; font-size: 11px; font-weight: 800; cursor: pointer; }
 .en-gcal-btn.primary { background: var(--en-accent); color: #fff; border-color: transparent; }
 .en-gcal-dow { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 10px; font-weight: 800; color: var(--en-muted); }
 .en-gcal-dow span:first-child { color: #ef4444; }
-.en-gcal-dow span:last-child  { color: #3b82f6; }
+.en-gcal-dow span:last-child { color: #3b82f6; }
 .en-gcal-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 1fr; gap: 2px; touch-action: pan-x; }
 .en-gcal-cell { border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--en-text); padding: 2px 1px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 1px; cursor: pointer; overflow: hidden; }
 .en-gcal-cell.other { opacity: 0.28; }
@@ -254,25 +161,22 @@ html:not(.en-pc-mode).en-kbd-open .en-sheet-panel {
 .en-gcal-daybar { border-top: 1px solid var(--en-border); padding-top: 6px; display: flex; align-items: center; gap: 5px; }
 .en-gcal-dayinfo { flex: 1; min-width: 0; border: none; background: var(--en-surface-2); color: var(--en-text); border-radius: 8px; padding: 5px 8px; font-size: 11px; font-weight: 700; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 
-/* --- 📊 右：サマリー --- */
+/* 右：サマリー */
 .en-mrm-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1; }
 .en-mrm-stat-box { background: var(--en-surface-2); border: 1px solid var(--en-border); border-radius: 13px; padding: 10px; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
-.en-mrm-stat-box small  { font-size: 10.5px; color: var(--en-muted); font-weight: 700; }
+.en-mrm-stat-box small { font-size: 10.5px; color: var(--en-muted); font-weight: 700; }
 .en-mrm-stat-box strong { font-size: 18px; font-weight: 900; color: var(--en-text); }
 
-/* --- 🧩 2列タイル & 🍊 1列フル幅 --- */
+/* 2列タイル & 1列フル幅 */
 .en-mrm-tile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-.en-mrm-tile { background: var(--en-surface); border: 1.5px solid var(--en-border); border-radius: 17px; padding: 13px 12px; text-align: left; color: var(--en-text); display: flex; flex-direction: column; justify-content: space-between; gap: 8px; min-height: 104px; cursor: pointer; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04); transition: transform 0.14s ease, border-color 0.14s ease; }
-.en-mrm-tile:active { transform: scale(0.97); }
-.en-mrm-tile:hover  { border-color: var(--en-accent); }
-.en-mrm-tile-top   { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-.en-mrm-tile-ico   { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; font-size: 18px; background: var(--en-surface-2); }
+.en-mrm-tile { background: var(--en-surface); border: 1.5px solid var(--en-border); border-radius: 17px; padding: 13px 12px; text-align: left; color: var(--en-text); display: flex; flex-direction: column; justify-content: space-between; gap: 8px; min-height: 104px; cursor: pointer; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04); }
+.en-mrm-tile-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.en-mrm-tile-ico { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; font-size: 18px; background: var(--en-surface-2); }
 .en-mrm-tile-badge { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; background: var(--en-accent-soft); color: var(--en-accent); }
 .en-mrm-tile-title { font-size: 14px; font-weight: 900; line-height: 1.25; }
-.en-mrm-tile-sub   { font-size: 11px; color: var(--en-muted); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.en-mrm-tile-sub { font-size: 11px; color: var(--en-muted); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-.en-mrm-complete-card { width: 100%; border-radius: 18px; padding: 14px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; cursor: pointer; transition: transform 0.16s ease, box-shadow 0.2s ease; }
-.en-mrm-complete-card:active { transform: scale(0.98); }
+.en-mrm-complete-card { width: 100%; border-radius: 18px; padding: 14px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; cursor: pointer; }
 .en-mrm-complete-card.locked { background: var(--en-surface-2); border: 1.5px dashed var(--en-border); color: var(--en-muted); }
 .en-mrm-complete-card.locked strong { color: var(--en-text); font-size: 13.5px; }
 .en-mrm-complete-card.unlocked { background: linear-gradient(135deg, #f97316 0%, #fb923c 55%, #f59e0b 100%); border: none; color: #ffffff; box-shadow: 0 10px 26px rgba(249, 115, 22, 0.36); }
@@ -281,40 +185,37 @@ html:not(.en-pc-mode).en-kbd-open .en-sheet-panel {
 .en-mrm-complete-card.locked .en-mrm-complete-ico { background: var(--en-surface); border: 1px solid var(--en-border); }
 .en-mrm-complete-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .en-mrm-complete-txt strong { font-size: 14.5px; font-weight: 900; }
-.en-mrm-complete-txt small  { font-size: 11px; line-height: 1.35; }
+.en-mrm-complete-txt small { font-size: 11px; line-height: 1.35; }
 .en-mrm-complete-pill { padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 900; flex-shrink: 0; background: rgba(255, 255, 255, 0.95); color: #ea580c; }
 .en-mrm-complete-card.locked .en-mrm-complete-pill { background: var(--en-surface); color: var(--en-muted); border: 1px solid var(--en-border); }
 
-/* --- 🗺️ 進行：「いまここカード」フォーカス型ロードマップ --- */
+/* 進行：「いまここカード」フォーカス型ロードマップ */
 .en-focus-rm { background: var(--en-surface); border: 1.5px solid var(--en-border); border-radius: 18px; padding: 13px 13px 14px; display: flex; flex-direction: column; gap: 11px; }
 .en-rm-rail { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 0; }
 .en-rm-rail::before { content: ""; position: absolute; left: 18px; right: 18px; top: 17px; height: 3px; border-radius: 99px; background: var(--en-border); z-index: 0; }
 .en-rm-rail-fill { position: absolute; left: 18px; top: 17px; height: 3px; border-radius: 99px; background: var(--en-accent); z-index: 1; transition: width 0.26s ease; }
 .en-rm-node { position: relative; z-index: 2; border: none; background: transparent; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
-.en-rm-dot { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; background: var(--en-surface-2); border: 2px solid var(--en-border); transition: transform 0.16s, border-color 0.16s, background 0.16s; }
+.en-rm-dot { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; background: var(--en-surface-2); border: 2px solid var(--en-border); }
 .en-rm-node.done .en-rm-dot { background: #10b981; border-color: #10b981; color: #fff; font-size: 12px; }
 .en-rm-node.current .en-rm-dot { background: var(--en-accent); border-color: var(--en-accent); color: #fff; transform: scale(1.14); box-shadow: 0 0 0 4px var(--en-accent-soft); }
 .en-rm-node-lbl { font-size: 9.5px; font-weight: 800; color: var(--en-muted); }
 .en-rm-node.current .en-rm-node-lbl { color: var(--en-accent); font-weight: 900; }
 .en-rm-focus-card { background: var(--en-surface-2); border: 1.5px solid var(--en-accent); border-radius: 15px; padding: 12px; display: flex; flex-direction: column; gap: 9px; }
 .en-rm-focus-title { font-size: 15px; font-weight: 900; line-height: 1.3; }
-.en-rm-focus-desc  { font-size: 12px; color: var(--en-muted); line-height: 1.45; }
+.en-rm-focus-desc { font-size: 12px; color: var(--en-muted); line-height: 1.45; }
 .en-rm-rec-boards { display: flex; flex-direction: column; gap: 6px; }
 .en-rm-rec-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 11px; border-radius: 11px; border: 1px solid var(--en-border); background: var(--en-surface); color: var(--en-text); font-size: 12px; font-weight: 800; cursor: pointer; }
-.en-rm-rec-btn:hover { border-color: var(--en-accent); background: var(--en-accent-soft); }
 .en-rm-rec-btn.orange { background: linear-gradient(135deg, #f97316, #f59e0b); color: #fff; border: none; }
 .en-rm-foot-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 2px; }
 .en-rm-nav-btn { padding: 7px 11px; border-radius: 10px; border: 1px solid var(--en-border); background: var(--en-surface); color: var(--en-text); font-size: 11.5px; font-weight: 800; cursor: pointer; }
 .en-rm-nav-btn.next { flex: 1; background: var(--en-accent); color: #fff; border-color: transparent; }
 .en-rm-nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-/* --- 🧰 ボード入口：カテゴリ別「2列カード一覧」 --- */
+/* ボード入口：カテゴリ別2列カード一覧 */
 .en-bcat-wrap { display: flex; flex-direction: column; gap: 14px; }
 .en-bcat-head { display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; font-weight: 900; color: var(--en-muted); margin-bottom: 6px; padding: 0 2px; }
 .en-bcat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
-.en-bcat-card { position: relative; background: var(--en-surface); border: 1.5px solid var(--en-border); border-radius: 15px; padding: 11px 11px 10px; text-align: left; color: var(--en-text); display: flex; flex-direction: column; justify-content: space-between; gap: 6px; min-height: 92px; cursor: pointer; box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04); transition: transform 0.13s, border-color 0.14s; }
-.en-bcat-card:active { transform: scale(0.97); }
-.en-bcat-card:hover  { border-color: var(--en-accent); }
+.en-bcat-card { position: relative; background: var(--en-surface); border: 1.5px solid var(--en-border); border-radius: 15px; padding: 11px 11px 10px; text-align: left; color: var(--en-text); display: flex; flex-direction: column; justify-content: space-between; gap: 6px; min-height: 92px; cursor: pointer; box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04); }
 .en-bcat-card.rec { border-color: rgba(249, 115, 22, 0.55); box-shadow: 0 4px 14px rgba(249, 115, 22, 0.12); }
 .en-bcat-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
 .en-bcat-ico { font-size: 20px; line-height: 1; }
@@ -322,7 +223,7 @@ html:not(.en-pc-mode).en-kbd-open .en-sheet-panel {
 .en-bcat-name { font-size: 12.5px; font-weight: 900; line-height: 1.25; }
 .en-bcat-desc { font-size: 10px; color: var(--en-muted); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-/* --- 💬 トーク：非公開バッジ（スクロール先頭固定で消さない）＋「＋」展開トレイ --- */
+/* トーク：非公開バッジ＋「＋」展開トレイ */
 .en-talk-private-bar { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 5px 10px; margin-bottom: 4px; border-radius: 10px; background: var(--en-surface-2); border: 1px dashed var(--en-border); font-size: 10.5px; font-weight: 700; color: var(--en-muted); flex-shrink: 0; }
 .en-talk-plus-btn { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--en-border); background: var(--en-surface-2); color: var(--en-text); font-size: 20px; font-weight: 700; line-height: 1; display: grid; place-items: center; flex-shrink: 0; cursor: pointer; transition: transform 0.2s ease, background 0.15s, border-color 0.15s, color 0.15s; }
 .en-talk-plus-btn.open { transform: rotate(45deg); background: var(--en-accent); border-color: var(--en-accent); color: #fff; }

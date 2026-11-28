@@ -352,9 +352,9 @@
         <span>🎉 巣立ちゲートの完成写真にセット<br><small class="en-meta">巣立ち条件①「完成写真」へそのまま反映</small></span><span>➔</span>
       </button>
       <button class="en-sheet-item" id="enShareToStory">
-        <span>📌 公開ストーリー（ボード）に画像付き記録<br><small class="en-meta">開発の歩み＆ファン公開画面にも残せます</small></span><span>➔</span>
+        <span>📌 ルーム内決定メモ（非公開）に画像付き記録<br><small class="en-meta">チーム内の決定記録として保存します（外部非公開）</small></span><span>➔</span>
       </button>
-      <button class="en-act-btn" style="justify-content:center;" id="enShareDownload">💾 PNG画像としてPC・スマホへ保存</button>
+      <button class="en-act-btn" style="justify-content:center;" id="enShareDownload">💾 JPG画像としてPC・スマホへ保存</button>
     `);
 
     const getMemo = () => document.getElementById('enWbShareMemo')?.value.trim() || '🎨 ホワイトボードを共有しました！';
@@ -389,7 +389,7 @@
       d.selectedTool = 'story';
       closeEnSheet();
       renderEnRoomModal();
-      enToast('📌 公開ストーリーに画像付きで記録しました！');
+      enToast('📌 ルーム内決定メモ（非公開）に画像付きで記録しました！');
     };
 
     document.getElementById('enShareDownload').onclick = () => {
