@@ -1,8 +1,11 @@
 /* =========================================================
-   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.js v6）
-   ・一覧に戻れないバグ修正（closeMobileRoomModal統一＋カーテン監視の確実化）
-   ・トーク入力中は上部ヘッダー＆下タブを自動収納し会話表示を最大化
-   ・トーク余白タップでキーボードを閉じてヘッダー＆下タブ即復帰
+   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.js v7）
+   ・LINE式トーク入力物理：
+     - 下に落ちて上がる二度動きを撲滅（visualViewport実縮小と同時フレームで切替）
+     - 最新コメント表示中(atBottom) → 入力ボックスと一緒に上に追従
+     - 過去ログをスクロール中 → トーク表示位置を完全固定したまま入力
+   ・通常入力ボックス(ボード/詳細/シート/一般画面)：
+     - キーボード展開後に隠れた場合だけ見やすい位置へ1回だけ配置（どっか行く防止）
    ========================================================= */
 
 (function () {
@@ -64,6 +67,18 @@
     _staySlide: 1
   };
 
+  // ★LINE式トーク＆通常入力の安定化ステート
+  const vpState = {
+    baseHeight: window.innerHeight || 800,
+    kbdActive: false,
+    isSyncing: false,
+    savedPageScrollY: 0,
+    bodyLocked: false,
+    talkAtBottom: true,
+    talkSavedScrollTop: 0,
+    settleTimer: null
+  };
+
   function isMobileRoomMode() {
     return !document.documentElement.classList.contains('en-pc-mode');
   }
@@ -91,9 +106,36 @@
     if (typeof saveRoomProStore === 'function') saveRoomProStore();
   }
 
+  function isTextInputEl(el) {
+    if (!el) return false;
+    if (el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
+    if (el.tagName === 'INPUT') {
+      return !/checkbox|radio|range|file|button|submit|reset|color/i.test(el.type || 'text');
+    }
+    return false;
+  }
+
   // =========================================================
-  // 🛡️ 遮光カーテン管理＆確実なルーム終了（一覧へ100%戻る）
+  // 🛡️ 遮光カーテン ＆ 裏ページ固定（元のスクロール位置を完全復元）
   // =========================================================
+  function lockBodyScroll() {
+    if (vpState.bodyLocked) return;
+    vpState.savedPageScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    vpState.bodyLocked = true;
+    document.documentElement.classList.add('en-mrm-locked');
+    document.body.classList.add('en-mrm-locked');
+    document.body.style.top = `-${vpState.savedPageScrollY}px`;
+  }
+
+  function unlockBodyScroll() {
+    if (!vpState.bodyLocked) return;
+    vpState.bodyLocked = false;
+    document.documentElement.classList.remove('en-mrm-locked', 'en-kbd-open');
+    document.body.classList.remove('en-mrm-locked');
+    document.body.style.top = '';
+    window.scrollTo(0, vpState.savedPageScrollY);
+  }
+
   function ensureModalObserver(modal) {
     if (!modal || modal._enCurtainObserved) return;
     modal._enCurtainObserved = true;
@@ -122,11 +164,12 @@
       curtain.classList.toggle('active', isOpenMobile);
     }
 
-    document.documentElement.classList.toggle('en-mrm-locked', isOpenMobile);
-    document.body.classList.toggle('en-mrm-locked', isOpenMobile);
-
-    if (!isOpenMobile) {
-      document.documentElement.classList.remove('en-kbd-open');
+    if (isOpenMobile) {
+      lockBodyScroll();
+      syncViewportNow();
+    } else {
+      unlockBodyScroll();
+      vpState.kbdActive = false;
       if (modal) {
         modal.classList.remove('en-mrm-active', 'en-mrm-board-detail', 'en-mrm-talk');
       }
@@ -135,8 +178,8 @@
 
   function closeMobileRoomModal() {
     document.activeElement?.blur();
-    setKeyboardOpen(false);
     uiState.talkPlusOpen = false;
+    vpState.kbdActive = false;
     const modal = document.getElementById('en-room-modal');
     if (modal) {
       modal.classList.remove('open', 'en-mrm-active', 'en-mrm-board-detail', 'en-mrm-talk');
@@ -145,7 +188,6 @@
       enViewState.roomViewAsFan = false;
     }
     syncModalCurtain(true);
-    // もしEN•ラボ以外のタブから開いていた場合も確実に一覧へ戻す
     const enSec = document.getElementById('view-en');
     if (enSec && !enSec.classList.contains('active') && typeof window.enGoTab === 'function') {
       window.enGoTab('en');
@@ -153,12 +195,47 @@
   }
 
   // =========================================================
-  // ⌨️ スマホ入力モード検知 ＆ iOS visualViewport 同期
+  // ⌨️ LINE式トーク固定 ＆ 通常入力ボックス追従エンジン
   // =========================================================
-  let kbdBlurTimer = null;
-  let vpRaf = 0;
+  function captureTalkScrollState() {
+    const modal = document.getElementById('en-room-modal');
+    const body = document.getElementById('enRoomBody');
+    if (!modal || !body || !modal.classList.contains('en-mrm-talk')) return;
+    const distFromBottom = body.scrollHeight - body.scrollTop - body.clientHeight;
+    vpState.talkAtBottom = distFromBottom <= 36;
+    vpState.talkSavedScrollTop = body.scrollTop;
+  }
 
-  function syncViewportVars() {
+  // 通常ボックスがキーボード裏に隠れないよう、必要なときだけ見やすい位置へ1回調整
+  function keepNormalInputInView(inputEl) {
+    if (!inputEl || !isTextInputEl(inputEl)) return;
+    if (inputEl.id === 'enRoomInput') return; // トーク入力欄は下部固定なので対象外
+
+    const vv = window.visualViewport;
+    const visTop = (vv ? vv.offsetTop : 0) + 56;
+    const visBottom = (vv ? vv.offsetTop + vv.height : window.innerHeight) - 24;
+    const rect = inputEl.getBoundingClientRect();
+
+    // すでに気持ちよく見えているなら画面を1ミリも動かさない！
+    if (rect.top >= visTop && rect.bottom <= visBottom) return;
+
+    // 入力欄が入っているスクロール可能コンテナを探索
+    const container =
+      inputEl.closest('#enRoomBody') ||
+      inputEl.closest('.en-sheet-box, .en-sheet-card, .en-sheet-panel');
+
+    const targetY = visTop + (visBottom - visTop) * 0.42;
+    const delta = rect.top - targetY;
+
+    if (container) {
+      container.scrollTop += delta;
+    } else if (!vpState.bodyLocked) {
+      window.scrollBy({ top: delta, behavior: 'auto' });
+    }
+  }
+
+  let vpRaf = 0;
+  function syncViewportNow() {
     if (vpRaf) cancelAnimationFrame(vpRaf);
     vpRaf = requestAnimationFrame(() => {
       vpRaf = 0;
@@ -167,48 +244,72 @@
         root.classList.remove('en-kbd-open');
         root.style.removeProperty('--en-vvh');
         root.style.removeProperty('--en-vvt');
+        root.style.removeProperty('--en-kbd-h');
         return;
       }
+
       const vv = window.visualViewport;
-      if (vv) {
-        root.style.setProperty('--en-vvh', Math.round(vv.height) + 'px');
-        root.style.setProperty('--en-vvt', Math.round(vv.offsetTop) + 'px');
-      } else {
-        root.style.setProperty('--en-vvh', window.innerHeight + 'px');
-        root.style.setProperty('--en-vvt', '0px');
+      const curH = Math.round(vv ? vv.height : window.innerHeight);
+      const curTop = Math.round(vv ? vv.offsetTop : 0);
+
+      // 基準画面高（キーボード閉じ状態の最大高さ）を保持
+      if (curH > vpState.baseHeight || !vpState.kbdActive) {
+        vpState.baseHeight = Math.max(vpState.baseHeight, curH);
       }
-      if (root.classList.contains('en-kbd-open')) {
-        const body = document.getElementById('enRoomBody');
-        const modal = document.getElementById('en-room-modal');
-        if (body && modal && modal.classList.contains('en-mrm-talk')) {
-          body.scrollTop = body.scrollHeight;
+
+      const ae = document.activeElement;
+      const hasInputFocus = isTextInputEl(ae);
+      const kbdH = Math.max(0, vpState.baseHeight - curH);
+
+      // ★重要：実際にキーボードがせり上がって画面が100px以上縮んだ瞬間だけ en-kbd-open をON！
+      // （focusin直後の「下に落ちてから上がる」二度動きを完全に防止）
+      const isKbdNowOpen = hasInputFocus && kbdH > 100;
+      const prevKbdOpen = vpState.kbdActive;
+      vpState.kbdActive = isKbdNowOpen;
+
+      vpState.isSyncing = true;
+
+      // ルーム展開中はiOSのルートページ勝手スクロールを0に抑え込む
+      if (vpState.bodyLocked && curTop > 0 && window.scrollY > 0) {
+        window.scrollTo(0, 0);
+      }
+
+      root.style.setProperty('--en-vvh', curH + 'px');
+      root.style.setProperty('--en-vvt', curTop + 'px');
+      root.style.setProperty('--en-kbd-h', (isKbdNowOpen ? kbdH : 0) + 'px');
+      root.classList.toggle('en-kbd-open', isKbdNowOpen);
+
+      // ★トーク画面のスクロール制御（LINE方式）
+      const modal = document.getElementById('en-room-modal');
+      const body = document.getElementById('enRoomBody');
+      if (modal && body && modal.classList.contains('en-mrm-talk')) {
+        if (vpState.talkAtBottom) {
+          // 最新コメント表示中 → 入力ボックスと一緒に最新コメントがそのまま上へ上がる
+          body.scrollTop = body.scrollHeight - body.clientHeight;
+        } else {
+          // 過去ログをスクロール中 → トーク位置は一切動かさない！
+          body.scrollTop = vpState.talkSavedScrollTop;
         }
+      } else if (isKbdNowOpen && hasInputFocus) {
+        // 通常入力ボックス（ボード・詳細・シート・一般画面）
+        keepNormalInputInView(ae);
+      }
+
+      // キーボードが完全に落ち着いたタイミングで通常入力欄を念押し1回チェック
+      clearTimeout(vpState.settleTimer);
+      if (isKbdNowOpen && hasInputFocus && ae.id !== 'enRoomInput') {
+        vpState.settleTimer = setTimeout(() => {
+          if (vpState.kbdActive && document.activeElement === ae) {
+            keepNormalInputInView(ae);
+          }
+        }, 160);
+      }
+
+      setTimeout(() => { vpState.isSyncing = false; }, 120);
+      if (prevKbdOpen && !isKbdNowOpen && vpState.bodyLocked) {
+        window.scrollTo(0, 0);
       }
     });
-  }
-
-  function setKeyboardOpen(isOpen) {
-    clearTimeout(kbdBlurTimer);
-    if (!isMobileRoomMode()) {
-      document.documentElement.classList.remove('en-kbd-open');
-      return;
-    }
-    if (isOpen) {
-      syncModalCurtain(false);
-      document.documentElement.classList.add('en-kbd-open');
-      syncViewportVars();
-      setTimeout(syncViewportVars, 180);
-      setTimeout(syncViewportVars, 360);
-    } else {
-      kbdBlurTimer = setTimeout(() => {
-        const ae = document.activeElement;
-        const stillInRoomInput = ae && ae.closest('#en-room-modal') && /INPUT|TEXTAREA/.test(ae.tagName);
-        if (!stillInRoomInput) {
-          document.documentElement.classList.remove('en-kbd-open');
-          syncViewportVars();
-        }
-      }, 100);
-    }
   }
 
   function installKeyboardObservers() {
@@ -218,30 +319,47 @@
     if (window._enKbdObsInstalled) return;
     window._enKbdObsInstalled = true;
 
+    // 入力欄タップ直前（キーボードが動く前）にトークの現在位置を確実に記録
+    document.addEventListener('pointerdown', e => {
+      if (e.target && e.target.id === 'enRoomInput') {
+        captureTalkScrollState();
+      }
+    }, true);
+
     document.addEventListener('focusin', e => {
       const t = e.target;
-      if (!t || !isMobileRoomMode()) return;
-      if (t.closest('#en-room-modal') && /INPUT|TEXTAREA/.test(t.tagName) && !/checkbox|radio|range|file|button/i.test(t.type || '')) {
+      if (!isMobileRoomMode() || !isTextInputEl(t)) return;
+
+      if (t.id === 'enRoomInput') {
+        captureTalkScrollState();
+        // ＋トレイが開いていたら閉じる
         if (uiState.talkPlusOpen) {
           uiState.talkPlusOpen = false;
           document.querySelector('#en-room-modal .en-talk-plus-btn')?.classList.remove('open');
           document.querySelector('#en-room-modal .en-talk-plus-tray')?.classList.remove('open');
         }
-        setKeyboardOpen(true);
       }
+
+      // すでにキーボードが開いた状態で別の通常ボックスへ移動したときも即追従
+      if (vpState.kbdActive && t.id !== 'enRoomInput') {
+        requestAnimationFrame(() => keepNormalInputInView(t));
+      }
+      syncViewportNow();
     });
 
     document.addEventListener('focusout', e => {
-      const t = e.target;
-      if (t && t.closest('#en-room-modal') && /INPUT|TEXTAREA/.test(t.tagName)) {
-        setKeyboardOpen(false);
-      }
+      if (!isMobileRoomMode() || !isTextInputEl(e.target)) return;
+      setTimeout(syncViewportNow, 120);
     });
 
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', syncViewportVars);
-      window.visualViewport.addEventListener('scroll', syncViewportVars);
+      window.visualViewport.addEventListener('resize', syncViewportNow);
+      window.visualViewport.addEventListener('scroll', syncViewportNow);
     }
+    window.addEventListener('orientationchange', () => {
+      vpState.baseHeight = 0;
+      setTimeout(syncViewportNow, 300);
+    });
   }
 
   function ensureMobileLabData(d) {
@@ -1031,7 +1149,7 @@
   }
 
   // =========================================================
-  // 💬 トーク機能強化：完全非公開 ＋ 「＋」展開トレイ ＋ 余白タップでキーボード閉じ
+  // 💬 トーク機能強化：完全非公開 ＋ LINE式スクロール監視 ＋「＋」トレイ
   // =========================================================
   function enhanceMobileTalk(modal, lab, d) {
     const body = modal.querySelector('#enRoomBody');
@@ -1044,11 +1162,24 @@
       const lastMeta = body.querySelector('.en-meta:last-child');
       if (lastMeta) lastMeta.textContent = '💡 発言タップ → ルーム内メモ・やること・なぜなぜへ（完全非公開）';
 
+      // トーク表示直後は最新コメントが見える最下部へセット
+      requestAnimationFrame(() => {
+        body.scrollTop = body.scrollHeight;
+        vpState.talkAtBottom = true;
+        vpState.talkSavedScrollTop = body.scrollTop;
+      });
+
+      // ユーザーの手動スクロールを常に記録（リサイズ中の自動調整とは分離）
+      body.addEventListener('scroll', () => {
+        if (vpState.isSyncing) return;
+        captureTalkScrollState();
+      }, { passive: true });
+
+      // 余白タップでキーボードをスッと閉じる
       body.addEventListener('click', e => {
         if (!e.target.closest('.en-chat-bubble, button, a, input, textarea')) {
-          if (document.documentElement.classList.contains('en-kbd-open')) {
+          if (vpState.kbdActive) {
             document.activeElement?.blur();
-            setKeyboardOpen(false);
           }
         }
       });
@@ -1083,6 +1214,12 @@
         roomInp.setAttribute('enterkeyhint', 'send');
       }
 
+      // 送信ボタンを押したら最新メッセージが見えるよう最下部追従モードに戻す
+      const sendBtn = composer.querySelector('button[type="submit"], #enRoomSendBtn, .en-act-btn.primary');
+      if (sendBtn) {
+        sendBtn.addEventListener('click', () => { vpState.talkAtBottom = true; }, true);
+      }
+
       const tray = document.createElement('div');
       tray.className = `en-talk-plus-tray ${uiState.talkPlusOpen ? 'open' : ''}`;
       tray.innerHTML = `
@@ -1100,7 +1237,6 @@
       plusBtn.textContent = '+';
       plusBtn.onclick = () => {
         document.activeElement?.blur();
-        setKeyboardOpen(false);
         uiState.talkPlusOpen = !uiState.talkPlusOpen;
         plusBtn.classList.toggle('open', uiState.talkPlusOpen);
         tray.classList.toggle('open', uiState.talkPlusOpen);
@@ -1112,9 +1248,9 @@
       tray.querySelectorAll('[data-traymsg]').forEach(btn => {
         btn.onclick = () => {
           uiState.talkPlusOpen = false;
+          vpState.talkAtBottom = true;
           enViewState.roomMessages.push({ sender: 'あなた', me: true, text: btn.getAttribute('data-traymsg') });
           window.renderEnRoomModal();
-          const b = document.getElementById('enRoomBody'); if (b) b.scrollTop = b.scrollHeight;
         };
       });
     }
@@ -1142,7 +1278,7 @@
   function bindMobileDock(modal) {
     modal.querySelectorAll('[data-mrmdock]').forEach(btn => {
       btn.onclick = () => {
-        setKeyboardOpen(false);
+        document.activeElement?.blur();
         const next = btn.getAttribute('data-mrmdock');
         if (next === 'board') uiState.boardViewMode = 'list';
         if (next === 'hub') uiState._staySlide = 1;
@@ -1161,7 +1297,7 @@
         <strong style="font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:center;">${esc(subTitle || lab.title)}</strong>
         <button type="button" class="en-act-btn" id="enMrmCloseAll" title="ラボ一覧へ戻る">✕</button>
       `;
-      document.getElementById('enMrmBackBtn').onclick = backFn || (() => { setKeyboardOpen(false); uiState._staySlide = 1; enViewState.roomTab = 'hub'; window.renderEnRoomModal(); });
+      document.getElementById('enMrmBackBtn').onclick = backFn || (() => { document.activeElement?.blur(); uiState._staySlide = 1; enViewState.roomTab = 'hub'; window.renderEnRoomModal(); });
       document.getElementById('enMrmCloseAll').onclick = closeMobileRoomModal;
     }
     const oldNav = modal.querySelector('.en-room-nav');
@@ -1180,7 +1316,6 @@
     if (typeof window.openEnRoomModal === 'function' && !window.openEnRoomModal._enMrmWrapped) {
       const origOpen = window.openEnRoomModal;
       const wrappedOpen = function (labId, initialTab, asFan) {
-        setKeyboardOpen(false);
         uiState.boardViewMode = 'list';
         uiState.talkPlusOpen = false;
         uiState._staySlide = 1;
@@ -1263,7 +1398,7 @@
             if (btn.textContent.includes('ストーリーへ')) btn.textContent = '📌 決定メモへ';
           });
           applyMobileChrome(modal, lab, d, 'board', titleStr, '← ボード一覧', () => {
-            setKeyboardOpen(false);
+            document.activeElement?.blur();
             uiState.boardViewMode = 'list';
             window.renderEnRoomModal();
           });

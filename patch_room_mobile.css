@@ -1,14 +1,14 @@
 /* =========================================================
-   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.css v5）
-   ・遮光カーテン自動消滅ガード追加（一覧に戻れないバグを完全解消）
-   ・トーク入力中(en-kbd-open)は上部ヘッダー＆下タブを自動収納し会話エリア最大化
-   ・カルーセル（左:やること / 真ん中:カレンダー / 右:ラボ現在地）
+   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.css v6）
+   ・トーク入力前後のヘッダー／吹き出し／入力バー寸法を完全固定（ガタつきゼロ）
+   ・キーボード実展開(en-kbd-open)と同時フレームで高さ追従（下→上の二度動き撲滅）
+   ・通常入力欄(ボード/設定/シート)のキーボード回避＆安全余白確保
    ========================================================= */
 
 html.en-pc-mode .en-mrm-only,
 html.en-pc-mode #en-mrm-curtain { display: none !important; }
 
-/* ★チラつき防止カーテン（モーダルが閉じたらCSS側でも強制消滅させる2重安全設計） */
+/* 遮光カーテン（モーダル閉鎖時はCSS側でも強制消滅） */
 #en-mrm-curtain {
   position: fixed;
   inset: -200px 0;
@@ -29,32 +29,64 @@ body:not(:has(#en-room-modal.open)) #en-mrm-curtain {
   visibility: hidden !important;
 }
 
-html.en-mrm-locked,
+/* ルーム展開中：裏ページのiOS勝手スクロールを完全ロック */
+html.en-mrm-locked {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
 body.en-mrm-locked {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
   overflow: hidden !important;
   overscroll-behavior: none !important;
 }
 
+/* スマホ版ルームモーダル本体 */
 html:not(.en-pc-mode) #en-room-modal.en-mrm-active {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: var(--en-vvt, 0px) !important;
+  height: var(--en-vvh, 100dvh) !important;
+  bottom: auto !important;
   background: var(--en-bg, #f7f4ec) !important;
   overscroll-behavior: contain;
+  transition: none !important;
 }
 html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-ai-copilot {
   display: none !important;
 }
+
+/* ★ヘッダー高さは入力前後で一切変えない（44px固定で上下ガタつきゼロ） */
 html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-room-head {
-  height: 48px;
-  padding: 0 12px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  padding: 0 10px !important;
   gap: 8px;
   background: var(--en-surface);
   border-bottom: 1px solid var(--en-border);
+  flex-shrink: 0;
+  transition: none !important;
 }
+html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-room-head .en-act-btn {
+  padding: 5px 10px !important;
+  font-size: 12px !important;
+}
+
 html:not(.en-pc-mode) #en-room-modal.en-mrm-active #enRoomBody {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
   padding: 12px 12px 24px !important;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-room-nav {
   grid-template-columns: repeat(5, 1fr);
   padding: 5px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+  flex-shrink: 0;
 }
 html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-room-tab {
   font-size: 10px;
@@ -67,69 +99,68 @@ html:not(.en-pc-mode) #en-room-modal.en-mrm-board-detail .en-board-topbar {
   display: none !important;
 }
 
-/* トーク画面：常駐チップバーを隠して「＋」展開トレイへ一本化＆吹き出しをスッキリ配置 */
+/* =========================================================
+   💬 トーク画面：入力前後でサイズ変化ゼロ（文字リフロー＆ジャンプ完全防止）
+   ========================================================= */
 html:not(.en-pc-mode) #en-room-modal.en-mrm-talk .en-quick-chips {
   display: none !important;
 }
 html:not(.en-pc-mode) #en-room-modal.en-mrm-talk #enRoomBody {
   padding: 8px 10px 10px !important;
   gap: 7px !important;
+  overflow-anchor: none;
 }
 html:not(.en-pc-mode) #en-room-modal.en-mrm-talk .en-chat-bubble {
   padding: 8px 11px !important;
   font-size: 13px !important;
-  line-height: 1.45 !important;
+  line-height: 1.42 !important;
   border-radius: 14px !important;
+}
+html:not(.en-pc-mode) #en-room-modal.en-mrm-talk .en-room-composer {
+  padding: 6px 10px !important;
+  gap: 7px !important;
+  flex-shrink: 0;
+}
+html:not(.en-pc-mode) #en-room-modal.en-mrm-talk .en-room-input {
+  padding: 7px 12px !important;
+  min-height: 38px !important;
 }
 
 /* =========================================================
-   ⌨️ スマホ文字入力モード：チラつき防止＆トーク表示エリア最大化
+   ⌨️ キーボード実展開時（visualViewport縮小を検知した瞬間だけ適用）
    ========================================================= */
-html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active {
+/* 下の5タブだけキーボード出現と同時に消す（下に落ちずに上へスッと追従） */
+html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-nav {
+  display: none !important;
+}
+
+/* ボード・設定・進行の通常入力時：最下部の入力欄もキーボード上に逃げられる余白を確保 */
+html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active:not(.en-mrm-talk) #enRoomBody {
+  padding-bottom: 160px !important;
+}
+
+/* 全画面の通常入力欄：フォーカス時に上ヘッダー＆キーボードから安全距離を保つ */
+html:not(.en-pc-mode) input,
+html:not(.en-pc-mode) textarea,
+html:not(.en-pc-mode) select {
+  scroll-margin-top: 76px;
+  scroll-margin-bottom: 140px;
+}
+
+/* ボトムシート（予定追加・多数決作成など）：キーボードの真上にピタッと持ち上げる */
+html:not(.en-pc-mode).en-kbd-open #en-sheet-modal,
+html:not(.en-pc-mode).en-kbd-open .en-sheet-backdrop,
+html:not(.en-pc-mode).en-kbd-open .en-sheet-overlay {
   top: var(--en-vvt, 0px) !important;
   height: var(--en-vvh, 100dvh) !important;
   bottom: auto !important;
-  transition: none !important;
 }
-
-html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-nav,
-html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-talk-private-bar {
-  display: none !important;
-}
-
-html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-talk .en-room-head {
-  display: none !important;
-}
-html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-talk #enRoomBody {
-  padding: 6px 10px 6px !important;
-  gap: 6px !important;
-}
-html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-talk .en-chat-bubble {
-  padding: 7px 10px !important;
-  font-size: 12.5px !important;
-  line-height: 1.4 !important;
-}
-
-html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active:not(.en-mrm-talk) .en-room-head {
-  height: 38px !important;
-  padding: 0 10px !important;
-}
-html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active:not(.en-mrm-talk) .en-room-head .en-act-btn {
-  padding: 3px 8px !important;
-  font-size: 11px !important;
-}
-
-html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-composer {
-  padding: 5px 8px !important;
-  gap: 6px !important;
-}
-html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-input {
-  padding: 6px 12px !important;
-  min-height: 36px !important;
-}
-html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-talk-plus-btn {
-  width: 34px;
-  height: 34px;
+html:not(.en-pc-mode).en-kbd-open .en-sheet-box,
+html:not(.en-pc-mode).en-kbd-open .en-sheet-card,
+html:not(.en-pc-mode).en-kbd-open .en-sheet-panel {
+  max-height: calc(var(--en-vvh, 100dvh) - 24px) !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* =========================================================
@@ -291,11 +322,11 @@ html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-talk-plus-btn
 .en-bcat-name { font-size: 12.5px; font-weight: 900; line-height: 1.25; }
 .en-bcat-desc { font-size: 10px; color: var(--en-muted); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-/* --- 💬 トーク：非公開バッジ ＋ 「＋」展開トレイ --- */
-.en-talk-private-bar { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 6px 10px; margin-bottom: 6px; border-radius: 10px; background: var(--en-surface-2); border: 1px dashed var(--en-border); font-size: 11px; font-weight: 700; color: var(--en-muted); }
-.en-talk-plus-btn { width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--en-border); background: var(--en-surface-2); color: var(--en-text); font-size: 20px; font-weight: 700; line-height: 1; display: grid; place-items: center; flex-shrink: 0; cursor: pointer; transition: transform 0.2s ease, background 0.15s, border-color 0.15s, color 0.15s; }
+/* --- 💬 トーク：非公開バッジ（スクロール先頭固定で消さない）＋「＋」展開トレイ --- */
+.en-talk-private-bar { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 5px 10px; margin-bottom: 4px; border-radius: 10px; background: var(--en-surface-2); border: 1px dashed var(--en-border); font-size: 10.5px; font-weight: 700; color: var(--en-muted); flex-shrink: 0; }
+.en-talk-plus-btn { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--en-border); background: var(--en-surface-2); color: var(--en-text); font-size: 20px; font-weight: 700; line-height: 1; display: grid; place-items: center; flex-shrink: 0; cursor: pointer; transition: transform 0.2s ease, background 0.15s, border-color 0.15s, color 0.15s; }
 .en-talk-plus-btn.open { transform: rotate(45deg); background: var(--en-accent); border-color: var(--en-accent); color: #fff; }
-.en-talk-plus-tray { display: none; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px 12px; background: var(--en-surface); border-top: 1px solid var(--en-border); }
+.en-talk-plus-tray { display: none; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px 12px; background: var(--en-surface); border-top: 1px solid var(--en-border); flex-shrink: 0; }
 .en-talk-plus-tray.open { display: grid; }
 .en-talk-tray-btn { display: flex; align-items: center; gap: 8px; padding: 10px 11px; border-radius: 12px; border: 1px solid var(--en-border); background: var(--en-surface-2); color: var(--en-text); font-size: 12px; font-weight: 800; text-align: left; cursor: pointer; }
 .en-talk-tray-btn.ai { border-color: rgba(139, 92, 246, 0.45); background: rgba(139, 92, 246, 0.1); }
