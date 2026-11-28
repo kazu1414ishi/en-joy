@@ -1,21 +1,192 @@
 /* =========================================================
-   EN•joy 日本地図 × 半径ゲージ × ポケふた風「職種メダルマップ」
-   （patch_japan_map.css v2：国土地理院タイル＋ダークモード自動暗色化）
+   EN•joy 日本地図 × 統合検索＆絞り込み × ポケふた風「職種メダルマップ」
+   （patch_japan_map.css v4）
    ========================================================= */
 
+/* --- 🔍 統合検索＆絞り込み1行バー（リスト・マップ・スワイプ共通） --- */
+.en-pf-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.en-pf-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.en-pf-search-in {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 32px 9px 12px;
+  border-radius: 14px;
+  border: 1.5px solid var(--en-border);
+  background: var(--en-surface);
+  color: var(--en-text);
+  font-size: 13px;
+  outline: none;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
+}
+.en-pf-search-in:focus {
+  border-color: var(--en-accent);
+}
+.en-pf-clear-q {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: var(--en-surface-2);
+  color: var(--en-muted);
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+  display: none;
+  place-items: center;
+}
+.en-pf-clear-q.show { display: grid; }
+
+.en-pf-filter-btn {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  border: 1.5px solid var(--en-border);
+  background: var(--en-surface);
+  color: var(--en-text);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
+}
+.en-pf-filter-btn.has-active {
+  background: var(--en-accent);
+  border-color: var(--en-accent);
+  color: #ffffff;
+}
+.en-pf-filter-cnt {
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--en-accent);
+  font-size: 10px;
+  font-weight: 900;
+  display: inline-grid;
+  place-items: center;
+}
+
+/* 適用中の絞り込みピル（条件があるときだけ1行表示） */
+.en-pf-active-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+.en-pf-active-row:empty { display: none; }
+.en-pf-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3.5px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--en-accent);
+  background: var(--en-accent-soft);
+  color: var(--en-accent);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.en-pf-pill.reset {
+  border-color: var(--en-border);
+  background: var(--en-surface-2);
+  color: var(--en-muted);
+}
+
+/* 絞り込みボトムシート内の見出し・タググリッド */
+.en-pfs-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 11px;
+  border-radius: 14px;
+  background: var(--en-surface-2);
+  border: 1px solid var(--en-border);
+}
+.en-pfs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--en-text);
+}
+.en-pfs-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.en-pfs-mode-btn {
+  padding: 7px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--en-border);
+  background: var(--en-surface);
+  color: var(--en-muted);
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.en-pfs-mode-btn.active {
+  background: var(--en-accent);
+  border-color: var(--en-accent);
+  color: #ffffff;
+}
+.en-pfs-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.en-pfs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1.5px solid var(--en-border);
+  background: var(--en-surface);
+  color: var(--en-text);
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.en-pfs-chip.active {
+  background: var(--en-accent);
+  border-color: var(--en-accent);
+  color: #ffffff;
+}
+
+/* --- 📏 半径ゲージ --- */
 .en-radius-box {
   background: var(--en-surface);
   border: 1px solid var(--en-border);
   border-radius: 16px;
-  padding: 11px 13px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+  gap: 7px;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
 }
 .en-radius-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .en-radius-title { font-size: 12px; font-weight: 900; color: var(--en-text); display: inline-flex; align-items: center; gap: 5px; }
-.en-radius-val { font-size: 12px; font-weight: 900; padding: 2.5px 9px; border-radius: 999px; background: var(--en-accent); color: #ffffff; white-space: nowrap; }
+.en-radius-val { font-size: 11.5px; font-weight: 900; padding: 2.5px 9px; border-radius: 999px; background: var(--en-accent); color: #ffffff; white-space: nowrap; }
 .en-radius-slider-row { display: flex; align-items: center; gap: 8px; }
 .en-radius-slider { flex: 1; accent-color: var(--en-accent); height: 6px; cursor: pointer; }
 .en-radius-ticks { display: flex; justify-content: space-between; font-size: 9.5px; font-weight: 800; color: var(--en-muted); margin-top: -4px; }
@@ -23,9 +194,10 @@
 .en-radius-mini-btn { padding: 4px 9px; border-radius: 999px; border: 1px solid var(--en-border); background: var(--en-surface-2); color: var(--en-text); font-size: 10.5px; font-weight: 800; cursor: pointer; }
 .en-radius-mini-btn:hover { border-color: var(--en-accent); color: var(--en-accent); }
 
+/* --- 🪙 ポケふた風図鑑 ＆ 職種チップ --- */
 .en-futa-dex {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  padding: 9px 12px; border-radius: 14px;
+  padding: 8px 12px; border-radius: 14px;
   background: linear-gradient(135deg, rgba(224, 109, 31, 0.12), rgba(16, 185, 129, 0.12));
   border: 1px solid var(--en-border);
 }
@@ -39,12 +211,13 @@
 .en-futa-cat-strip::-webkit-scrollbar { display: none; }
 .en-futa-cat-chip {
   flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px;
-  padding: 5.5px 10px; border-radius: 999px; border: 1.5px solid var(--en-border);
+  padding: 5px 10px; border-radius: 999px; border: 1.5px solid var(--en-border);
   background: var(--en-surface); color: var(--en-text); font-size: 11px; font-weight: 800; cursor: pointer; transition: 0.14s;
 }
 .en-futa-cat-chip.active { background: var(--en-accent); border-color: var(--en-accent); color: #ffffff; }
 .en-futa-cat-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 
+/* --- 🗾 Leaflet 日本地図（国土地理院タイル） --- */
 .en-jpmap-wrap {
   position: relative; width: 100%; height: 370px; border-radius: 18px;
   overflow: hidden; border: 1.5px solid var(--en-border);
@@ -55,7 +228,6 @@ html[data-en-color="dark"] .en-jpmap-wrap,
 html[data-en-color="cool"] .en-jpmap-wrap { background: #0b1220; }
 #enJapanLeafletMap { width: 100%; height: 100%; z-index: 1; }
 
-/* ★ダーク／極クール時は地理院地図タイルだけ美しく暗色化（メダルや円はそのまま鮮明！） */
 html[data-en-color="dark"] #enJapanLeafletMap .leaflet-tile-pane,
 html[data-en-color="cool"] #enJapanLeafletMap .leaflet-tile-pane {
   filter: invert(100%) hue-rotate(180deg) brightness(90%) contrast(94%) saturate(85%);
@@ -76,6 +248,7 @@ html[data-en-color="cool"] .en-jpmap-fbtn { background: rgba(15, 23, 42, 0.9); c
   color: #ffffff; font-size: 9.5px; font-weight: 700; pointer-events: none;
 }
 
+/* --- 🪙 ポケふた風ご当地職種メダル --- */
 .en-futa-marker-wrap { background: transparent !important; border: none !important; }
 .en-futa-lid {
   position: relative; width: 46px; height: 46px; border-radius: 50%;
@@ -88,7 +261,7 @@ html[data-en-color="cool"] .en-jpmap-fbtn { background: rgba(15, 23, 42, 0.9); c
   content: ""; position: absolute; inset: 2px; border-radius: 50%;
   border: 1.5px dashed var(--lid-color, #e06d1f); opacity: 0.4; pointer-events: none;
 }
-.en-futa-lid svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
+.en-futa-lid > svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
 .en-futa-lid-city {
   position: absolute; top: 47px; left: 50%; transform: translateX(-50%);
   padding: 1.5px 6px; border-radius: 999px; background: rgba(15, 23, 42, 0.84);
@@ -100,6 +273,7 @@ html[data-en-color="cool"] .en-jpmap-fbtn { background: rgba(15, 23, 42, 0.9); c
   border-radius: 50%; background: #10b981; color: #ffffff; font-size: 10px; font-weight: 900;
   display: grid; place-items: center; border: 2px solid #ffffff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
+.en-futa-lid-check svg { width: 10px; height: 10px; stroke-width: 2.8; }
 .en-futa-lid.is-selected {
   transform: scale(1.22);
   box-shadow: inset 0 0 0 2.5px #ffffff, 0 0 0 5px rgba(249, 115, 22, 0.34), 0 10px 22px rgba(15, 23, 42, 0.42);
@@ -116,7 +290,7 @@ html[data-en-color="cool"] .en-jpmap-fbtn { background: rgba(15, 23, 42, 0.9); c
 
 .en-futa-detail-card { border-left: 4px solid var(--en-accent) !important; }
 .en-futa-dist-pill {
-  font-size: 10.5px; font-weight: 900; padding: 2.5px 8px; border-radius: 999px;
+  font-size: 10px; font-weight: 900; padding: 2px 7px; border-radius: 999px;
   background: rgba(37, 99, 235, 0.13); color: #2563eb; white-space: nowrap;
 }
 .en-map-hidden-note {
