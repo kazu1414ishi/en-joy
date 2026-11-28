@@ -1,187 +1,296 @@
 /* =========================================================
-   EN•joy 日本地図 × 統合検索＆絞り込み × ポケふた風「職種メダルマップ」
-   （patch_japan_map.css v4）
+   EN•joy 日本地図 × 統合検索＆絞り込み × 写真全面フォトボックス
+   （patch_japan_map.css v5）
+   ・[class*="card"]干渉を完全回避する .en-pbox 設計で2列ピシッと整列
+   ・リスト(2列)とマップ下(横スライド)で同一ビジュアルボックスを共有
+   ・地理院地図のトーン調整でスタイリッシュな配色へ強化
    ========================================================= */
 
-/* --- 🔍 統合検索＆絞り込み1行バー（リスト・マップ・スワイプ共通） --- */
-.en-pf-bar {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.en-pf-search-wrap {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-}
+/* --- 🔍 統合検索＆絞り込み1行バー --- */
+.en-pf-bar { display: flex; align-items: center; gap: 7px; }
+.en-pf-search-wrap { position: relative; flex: 1; min-width: 0; }
 .en-pf-search-in {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 9px 32px 9px 12px;
-  border-radius: 14px;
-  border: 1.5px solid var(--en-border);
-  background: var(--en-surface);
-  color: var(--en-text);
-  font-size: 13px;
-  outline: none;
-  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
+  width: 100%; box-sizing: border-box; padding: 9px 32px 9px 12px;
+  border-radius: 14px; border: 1.5px solid var(--en-border);
+  background: var(--en-surface); color: var(--en-text); font-size: 13px;
+  outline: none; box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
 }
-.en-pf-search-in:focus {
-  border-color: var(--en-accent);
-}
+.en-pf-search-in:focus { border-color: var(--en-accent); }
 .en-pf-clear-q {
-  position: absolute;
-  right: 7px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: none;
-  background: var(--en-surface-2);
-  color: var(--en-muted);
-  font-size: 11px;
-  font-weight: 900;
-  cursor: pointer;
-  display: none;
-  place-items: center;
+  position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
+  width: 22px; height: 22px; border-radius: 50%; border: none;
+  background: var(--en-surface-2); color: var(--en-muted); font-size: 11px; font-weight: 900;
+  cursor: pointer; display: none; place-items: center;
 }
 .en-pf-clear-q.show { display: grid; }
 
 .en-pf-filter-btn {
-  position: relative;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 9px 12px;
-  border-radius: 14px;
-  border: 1.5px solid var(--en-border);
-  background: var(--en-surface);
-  color: var(--en-text);
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-  white-space: nowrap;
-  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
+  position: relative; flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px;
+  padding: 9px 12px; border-radius: 14px; border: 1.5px solid var(--en-border);
+  background: var(--en-surface); color: var(--en-text); font-size: 12px; font-weight: 800;
+  cursor: pointer; white-space: nowrap; box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
 }
-.en-pf-filter-btn.has-active {
-  background: var(--en-accent);
-  border-color: var(--en-accent);
-  color: #ffffff;
-}
+.en-pf-filter-btn.has-active { background: var(--en-accent); border-color: var(--en-accent); color: #ffffff; }
 .en-pf-filter-cnt {
-  min-width: 17px;
-  height: 17px;
-  padding: 0 4px;
-  border-radius: 999px;
-  background: #ffffff;
-  color: var(--en-accent);
-  font-size: 10px;
-  font-weight: 900;
-  display: inline-grid;
-  place-items: center;
+  min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px;
+  background: #ffffff; color: var(--en-accent); font-size: 10px; font-weight: 900; display: inline-grid; place-items: center;
 }
 
-/* 適用中の絞り込みピル（条件があるときだけ1行表示） */
-.en-pf-active-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 5px;
-}
+.en-pf-active-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
 .en-pf-active-row:empty { display: none; }
 .en-pf-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3.5px 9px;
-  border-radius: 999px;
-  border: 1px solid var(--en-accent);
-  background: var(--en-accent-soft);
-  color: var(--en-accent);
-  font-size: 11px;
-  font-weight: 800;
-  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 4px; padding: 3.5px 9px; border-radius: 999px;
+  border: 1px solid var(--en-accent); background: var(--en-accent-soft); color: var(--en-accent);
+  font-size: 11px; font-weight: 800; cursor: pointer;
 }
-.en-pf-pill.reset {
-  border-color: var(--en-border);
-  background: var(--en-surface-2);
-  color: var(--en-muted);
+.en-pf-pill.reset { border-color: var(--en-border); background: var(--en-surface-2); color: var(--en-muted); }
+
+/* 絞り込みボトムシート */
+.en-pfs-sec { display: flex; flex-direction: column; gap: 7px; padding: 10px 11px; border-radius: 14px; background: var(--en-surface-2); border: 1px solid var(--en-border); }
+.en-pfs-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 900; color: var(--en-text); }
+.en-pfs-mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.en-pfs-mode-btn { padding: 7px 6px; border-radius: 10px; border: 1px solid var(--en-border); background: var(--en-surface); color: var(--en-muted); font-size: 11.5px; font-weight: 800; cursor: pointer; }
+.en-pfs-mode-btn.active { background: var(--en-accent); border-color: var(--en-accent); color: #ffffff; }
+.en-pfs-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.en-pfs-chip { display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; border-radius: 999px; border: 1.5px solid var(--en-border); background: var(--en-surface); color: var(--en-text); font-size: 11.5px; font-weight: 800; cursor: pointer; }
+.en-pfs-chip.active { background: var(--en-accent); border-color: var(--en-accent); color: #ffffff; }
+
+/* =========================================================
+   📸 写真全面ビジュアルフォトボックス（リスト2列 ＆ マップ下横スライド共通）
+   ========================================================= */
+/* リスト用：ピシッと揃う2列グリッド（PCでは3〜4列に自動展開） */
+.en-pbox-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+html.en-pc-mode .en-pbox-grid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
 }
 
-/* 絞り込みボトムシート内の見出し・タググリッド */
-.en-pfs-sec {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 10px 11px;
-  border-radius: 14px;
-  background: var(--en-surface-2);
-  border: 1px solid var(--en-border);
-}
-.en-pfs-head {
+/* マップ下用：横スライドカルーセル */
+.en-pbox-rail-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 12px;
+  padding: 2px 2px 0;
+}
+.en-pbox-rail-title {
+  font-size: 12.5px;
   font-weight: 900;
   color: var(--en-text);
 }
-.en-pfs-mode-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 5px;
-}
-.en-pfs-mode-btn {
-  padding: 7px 6px;
-  border-radius: 10px;
-  border: 1px solid var(--en-border);
-  background: var(--en-surface);
-  color: var(--en-muted);
-  font-size: 11.5px;
-  font-weight: 800;
-  cursor: pointer;
-}
-.en-pfs-mode-btn.active {
-  background: var(--en-accent);
-  border-color: var(--en-accent);
-  color: #ffffff;
-}
-.en-pfs-chips {
+.en-pbox-rail {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 2px 6px;
+  margin: 0 -2px;
+  scrollbar-width: none;
 }
-.en-pfs-chip {
+.en-pbox-rail::-webkit-scrollbar { display: none; }
+.en-pbox-rail .en-pbox {
+  flex: 0 0 68%;
+  max-width: 240px;
+  scroll-snap-align: start;
+  aspect-ratio: 4 / 5;
+}
+html.en-pc-mode .en-pbox-rail .en-pbox {
+  flex: 0 0 230px;
+}
+
+/* フォトボックス本体（patch_ui.cssの[class*="card"]に一切干渉されない） */
+.en-pbox {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  min-width: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #1e293b;
+  border: 2px solid transparent;
+  box-shadow: 0 8px 22px -6px rgba(15, 23, 42, 0.24);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.16s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.en-pbox:active { transform: scale(0.975); }
+.en-pbox.is-selected {
+  border-color: var(--en-accent);
+  box-shadow: 0 0 0 3px var(--en-accent-soft), 0 12px 26px -4px rgba(15, 23, 42, 0.34);
+}
+.en-pbox-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.45s ease;
+}
+.en-pbox:hover .en-pbox-bg { transform: scale(1.05); }
+
+/* 読みやすさ鉄壁の全面グラデーション幕 */
+.en-pbox-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(9, 13, 24, 0.46) 0%,
+    rgba(9, 13, 24, 0.08) 36%,
+    rgba(9, 13, 24, 0.62) 66%,
+    rgba(9, 13, 24, 0.94) 100%
+  );
+  pointer-events: none;
+}
+
+/* 上部オーバーレイ：職種カラータグ ＋ 距離ピル */
+.en-pbox-top {
+  position: relative;
+  z-index: 2;
+  padding: 8px 8px 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 4px;
+}
+.en-pbox-cat {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 10px;
+  padding: 3px 7px;
   border-radius: 999px;
-  border: 1.5px solid var(--en-border);
-  background: var(--en-surface);
-  color: var(--en-text);
-  font-size: 11.5px;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 9.5px;
+  font-weight: 800;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  max-width: 68%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.en-pbox-dist {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  font-size: 9.5px;
+  font-weight: 900;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* 下部オーバーレイ：アバター・名前・エリア・得意なこと・アクション */
+.en-pbox-bottom {
+  position: relative;
+  z-index: 2;
+  padding: 8px 9px 9px;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.en-pbox-who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.en-pbox-ava {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #ffffff;
+  flex-shrink: 0;
+}
+.en-pbox-names { min-width: 0; flex: 1; }
+.en-pbox-name {
+  font-size: 12.5px;
+  font-weight: 900;
+  line-height: 1.2;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+.en-pbox-area {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.86);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.en-pbox-cando {
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.92);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.en-pbox-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.en-pbox-mini-tag {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1.5px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  backdrop-filter: blur(4px);
+}
+.en-pbox-mini-tag.nomap {
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.en-pbox-acts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-top: 2px;
+}
+.en-pbox-btn {
+  padding: 5.5px 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 10.5px;
   font-weight: 800;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  white-space: nowrap;
 }
-.en-pfs-chip.active {
-  background: var(--en-accent);
-  border-color: var(--en-accent);
-  color: #ffffff;
+.en-pbox-btn.primary {
+  background: linear-gradient(135deg, var(--en-accent), var(--en-accent-2, #f59e0b));
+  border-color: transparent;
 }
 
 /* --- 📏 半径ゲージ --- */
 .en-radius-box {
-  background: var(--en-surface);
-  border: 1px solid var(--en-border);
-  border-radius: 16px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
+  background: var(--en-surface); border: 1px solid var(--en-border); border-radius: 16px;
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 7px;
   box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
 }
 .en-radius-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -217,20 +326,24 @@
 .en-futa-cat-chip.active { background: var(--en-accent); border-color: var(--en-accent); color: #ffffff; }
 .en-futa-cat-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 
-/* --- 🗾 Leaflet 日本地図（国土地理院タイル） --- */
+/* --- 🗾 Leaflet 日本地図（国土地理院＋スタイリッシュ色調仕上げ） --- */
 .en-jpmap-wrap {
-  position: relative; width: 100%; height: 370px; border-radius: 18px;
+  position: relative; width: 100%; height: 340px; border-radius: 18px;
   overflow: hidden; border: 1.5px solid var(--en-border);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1); background: #dbeafe; z-index: 1;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.12); background: #dbeafe; z-index: 1;
 }
-html.en-pc-mode .en-jpmap-wrap { height: 460px; }
+html.en-pc-mode .en-jpmap-wrap { height: 420px; }
 html[data-en-color="dark"] .en-jpmap-wrap,
 html[data-en-color="cool"] .en-jpmap-wrap { background: #0b1220; }
 #enJapanLeafletMap { width: 100%; height: 100%; z-index: 1; }
 
+/* ライト系は淡くスタイリッシュに・ダーク/クール系は近未来ダークマップへ自動調色 */
+#enJapanLeafletMap .leaflet-tile-pane {
+  filter: saturate(1.12) contrast(1.03);
+}
 html[data-en-color="dark"] #enJapanLeafletMap .leaflet-tile-pane,
 html[data-en-color="cool"] #enJapanLeafletMap .leaflet-tile-pane {
-  filter: invert(100%) hue-rotate(180deg) brightness(90%) contrast(94%) saturate(85%);
+  filter: invert(100%) hue-rotate(195deg) brightness(88%) contrast(104%) saturate(115%);
 }
 
 .en-jpmap-float-ctrls { position: absolute; top: 10px; right: 10px; z-index: 450; display: flex; flex-direction: column; gap: 6px; }
@@ -257,10 +370,7 @@ html[data-en-color="cool"] .en-jpmap-fbtn { background: rgba(15, 23, 42, 0.9); c
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   color: var(--lid-color, #e06d1f); transition: transform 0.16s cubic-bezier(.22, 1, .36, 1), box-shadow 0.16s ease; cursor: pointer;
 }
-.en-futa-lid::before {
-  content: ""; position: absolute; inset: 2px; border-radius: 50%;
-  border: 1.5px dashed var(--lid-color, #e06d1f); opacity: 0.4; pointer-events: none;
-}
+.en-futa-lid::before { content: ""; position: absolute; inset: 2px; border-radius: 50%; border: 1.5px dashed var(--lid-color, #e06d1f); opacity: 0.4; pointer-events: none; }
 .en-futa-lid > svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
 .en-futa-lid-city {
   position: absolute; top: 47px; left: 50%; transform: translateX(-50%);
@@ -286,14 +396,4 @@ html[data-en-color="cool"] .en-jpmap-fbtn { background: rgba(15, 23, 42, 0.9); c
   width: 22px; height: 22px; border-radius: 50%;
   background: #2563eb; border: 3px solid #ffffff;
   box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.25), 0 4px 10px rgba(0, 0, 0, 0.3);
-}
-
-.en-futa-detail-card { border-left: 4px solid var(--en-accent) !important; }
-.en-futa-dist-pill {
-  font-size: 10px; font-weight: 900; padding: 2px 7px; border-radius: 999px;
-  background: rgba(37, 99, 235, 0.13); color: #2563eb; white-space: nowrap;
-}
-.en-map-hidden-note {
-  font-size: 11px; color: var(--en-muted); text-align: center;
-  padding: 5px 8px; border-radius: 10px; background: var(--en-surface-2);
 }

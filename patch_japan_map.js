@@ -1,11 +1,10 @@
 /* =========================================================
-   EN•joy おすすめ人材 統合検索＆絞り込み × 日本地図（職種ふたマップ）
-   （patch_japan_map.js v4）
-   ・マップ起動を完全安定化（patch_views依存を断ち単独で安全描画）
-   ・IME途切れゼロ検索（入力中にフォームを破壊しない結果スロット部分更新）
-   ・統合「絞り込みシート」（半径ゲージ / 47都道府県 / 6職種 / 得意なことタグ）
-   ・リスト・マップ・スワイプの全3ビューで検索＆地域条件を完全連動
-   ・国土地理院タイル（APIキー完全不要）＋ mapOpen:false 地図非掲載保護
+   EN•joy おすすめ人材 写真全面フォトボックス × 日本地図（職種ふたマップ）
+   （patch_japan_map.js v5）
+   ・リスト(2列ピシッと揃え)とマップ下(横スライド)を同一の写真全面フォトボックス化
+   ・マップピン ⇄ 下の横スライドカルーセルを双方向リアルタイム連動
+   ・半径ゲージ伸縮と同時に下の横スライドおすすめ一覧も即時アップデート
+   ・IME途切れゼロ検索 / 統合絞り込みシート / mapOpen:false 地図非掲載保護
    ========================================================= */
 
 (function () {
@@ -23,7 +22,6 @@
     craft:   { label: '木工・工芸・特技', color: '#b45309', svg: `<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>` }
   };
 
-  // 文字を打たずに1タップで絞れる「得意なこと・条件」クイックタグ
   const SKILL_TAGS = [
     { id: 'small_lot', label: '小ロット試作',     re: /小ロット|10kg|20瓶|30kg|50本|50枚|試作/ },
     { id: 'rescue',    label: '規格外・訳ありOK', re: /規格外|訳あり|B品|間伐材|端材/ },
@@ -56,7 +54,6 @@
   };
 
   const PREF_LIST = Object.keys(AREA_COORDS).filter(k => /[都府県]$|^北海道$/.test(k));
-
   const CITY_TO_PREF = {
     '枚方': '大阪府', '寝屋川': '大阪府', '東大阪': '大阪府', '高槻': '大阪府', '交野': '大阪府', '岸和田': '大阪府', '大阪': '大阪府', '茨木': '大阪府',
     '京都': '京都府', '宇治': '京都府', '神戸': '兵庫県', '帯広': '北海道', '札幌': '北海道', '仙台': '宮城県',
@@ -74,9 +71,7 @@
     const raw = String(areaText || '');
     const hit = PREF_LIST.find(p => raw.includes(p));
     if (hit) return hit;
-    for (const [city, pref] of Object.entries(CITY_TO_PREF)) {
-      if (raw.includes(city)) return pref;
-    }
+    for (const [city, pref] of Object.entries(CITY_TO_PREF)) if (raw.includes(city)) return pref;
     return '';
   }
 
@@ -91,27 +86,17 @@
     return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  // 統合フィルタ状態（リスト・マップ・スワイプ全共通）
   const mapCfg = (function loadMapCfg() {
     try {
       const s = JSON.parse(localStorage.getItem(MAP_CFG_KEY) || 'null');
       if (s && typeof s.stepIdx === 'number') {
         if (!Array.isArray(s.skillTags)) s.skillTags = [];
-        if (!s.areaMode) s.areaMode = 'radius'; // 'radius' | 'pref'
+        if (!s.areaMode) s.areaMode = 'radius';
         if (typeof s.prefFilter !== 'string') s.prefFilter = '';
         return s;
       }
     } catch (e) {}
-    return {
-      stepIdx: 9,              // 9 -> 0km(全国)
-      baseLat: 34.766,
-      baseLng: 135.628,
-      baseLabel: '大阪府 寝屋川市',
-      areaMode: 'radius',      // 'radius' | 'pref'
-      prefFilter: '',
-      catFilter: 'all',
-      skillTags: []
-    };
+    return { stepIdx: 9, baseLat: 34.766, baseLng: 135.628, baseLabel: '大阪府 寝屋川市', areaMode: 'radius', prefFilter: '', catFilter: 'all', skillTags: [] };
   })();
 
   function saveMapCfg() {
@@ -151,6 +136,31 @@
     } catch (e) {}
   }
 
+  // 職種＆メンバーに映える現場カバー写真を自動割り当て
+  function pickCoverPhoto(p) {
+    if (p.coverPhoto) return p.coverPhoto;
+    const imgs = (typeof EN_IMAGES !== 'undefined') ? EN_IMAGES : {};
+    const byId = {
+      'usr-001': imgs.tomato,
+      'usr-002': imgs.drying,
+      'usr-003': imgs.package,
+      'usr-004': imgs.truck,
+      'usr-jp-01': imgs.snack,
+      'usr-jp-02': imgs.package,
+      'usr-jp-03': imgs.jam,
+      'usr-nomap-01': imgs.jam,
+      'usr-futa-hokkaido': imgs.citrus,
+      'usr-futa-sendai': imgs.drying,
+      'usr-futa-kanazawa': imgs.gear,
+      'usr-futa-kyoto': imgs.snack,
+      'usr-futa-onomichi': imgs.citrus,
+      'usr-futa-naha': imgs.package
+    };
+    if (byId[p.id]) return byId[p.id];
+    const byCat = { farm: imgs.tomato, factory: imgs.drying, design: imgs.package, truck: imgs.truck, shop: imgs.jam, craft: imgs.gear };
+    return byCat[p.category] || p.avatar || '';
+  }
+
   function normalizePeopleCoords() {
     if (typeof EN_MOCK_PEOPLE === 'undefined' || !Array.isArray(EN_MOCK_PEOPLE)) return;
     const existingCoords = {
@@ -161,25 +171,26 @@
     EN_MOCK_PEOPLE.forEach(p => {
       if (!p.latLng) p.latLng = existingCoords[p.id] || resolveLatLng(p.area);
       if (!p.mapPos) p.mapPos = { x: 50, y: 50 };
+      if (!p.coverPhoto) p.coverPhoto = pickCoverPhoto(p);
     });
   }
 
   function ensureNationwideCraftPeople() {
     if (typeof EN_MOCK_PEOPLE === 'undefined' || !Array.isArray(EN_MOCK_PEOPLE)) return;
     const extraNationwide = [
-      { id: 'usr-futa-hokkaido', name: '佐々木 拓真', shop: '十勝ひまわり牧場', category: 'farm', categoryLabel: '一次産業・酪農', area: '北海道 帯広市', latLng: [42.924, 143.196], mapPos: { x: 82, y: 14 }, avatar: EN_IMAGES.userFarm, canDo: '放牧グラスフェッド牛乳・ホエイの冷凍小ロット供給（全国クール発送OK）', aiMatch: '濃厚乳製品×焼き菓子・ジェラートコラボで差別化抜群！', detail: { equipment: '殺菌タンク・急速冷凍・全国冷凍便契約', pastLabs: 4, replySpeed: '朝と夜に返信' }, mapOpen: true },
-      { id: 'usr-futa-sendai', name: '伊藤 優子', shop: 'みちのく発酵蔵', category: 'factory', categoryLabel: '加工・発酵蔵元', area: '宮城県 仙台市', latLng: [38.268, 140.872], mapPos: { x: 76, y: 34 }, avatar: EN_IMAGES.userFact, canDo: '米麹・甘酒・発酵シロップのOEM小ロット50本〜試作', aiMatch: '無添加×発酵トレンドで全国のフルーツ農家と相性◎', detail: { equipment: '麹室・低温発酵タンク・瓶詰殺菌ライン', pastLabs: 8, replySpeed: '平日昼間に返信' }, mapOpen: true },
-      { id: 'usr-futa-kanazawa', name: '前田 匠', shop: '加賀ウッドクラフト', category: 'craft', categoryLabel: '木工・什器職人', area: '石川県 金沢市', latLng: [36.561, 136.656], mapPos: { x: 56, y: 46 }, avatar: EN_IMAGES.userDes, canDo: '県産間伐材で作る折りたたみマルシェ棚・木製ギフト箱の小ロット制作', aiMatch: 'マルシェ出店時の見栄えとブランド感を一気に格上げ！', detail: { equipment: 'レーザー刻印機・NCルーター・全国発送対応', pastLabs: 6, replySpeed: '24時間以内に返信' }, mapOpen: true },
-      { id: 'usr-futa-kyoto', name: '藤本 凛', shop: '古民家カフェ en.茶寮', category: 'shop', categoryLabel: '販売・古民家カフェ', area: '京都府 宇治市', latLng: [34.884, 135.800], mapPos: { x: 52, y: 58 }, avatar: EN_IMAGES.userBuyer, canDo: '週末マルシェ会場・店頭テスト販売棚・試食モニター会の共催', aiMatch: 'できたて試作品をリアルなお客様に届けて生の声を集められます！', detail: { equipment: '古民家イベント土間・冷蔵ショーケース・試食キッチン', pastLabs: 10, replySpeed: '水〜日に即レス' }, mapOpen: true },
-      { id: 'usr-futa-onomichi', name: '村上 海斗', shop: 'せとうち柑橘ラボ', category: 'farm', categoryLabel: '一次産業・柑橘農家', area: '広島県 尾道市', latLng: [34.409, 133.205], mapPos: { x: 38, y: 64 }, avatar: EN_IMAGES.userFarm, canDo: '減農薬レモン・ネーブルの規格外果実＆皮ごとペースト提供', aiMatch: '香り高い瀬戸内レモンで全国のスイーツ・ドリンク企画に引っ張りだこ！', detail: { equipment: '選果場・冷凍ストッカー・クール便対応', pastLabs: 7, replySpeed: '夕方以降に返信' }, mapOpen: true },
-      { id: 'usr-futa-naha', name: '比嘉 美穂', shop: 'やんばるボタニカル印刷', category: 'design', categoryLabel: 'デザイン・和紙印刷', area: '沖縄県 那覇市', latLng: [26.212, 127.679], mapPos: { x: 16, y: 88 }, avatar: EN_IMAGES.userDes, canDo: '南国テイスト＆手描きイラストの耐水シール50枚〜全国郵送', aiMatch: '目を引くギフト向けパッケージデザインが得意です！', detail: { equipment: '小ロットオンデマンド印刷・耐水ラミネート', pastLabs: 5, replySpeed: '平日夕方に返信' }, mapOpen: true }
+      { id: 'usr-futa-hokkaido', name: '佐々木 拓真', shop: '十勝ひまわり牧場', category: 'farm', categoryLabel: '一次産業・酪農', area: '北海道 帯広市', latLng: [42.924, 143.196], mapPos: { x: 82, y: 14 }, avatar: EN_IMAGES.userFarm, coverPhoto: 'https://picsum.photos/seed/en-hokkaido-farm/480/600', canDo: '放牧グラスフェッド牛乳・ホエイの冷凍小ロット供給（全国クール発送OK）', aiMatch: '濃厚乳製品×焼き菓子・ジェラートコラボで差別化抜群！', detail: { equipment: '殺菌タンク・急速冷凍・全国冷凍便契約', pastLabs: 4, replySpeed: '朝と夜に返信' }, mapOpen: true },
+      { id: 'usr-futa-sendai', name: '伊藤 優子', shop: 'みちのく発酵蔵', category: 'factory', categoryLabel: '加工・発酵蔵元', area: '宮城県 仙台市', latLng: [38.268, 140.872], mapPos: { x: 76, y: 34 }, avatar: EN_IMAGES.userFact, coverPhoto: 'https://picsum.photos/seed/en-sendai-koji/480/600', canDo: '米麹・甘酒・発酵シロップのOEM小ロット50本〜試作', aiMatch: '無添加×発酵トレンドで全国のフルーツ農家と相性◎', detail: { equipment: '麹室・低温発酵タンク・瓶詰殺菌ライン', pastLabs: 8, replySpeed: '平日昼間に返信' }, mapOpen: true },
+      { id: 'usr-futa-kanazawa', name: '前田 匠', shop: '加賀ウッドクラフト', category: 'craft', categoryLabel: '木工・什器職人', area: '石川県 金沢市', latLng: [36.561, 136.656], mapPos: { x: 56, y: 46 }, avatar: EN_IMAGES.userDes, coverPhoto: 'https://picsum.photos/seed/en-woodcraft/480/600', canDo: '県産間伐材で作る折りたたみマルシェ棚・木製ギフト箱の小ロット制作', aiMatch: 'マルシェ出店時の見栄えとブランド感を一気に格上げ！', detail: { equipment: 'レーザー刻印機・NCルーター・全国発送対応', pastLabs: 6, replySpeed: '24時間以内に返信' }, mapOpen: true },
+      { id: 'usr-futa-kyoto', name: '藤本 凛', shop: '古民家カフェ en.茶寮', category: 'shop', categoryLabel: '販売・古民家カフェ', area: '京都府 宇治市', latLng: [34.884, 135.800], mapPos: { x: 52, y: 58 }, avatar: EN_IMAGES.userBuyer, coverPhoto: 'https://picsum.photos/seed/en-kominka-cafe/480/600', canDo: '週末マルシェ会場・店頭テスト販売棚・試食モニター会の共催', aiMatch: 'できたて試作品をリアルなお客様に届けて生の声を集められます！', detail: { equipment: '古民家イベント土間・冷蔵ショーケース・試食キッチン', pastLabs: 10, replySpeed: '水〜日に即レス' }, mapOpen: true },
+      { id: 'usr-futa-onomichi', name: '村上 海斗', shop: 'せとうち柑橘ラボ', category: 'farm', categoryLabel: '一次産業・柑橘農家', area: '広島県 尾道市', latLng: [34.409, 133.205], mapPos: { x: 38, y: 64 }, avatar: EN_IMAGES.userFarm, coverPhoto: 'https://picsum.photos/seed/en-setouchi-lemon/480/600', canDo: '減農薬レモン・ネーブルの規格外果実＆皮ごとペースト提供', aiMatch: '香り高い瀬戸内レモンで全国のスイーツ・ドリンク企画に引っ張りだこ！', detail: { equipment: '選果場・冷凍ストッカー・クール便対応', pastLabs: 7, replySpeed: '夕方以降に返信' }, mapOpen: true },
+      { id: 'usr-futa-naha', name: '比嘉 美穂', shop: 'やんばるボタニカル印刷', category: 'design', categoryLabel: 'デザイン・和紙印刷', area: '沖縄県 那覇市', latLng: [26.212, 127.679], mapPos: { x: 16, y: 88 }, avatar: EN_IMAGES.userDes, coverPhoto: 'https://picsum.photos/seed/en-naha-print/480/600', canDo: '南国テイスト＆手描きイラストの耐水シール50枚〜全国郵送', aiMatch: '目を引くギフト向けパッケージデザインが得意です！', detail: { equipment: '小ロットオンデマンド印刷・耐水ラミネート', pastLabs: 5, replySpeed: '平日夕方に返信' }, mapOpen: true }
     ];
     extraNationwide.forEach(p => { if (!EN_MOCK_PEOPLE.some(x => x.id === p.id)) EN_MOCK_PEOPLE.push(p); });
     normalizePeopleCoords();
   }
 
   // =========================================================
-  // 🔍 共通フィルタエンジン（キーワード + 職種 + 得意タグ + 半径/都道府県）
+  // 🔍 共通フィルタエンジン
   // =========================================================
   function getAllPeopleEnriched() {
     normalizePeopleCoords();
@@ -188,27 +199,23 @@
       const distKm = Math.round(calcDistanceKm(mapCfg.baseLat, mapCfg.baseLng, lat, lng));
       const pref = detectPref(p.area);
       const searchBlob = `${p.name} ${p.shop} ${p.area} ${pref} ${p.categoryLabel} ${p.canDo} ${p.detail?.equipment || ''}`.toLowerCase();
-      return { ...p, lat, lng, distKm, pref, searchBlob };
+      return { ...p, lat, lng, distKm, pref, searchBlob, coverPhoto: pickCoverPhoto(p) };
     });
   }
 
   function matchesCommonFilters(p, ignoreDistance) {
-    // 1) キーワード（スペース区切りAND検索）
     const q = (enViewState.peopleQuery || '').trim().toLowerCase();
     if (q) {
       const words = q.split(/[\s ]+/).filter(Boolean);
       if (!words.every(w => p.searchBlob.includes(w))) return false;
     }
-    // 2) 職種
     if (mapCfg.catFilter !== 'all' && p.category !== mapCfg.catFilter) return false;
-    // 3) 得意なことタグ（選択した全タグにマッチ）
     if (Array.isArray(mapCfg.skillTags) && mapCfg.skillTags.length) {
       for (const tid of mapCfg.skillTags) {
         const def = SKILL_TAGS.find(s => s.id === tid);
         if (def && !def.re.test(p.searchBlob)) return false;
       }
     }
-    // 4) エリア・距離
     if (!ignoreDistance) {
       if (mapCfg.areaMode === 'pref' && mapCfg.prefFilter) {
         if (p.pref !== mapCfg.prefFilter) return false;
@@ -240,7 +247,81 @@
   }
 
   // =========================================================
-  // ⚙️ 統合「絞り込みボトムシート」（地域/半径・6職種・得意なことタグ）
+  // 📸 リスト2列 ＆ マップ下横スライド「完全共通」フォトボックス生成
+  // =========================================================
+  function buildVisualPersonBoxHtml(p, isSelected) {
+    const meta = ROLE_META[p.category] || ROLE_META.craft;
+    const isBuyer = enViewState.userMode === 'buyer';
+    const isFound = discoveredSet.has(p.id);
+
+    return `
+      <div class="en-pbox ${isSelected ? 'is-selected' : ''}" data-pboxid="${p.id}">
+        <img class="en-pbox-bg" src="${p.coverPhoto}" alt="" loading="lazy">
+        <div class="en-pbox-scrim"></div>
+
+        <div class="en-pbox-top">
+          <span class="en-pbox-cat">
+            <span class="en-futa-cat-dot" style="background:${meta.color};"></span>
+            <span>${esc(p.categoryLabel)}</span>
+          </span>
+          <span class="en-pbox-dist">約${p.distKm}km</span>
+        </div>
+
+        <div class="en-pbox-bottom">
+          <div class="en-pbox-meta-row">
+            ${p.mapOpen === false ? '<span class="en-pbox-mini-tag nomap">🔒 地図非掲載</span>' : ''}
+            ${isFound ? '<span class="en-pbox-mini-tag">✓ 発見済</span>' : ''}
+          </div>
+          <div class="en-pbox-who">
+            <img class="en-pbox-ava" src="${p.avatar}" alt="">
+            <div class="en-pbox-names">
+              <div class="en-pbox-name">${esc(p.shop)}</div>
+              <div class="en-pbox-area">📍 ${esc(p.area)} ・ ${esc(p.name)}</div>
+            </div>
+          </div>
+          <div class="en-pbox-cando">${esc(p.canDo)}</div>
+          <div class="en-pbox-acts" onclick="event.stopPropagation()">
+            <button type="button" class="en-pbox-btn" data-pbox-detail="${p.id}">🪪 詳細</button>
+            ${isBuyer
+              ? `<button type="button" class="en-pbox-btn primary" data-pbox-greet="${p.id}">👋 応援</button>`
+              : `<button type="button" class="en-pbox-btn primary" data-pbox-ask="${p.id}">💬 相談</button>`}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function bindVisualBoxButtons(container, onBoxTap) {
+    if (!container) return;
+    const isBuyer = enViewState.userMode === 'buyer';
+
+    container.querySelectorAll('[data-pboxid]').forEach(box => {
+      box.onclick = () => {
+        const pid = box.getAttribute('data-pboxid');
+        if (typeof onBoxTap === 'function') onBoxTap(pid);
+        else if (typeof openPersonDetailSheet === 'function') openPersonDetailSheet(pid);
+      };
+    });
+    container.querySelectorAll('[data-pbox-detail]').forEach(btn => {
+      btn.onclick = () => {
+        if (typeof openPersonDetailSheet === 'function') openPersonDetailSheet(btn.getAttribute('data-pbox-detail'));
+      };
+    });
+    container.querySelectorAll('[data-pbox-ask]').forEach(btn => {
+      btn.onclick = () => {
+        if (typeof startQuickAsk === 'function') startQuickAsk(btn.getAttribute('data-pbox-ask'));
+      };
+    });
+    container.querySelectorAll('[data-pbox-greet]').forEach(btn => {
+      btn.onclick = () => {
+        const p = EN_MOCK_PEOPLE.find(x => x.id === btn.getAttribute('data-pbox-greet'));
+        if (p) enToast(`👋 ${p.shop}に「${isBuyer ? '応援' : '気になる'}」を送りました！`);
+      };
+    });
+  }
+
+  // =========================================================
+  // ⚙️ 統合「絞り込みボトムシート」
   // =========================================================
   function openUnifiedPeopleFilterSheet(onApplied) {
     const km = getCurrentRadiusKm();
@@ -248,7 +329,6 @@
     const hitCount = getAllPeopleEnriched().filter(p => matchesCommonFilters(p, false)).length;
 
     openEnSheetHtml('⚙️ 人材を絞り込む（地域・職種・得意なこと）', 'リスト・マップ・スワイプすべてに即時反映されます', `
-      <!-- ① 地域・距離 -->
       <div class="en-pfs-sec">
         <div class="en-pfs-head">
           <span>📍 ① 地域・距離</span>
@@ -268,7 +348,7 @@
             <input type="range" class="en-radius-slider" id="enPfsRadSlider" min="0" max="${RADIUS_STEPS.length - 1}" step="1" value="${mapCfg.stepIdx}">
             <div class="en-radius-ticks"><span>5km</span><span>20km</span><span>50km</span><span>200km</span><span>全国</span></div>
             <div class="en-row" style="gap:6px;margin-top:2px;">
-              <button type="button" class="en-radius-mini-btn" id="enPfsGpsBtn">📍 GPS現在地を拠点に</button>
+              <button type="button" class="en-radius-mini-btn" id="enPfsGpsBtn">📍 GPS現在地</button>
               <select id="enPfsBasePrefSel" class="en-input-field" style="flex:1;padding:5px 8px;font-size:11.5px;">
                 ${PREF_LIST.map(p => `<option value="${p}" ${mapCfg.baseLabel.includes(p)?'selected':''}>拠点：${p}</option>`).join('')}
               </select>
@@ -282,7 +362,6 @@
         `}
       </div>
 
-      <!-- ② 職種 -->
       <div class="en-pfs-sec">
         <div class="en-pfs-head"><span>🏷️ ② 職種・役割</span></div>
         <div class="en-pfs-chips">
@@ -295,23 +374,18 @@
         </div>
       </div>
 
-      <!-- ③ 得意なこと・条件タグ -->
       <div class="en-pfs-sec">
         <div class="en-pfs-head"><span>✨ ③ 得意なこと・条件（複数タップOK）</span></div>
         <div class="en-pfs-chips">
           ${SKILL_TAGS.map(st => `
-            <button type="button" class="en-pfs-chip ${(mapCfg.skillTags || []).includes(st.id) ? 'active' : ''}" data-pfsskill="${st.id}">
-              #${st.label}
-            </button>
+            <button type="button" class="en-pfs-chip ${(mapCfg.skillTags || []).includes(st.id) ? 'active' : ''}" data-pfsskill="${st.id}">#${st.label}</button>
           `).join('')}
         </div>
       </div>
 
       <div class="en-row" style="gap:8px;margin-top:2px;">
         <button type="button" class="en-act-btn" id="enPfsResetBtn">リセット</button>
-        <button type="button" class="en-act-btn primary" style="flex:1;justify-content:center;" id="enPfsApplyBtn">
-          この条件で表示する（${hitCount}件）
-        </button>
+        <button type="button" class="en-act-btn primary" style="flex:1;justify-content:center;" id="enPfsApplyBtn">この条件で表示する（${hitCount}件）</button>
       </div>
     `);
 
@@ -321,10 +395,7 @@
       openUnifiedPeopleFilterSheet(onApplied);
     };
 
-    document.querySelectorAll('[data-pfsmode]').forEach(btn => {
-      btn.onclick = () => { mapCfg.areaMode = btn.getAttribute('data-pfsmode'); refreshSheet(); };
-    });
-
+    document.querySelectorAll('[data-pfsmode]').forEach(btn => btn.onclick = () => { mapCfg.areaMode = btn.getAttribute('data-pfsmode'); refreshSheet(); });
     const radSlider = document.getElementById('enPfsRadSlider');
     if (radSlider) {
       radSlider.oninput = e => {
@@ -338,64 +409,40 @@
       };
       radSlider.onchange = () => { saveMapCfg(); if (typeof onApplied === 'function') onApplied(); };
     }
-
     document.getElementById('enPfsBasePrefSel')?.addEventListener('change', e => {
-      const pf = e.target.value;
-      const [lat, lng] = resolveLatLng(pf);
+      const pf = e.target.value; const [lat, lng] = resolveLatLng(pf);
       mapCfg.baseLat = lat; mapCfg.baseLng = lng; mapCfg.baseLabel = pf; mapCfg.gpsLocked = true;
       refreshSheet();
     });
-
     document.getElementById('enPfsGpsBtn')?.addEventListener('click', () => {
-      if (!navigator.geolocation) return enToast('⚠️ この端末ではGPS位置情報を利用できません');
+      if (!navigator.geolocation) return enToast('⚠️ GPS位置情報を利用できません');
       enToast('📍 現在地を取得中...');
       navigator.geolocation.getCurrentPosition(pos => {
         mapCfg.baseLat = Math.round(pos.coords.latitude * 1000) / 1000;
         mapCfg.baseLng = Math.round(pos.coords.longitude * 1000) / 1000;
-        mapCfg.baseLabel = '現在地付近';
-        mapCfg.gpsLocked = true;
-        enToast('📍 現在地を拠点にセットしました！');
-        refreshSheet();
+        mapCfg.baseLabel = '現在地付近'; mapCfg.gpsLocked = true;
+        enToast('📍 現在地を拠点にセットしました！'); refreshSheet();
       }, () => enToast('⚠️ 位置情報が許可されませんでした'), { timeout: 6000 });
     });
-
     document.getElementById('enPfsPrefFilterSel')?.addEventListener('change', e => {
       mapCfg.prefFilter = e.target.value;
-      if (mapCfg.prefFilter) {
-        const [lat, lng] = resolveLatLng(mapCfg.prefFilter);
-        mapCfg.baseLat = lat; mapCfg.baseLng = lng; mapCfg.baseLabel = mapCfg.prefFilter;
-      }
+      if (mapCfg.prefFilter) { const [lat, lng] = resolveLatLng(mapCfg.prefFilter); mapCfg.baseLat = lat; mapCfg.baseLng = lng; mapCfg.baseLabel = mapCfg.prefFilter; }
       refreshSheet();
     });
-
-    document.querySelectorAll('[data-pfscat]').forEach(btn => {
-      btn.onclick = () => { mapCfg.catFilter = btn.getAttribute('data-pfscat'); refreshSheet(); };
-    });
-
-    document.querySelectorAll('[data-pfsskill]').forEach(btn => {
-      btn.onclick = () => {
-        const tid = btn.getAttribute('data-pfsskill');
-        if (!Array.isArray(mapCfg.skillTags)) mapCfg.skillTags = [];
-        if (mapCfg.skillTags.includes(tid)) mapCfg.skillTags = mapCfg.skillTags.filter(x => x !== tid);
-        else mapCfg.skillTags.push(tid);
-        refreshSheet();
-      };
-    });
-
-    document.getElementById('enPfsResetBtn')?.addEventListener('click', () => {
-      resetAllPeopleFilters();
+    document.querySelectorAll('[data-pfscat]').forEach(btn => btn.onclick = () => { mapCfg.catFilter = btn.getAttribute('data-pfscat'); refreshSheet(); });
+    document.querySelectorAll('[data-pfsskill]').forEach(btn => btn.onclick = () => {
+      const tid = btn.getAttribute('data-pfsskill');
+      if (!Array.isArray(mapCfg.skillTags)) mapCfg.skillTags = [];
+      if (mapCfg.skillTags.includes(tid)) mapCfg.skillTags = mapCfg.skillTags.filter(x => x !== tid);
+      else mapCfg.skillTags.push(tid);
       refreshSheet();
     });
-
-    document.getElementById('enPfsApplyBtn')?.addEventListener('click', () => {
-      saveMapCfg();
-      closeEnSheet();
-      if (typeof onApplied === 'function') onApplied();
-    });
+    document.getElementById('enPfsResetBtn')?.addEventListener('click', () => { resetAllPeopleFilters(); refreshSheet(); });
+    document.getElementById('enPfsApplyBtn')?.addEventListener('click', () => { saveMapCfg(); closeEnSheet(); if (typeof onApplied === 'function') onApplied(); });
   }
 
   // =========================================================
-  // 🗾 Leaflet 日本地図（国土地理院タイル・APIキー完全不要）
+  // 🗾 Leaflet 日本地図 ＆ 下部「横スライドおすすめカルーセル」双方向連動
   // =========================================================
   let leafletMap = null;
   let radiusCircle = null;
@@ -403,13 +450,8 @@
   let personMarkers = [];
 
   function destroyLeafletMap() {
-    if (leafletMap) {
-      try { leafletMap.remove(); } catch (e) {}
-      leafletMap = null;
-    }
-    radiusCircle = null;
-    homeMarker = null;
-    personMarkers = [];
+    if (leafletMap) { try { leafletMap.remove(); } catch (e) {} leafletMap = null; }
+    radiusCircle = null; homeMarker = null; personMarkers = [];
   }
 
   function buildFutaDivIcon(person, isSelected, inRange) {
@@ -432,22 +474,110 @@
     });
   }
 
-  function updateRadiusVisualsLive(hostEl) {
+  // ★マップ下の「検索範囲おすすめ横スライド」を描画（リストと全く同じフォトボックス！）
+  function renderMapBottomCarousel(hostEl, scrollToSelected) {
+    const railSlot = hostEl.querySelector('#enMapRailSlot');
+    if (!railSlot) return;
+
+    const allEnriched = getAllPeopleEnriched();
+    // 現在の検索範囲・職種・得意タグに一致する全員（地図非掲載の人も地域検索枠として含める！）
+    const inRangeList = allEnriched
+      .filter(p => matchesCommonFilters(p, false))
+      .sort((a, b) => a.distKm - b.distKm);
+
+    if (!inRangeList.length) {
+      railSlot.innerHTML = `
+        <div class="en-area-empty">
+          <div>この範囲にはまだ該当メンバーがいません（ゲージを広げてみよう！）</div>
+          <button type="button" class="en-act-btn primary" id="enMapRailWideBtn">🌐 全国すべてを表示</button>
+        </div>
+      `;
+      railSlot.querySelector('#enMapRailWideBtn')?.addEventListener('click', () => {
+        mapCfg.areaMode = 'radius';
+        mapCfg.stepIdx = RADIUS_STEPS.length - 1;
+        saveMapCfg();
+        const sl = hostEl.querySelector('#enRadiusSlider');
+        if (sl) sl.value = String(mapCfg.stepIdx);
+        updateRadiusVisualsLive(hostEl, false);
+        fitMapToCurrentArea();
+      });
+      if (typeof enSyncTheme === 'function') enSyncTheme();
+      return;
+    }
+
+    const km = getCurrentRadiusKm();
+    const areaTitle = mapCfg.areaMode === 'pref' && mapCfg.prefFilter
+      ? `${mapCfg.prefFilter}のおすすめ`
+      : (km === 0 ? '全国のおすすめメンバー' : `半径${km}km以内のおすすめ`);
+
+    railSlot.innerHTML = `
+      <div class="en-pbox-rail-head">
+        <span class="en-pbox-rail-title">✨ ${esc(areaTitle)}（${inRangeList.length}名）</span>
+        <span class="en-meta" style="font-size:10.5px;">← 横にスライド →</span>
+      </div>
+      <div class="en-pbox-rail" id="enMapPboxRail">
+        ${inRangeList.map(p => buildVisualPersonBoxHtml(p, p.id === enViewState.mapSelectedId)).join('')}
+      </div>
+    `;
+
+    // 横スライドのボックスをタップ → 上のマップがその人へ移動＆ピン発光（選択済みを再タップで詳細表示）
+    bindVisualBoxButtons(railSlot, (pid) => {
+      const target = inRangeList.find(x => x.id === pid);
+      if (!target) return;
+      const alreadySelected = enViewState.mapSelectedId === pid;
+      enViewState.mapSelectedId = pid;
+
+      if (target.mapOpen === false) {
+        if (typeof openPersonDetailSheet === 'function') openPersonDetailSheet(pid);
+        return;
+      }
+
+      const newlyFound = markDiscovered(pid);
+      if (newlyFound) {
+        enToast(`✨ 新しいご当地職種「${target.shop}」を発見！`);
+        refreshDexProgressDom(hostEl);
+      }
+
+      if (leafletMap) {
+        leafletMap.panTo([target.lat, target.lng], { animate: true });
+      }
+      updateRadiusVisualsLive(hostEl, false);
+
+      if (alreadySelected && typeof openPersonDetailSheet === 'function') {
+        openPersonDetailSheet(pid);
+      }
+    });
+
+    if (scrollToSelected && enViewState.mapSelectedId) {
+      const activeBox = railSlot.querySelector(`[data-pboxid="${enViewState.mapSelectedId}"]`);
+      if (activeBox) {
+        activeBox.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
+    }
+
+    if (typeof enSyncTheme === 'function') enSyncTheme();
+  }
+
+  function refreshDexProgressDom(hostEl) {
+    const mapPeople = EN_MOCK_PEOPLE.filter(p => p.mapOpen !== false);
+    const fNow = mapPeople.filter(x => discoveredSet.has(x.id)).length;
+    const cntEl = hostEl.querySelector('#enFutaDexCnt');
+    const fillEl = hostEl.querySelector('#enFutaDexFill');
+    if (cntEl) cntEl.textContent = `${fNow} / ${mapPeople.length} 発見`;
+    if (fillEl) fillEl.style.width = `${Math.round((fNow / Math.max(1, mapPeople.length)) * 100)}%`;
+  }
+
+  function updateRadiusVisualsLive(hostEl, scrollRailToSelected) {
     const km = mapCfg.areaMode === 'pref' ? 0 : getCurrentRadiusKm();
     const valEl = hostEl.querySelector('#enRadiusValPill');
     if (valEl) valEl.textContent = mapCfg.areaMode === 'pref' && mapCfg.prefFilter ? mapCfg.prefFilter : formatRadiusLabel(km);
 
     if (leafletMap && radiusCircle) {
-      if (km === 0 || mapCfg.areaMode === 'pref') {
-        radiusCircle.setStyle({ opacity: 0, fillOpacity: 0 });
-      } else {
-        radiusCircle.setLatLng([mapCfg.baseLat, mapCfg.baseLng]);
-        radiusCircle.setRadius(km * 1000);
-        radiusCircle.setStyle({ opacity: 0.85, fillOpacity: 0.14 });
-      }
+      if (km === 0 || mapCfg.areaMode === 'pref') radiusCircle.setStyle({ opacity: 0, fillOpacity: 0 });
+      else { radiusCircle.setLatLng([mapCfg.baseLat, mapCfg.baseLng]); radiusCircle.setRadius(km * 1000); radiusCircle.setStyle({ opacity: 0.85, fillOpacity: 0.14 }); }
     }
 
-    let inCount = 0;
+    let inMapCount = 0;
     personMarkers.forEach(item => {
       const matchCommon = matchesCommonFilters(item.person, true);
       const inArea = mapCfg.areaMode === 'pref' && mapCfg.prefFilter
@@ -457,14 +587,17 @@
       if (matchCommon) {
         if (leafletMap && !leafletMap.hasLayer(item.marker)) item.marker.addTo(leafletMap);
         item.marker.setIcon(buildFutaDivIcon(item.person, item.person.id === enViewState.mapSelectedId, inArea));
-        if (inArea) inCount++;
+        if (inArea) inMapCount++;
       } else {
         if (leafletMap && leafletMap.hasLayer(item.marker)) leafletMap.removeLayer(item.marker);
       }
     });
 
+    const totalInArea = getAllPeopleEnriched().filter(p => matchesCommonFilters(p, false)).length;
     const cntEl = hostEl.querySelector('#enRadiusHitCount');
-    if (cntEl) cntEl.textContent = `${inCount}件ヒット`;
+    if (cntEl) cntEl.textContent = `地図${inMapCount}件（地域計${totalInArea}名）`;
+
+    renderMapBottomCarousel(hostEl, !!scrollRailToSelected);
   }
 
   function fitMapToCurrentArea() {
@@ -475,57 +608,15 @@
       return;
     }
     const km = getCurrentRadiusKm();
-    if (km === 0) {
-      leafletMap.setView([36.5, 137.8], 5, { animate: true });
-    } else if (radiusCircle) {
+    if (km === 0) leafletMap.setView([36.5, 137.8], 5, { animate: true });
+    else if (radiusCircle) {
       radiusCircle.setRadius(km * 1000);
-      leafletMap.fitBounds(radiusCircle.getBounds(), { padding: [26, 26], maxZoom: 12, animate: true });
+      leafletMap.fitBounds(radiusCircle.getBounds(), { padding: [24, 24], maxZoom: 12, animate: true });
     }
-  }
-
-  function renderSelectedFutaDetailCard(detailSlot, person) {
-    if (!detailSlot || !person) return;
-    const meta = ROLE_META[person.category] || ROLE_META.craft;
-    const isBuyer = enViewState.userMode === 'buyer';
-    const aiTxt = typeof getDynamicAiMatch === 'function' ? getDynamicAiMatch(person) : person.aiMatch;
-    const isFound = discoveredSet.has(person.id);
-
-    detailSlot.innerHTML = `
-      <div class="card en-card en-futa-detail-card" style="border-left-color:${meta.color} !important;">
-        <div class="en-between">
-          <div class="en-row">
-            <img class="en-avatar" src="${person.avatar}" alt="">
-            <div>
-              <div class="en-title">${esc(person.name)}（${esc(person.shop)}）</div>
-              <div class="en-meta">📍 ${esc(person.area)} ・ ${esc(person.categoryLabel)}</div>
-            </div>
-          </div>
-          <span class="en-futa-dist-pill">拠点から 約${person.distKm}km</span>
-        </div>
-        <div class="en-row" style="flex-wrap:wrap;gap:6px;">
-          <span class="en-pill" style="background:${meta.color}1a;color:${meta.color};">${esc(meta.label)}</span>
-          ${isFound ? '<span class="en-pill" style="background:rgba(16,185,129,0.14);color:#059669;">✓ 図鑑で発見済み</span>' : ''}
-          <span class="en-meta" style="font-size:11px;">過去ラボ実績 ${person.detail?.pastLabs || 2}件</span>
-        </div>
-        <p class="en-text">${esc(person.canDo)}</p>
-        <div class="en-meta" style="color:var(--en-accent);font-weight:800;">✨ ${esc(aiTxt)}</div>
-        <div class="en-actions">
-          <button type="button" class="en-act-btn" id="enFutaGreetBtn">👋 ${isBuyer ? '応援する' : '気になる'}</button>
-          <button type="button" class="en-act-btn" id="enFutaAskBtn">💬 ちょっと聞く</button>
-          <button type="button" class="en-act-btn primary" style="margin-left:auto;" id="enFutaDetailBtn">🪪 詳細・設備</button>
-        </div>
-      </div>
-    `;
-
-    document.getElementById('enFutaGreetBtn')?.addEventListener('click', () => enToast(`👋 ${person.name}さんに「${isBuyer ? '応援' : '気になる'}」を送りました！`));
-    document.getElementById('enFutaAskBtn')?.addEventListener('click', () => { if (typeof startQuickAsk === 'function') startQuickAsk(person.id); });
-    document.getElementById('enFutaDetailBtn')?.addEventListener('click', () => { if (typeof openPersonDetailSheet === 'function') openPersonDetailSheet(person.id); });
-    if (typeof enSyncTheme === 'function') enSyncTheme();
   }
 
   // =========================================================
   // 👥 おすすめ人材 結果スロット描画（リスト / マップ / スワイプ）
-  //    ★検索入力欄を作り直さないので日本語IMEが絶対に途切れない！
   // =========================================================
   function renderActiveFilterPills(barHost, onChanged) {
     const activeCnt = countActiveFilters();
@@ -539,23 +630,15 @@
     if (!row) return;
     const pills = [];
 
-    if (mapCfg.areaMode === 'pref' && mapCfg.prefFilter) {
-      pills.push({ k: 'area', lbl: `🗾 ${mapCfg.prefFilter}` });
-    } else if (mapCfg.areaMode === 'radius' && getCurrentRadiusKm() > 0) {
-      pills.push({ k: 'area', lbl: `📏 ${mapCfg.baseLabel} 半径${getCurrentRadiusKm()}km` });
-    }
-    if (mapCfg.catFilter !== 'all' && ROLE_META[mapCfg.catFilter]) {
-      pills.push({ k: 'cat', lbl: `🏷️ ${ROLE_META[mapCfg.catFilter].label}` });
-    }
+    if (mapCfg.areaMode === 'pref' && mapCfg.prefFilter) pills.push({ k: 'area', lbl: `🗾 ${mapCfg.prefFilter}` });
+    else if (mapCfg.areaMode === 'radius' && getCurrentRadiusKm() > 0) pills.push({ k: 'area', lbl: `📏 ${mapCfg.baseLabel} 半径${getCurrentRadiusKm()}km` });
+    if (mapCfg.catFilter !== 'all' && ROLE_META[mapCfg.catFilter]) pills.push({ k: 'cat', lbl: `🏷️ ${ROLE_META[mapCfg.catFilter].label}` });
     (mapCfg.skillTags || []).forEach(tid => {
       const def = SKILL_TAGS.find(s => s.id === tid);
       if (def) pills.push({ k: 'skill:' + tid, lbl: `#${def.label}` });
     });
 
-    if (!pills.length) {
-      row.innerHTML = '';
-      return;
-    }
+    if (!pills.length) { row.innerHTML = ''; return; }
 
     row.innerHTML = pills.map(p => `<button type="button" class="en-pf-pill" data-rmpf="${p.k}">${esc(p.lbl)} ✕</button>`).join('') +
       `<button type="button" class="en-pf-pill reset" data-rmpf="all">クリア</button>`;
@@ -565,18 +648,14 @@
         const k = btn.getAttribute('data-rmpf');
         if (k === 'all') {
           resetAllPeopleFilters();
-          const inp = barHost.querySelector('#enPfSearchInput');
-          if (inp) inp.value = '';
+          const inp = barHost.querySelector('#enPfSearchInput'); if (inp) inp.value = '';
           barHost.querySelector('#enPfClearQBtn')?.classList.remove('show');
         } else if (k === 'area') {
-          mapCfg.areaMode = 'radius';
-          mapCfg.stepIdx = RADIUS_STEPS.length - 1;
-          mapCfg.prefFilter = '';
+          mapCfg.areaMode = 'radius'; mapCfg.stepIdx = RADIUS_STEPS.length - 1; mapCfg.prefFilter = '';
         } else if (k === 'cat') {
           mapCfg.catFilter = 'all';
         } else if (k.startsWith('skill:')) {
-          const tid = k.slice(6);
-          mapCfg.skillTags = (mapCfg.skillTags || []).filter(x => x !== tid);
+          mapCfg.skillTags = (mapCfg.skillTags || []).filter(x => x !== k.slice(6));
         }
         saveMapCfg();
         onChanged();
@@ -588,10 +667,9 @@
     if (!slot) return;
     syncBaseFromAreaSettings();
     const view = enViewState.peopleView || 'list';
-    const isBuyer = enViewState.userMode === 'buyer';
     const allPeople = getAllPeopleEnriched();
 
-    // --- 📋 リスト表示（地図非掲載ユーザーも地域検索でしっかり表示！） ---
+    // --- 📋 リスト表示：ピシッと揃う写真全面2列グリッド ---
     if (view === 'list') {
       destroyLeafletMap();
       const filtered = allPeople.filter(p => matchesCommonFilters(p, false)).sort((a, b) => a.distKm - b.distKm);
@@ -613,52 +691,19 @@
         return;
       }
 
-      const diagBadge = (typeof EN_DIAG_TYPES !== 'undefined' && EN_DIAG_TYPES[enViewState.diagType]?.badge) || '';
       slot.innerHTML = `
         <div class="en-between" style="padding:0 2px;">
-          <span class="en-meta">✨ ${esc(diagBadge)} 基準（${filtered.length}名・近い順）</span>
+          <span class="en-meta" style="font-weight:800;">✨ 近い順（${filtered.length}名）</span>
           <span class="en-meta">拠点：${esc(mapCfg.baseLabel)}</span>
         </div>
-        <div class="en-grid-2">
-          ${filtered.map(p => {
-            const meta = ROLE_META[p.category] || ROLE_META.craft;
-            const aiTxt = typeof getDynamicAiMatch === 'function' ? getDynamicAiMatch(p) : p.aiMatch;
-            return `
-              <div class="card en-card" style="padding:11px;gap:8px;cursor:pointer;" data-persondetail="${p.id}">
-                <div class="en-between" style="align-items:flex-start;">
-                  <div class="en-row" style="min-width:0;">
-                    <img class="en-avatar" style="width:36px;height:36px;" src="${p.avatar}" alt="">
-                    <div style="min-width:0;">
-                      <div class="en-title" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.name)}</div>
-                      <div class="en-meta" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.area)}</div>
-                    </div>
-                  </div>
-                  <span class="en-futa-dist-pill">約${p.distKm}km</span>
-                </div>
-                <div class="en-row" style="flex-wrap:wrap;gap:4px;">
-                  <span class="en-pill" style="background:${meta.color}1a;color:${meta.color};">${esc(p.categoryLabel)}</span>
-                  ${p.mapOpen === false ? '<span class="en-pill" style="background:var(--en-surface-2);color:var(--en-muted);">🔒 地図非掲載</span>' : ''}
-                </div>
-                <p class="en-text" style="font-size:11.5px;">${esc(p.canDo)}</p>
-                <div class="en-meta" style="color:var(--en-accent);font-weight:800;font-size:11px;">✨ ${esc(aiTxt)}</div>
-                <div class="en-actions" style="padding-top:7px;" onclick="event.stopPropagation()">
-                  <button class="en-act-btn" style="flex:1;justify-content:center;padding:6px;" data-pcard-greet="${p.id}">👋</button>
-                  ${isBuyer
-                    ? `<button class="en-act-btn primary" style="flex:1;justify-content:center;padding:6px;" onclick="enGoTab('shop')">🎪</button>`
-                    : `<button class="en-act-btn primary" style="flex:1;justify-content:center;padding:6px;" data-pcard-ask="${p.id}">💬</button>`}
-                </div>
-              </div>
-            `;
-          }).join('')}
+        <div class="en-pbox-grid">
+          ${filtered.map(p => buildVisualPersonBoxHtml(p, false)).join('')}
         </div>
       `;
 
-      slot.querySelectorAll('[data-persondetail]').forEach(c => c.onclick = () => { if (typeof openPersonDetailSheet === 'function') openPersonDetailSheet(c.getAttribute('data-persondetail')); });
-      slot.querySelectorAll('[data-pcard-greet]').forEach(b => b.onclick = () => {
-        const p = EN_MOCK_PEOPLE.find(x => x.id === b.getAttribute('data-pcard-greet'));
-        if (p) enToast(`👋 ${p.name}さんに「${isBuyer ? '応援' : '気になる'}」を送信！`);
+      bindVisualBoxButtons(slot, (pid) => {
+        if (typeof openPersonDetailSheet === 'function') openPersonDetailSheet(pid);
       });
-      slot.querySelectorAll('[data-pcard-ask]').forEach(b => b.onclick = () => { if (typeof startQuickAsk === 'function') startQuickAsk(b.getAttribute('data-pcard-ask')); });
       if (typeof enSyncTheme === 'function') enSyncTheme();
       return;
     }
@@ -672,11 +717,11 @@
 
       slot.innerHTML = `
         <div class="card en-card">
-          <div class="en-hero-card" style="height:245px;">
-            <img src="${swp.avatar}" alt="">
+          <div class="en-hero-card" style="height:260px;">
+            <img src="${swp.coverPhoto}" alt="">
             <div class="en-hero-overlay">
               <span class="en-hero-tag">${esc(swp.area)} ・ 約${swp.distKm}km ・ ${esc(swp.categoryLabel)}</span>
-              <div class="en-hero-title">${esc(swp.name)}（${esc(swp.shop)}）</div>
+              <div class="en-hero-title">${esc(swp.shop)}（${esc(swp.name)}）</div>
             </div>
           </div>
           <p class="en-text">${esc(swp.canDo)}</p>
@@ -688,27 +733,18 @@
         </div>
       `;
       slot.querySelector('#enSwpNextBtn')?.addEventListener('click', () => { enViewState.swipeIdx++; renderPeopleResultsSlot(slot, barHost); });
-      slot.querySelector('#enSwpLikeBtn')?.addEventListener('click', () => { enToast(`👋 ${swp.name}さんに「気になる」を送りました！`); enViewState.swipeIdx++; renderPeopleResultsSlot(slot, barHost); });
+      slot.querySelector('#enSwpLikeBtn')?.addEventListener('click', () => { enToast(`👋 ${swp.shop}に「気になる」を送りました！`); enViewState.swipeIdx++; renderPeopleResultsSlot(slot, barHost); });
       if (typeof enSyncTheme === 'function') enSyncTheme();
       return;
     }
 
-    // --- 🗺️ マップ表示（日本地図 × 半径ゲージ × ポケふた風職種メダル） ---
+    // --- 🗺️ マップ表示（日本地図 × 半径ゲージ × 下部横スライドおすすめボックス） ---
     const mapPeople = allPeople.filter(p => p.mapOpen !== false);
-    const hiddenMapCount = allPeople.length - mapPeople.length;
-    const matchedForMap = mapPeople.filter(p => matchesCommonFilters(p, true));
     const curKm = getCurrentRadiusKm();
 
-    // すでにLeaflet地図が存在している場合は、地図を壊さずマーカーだけ即時更新（爆速＆IME無干渉！）
     if (leafletMap && slot.querySelector('#enJapanLeafletMap')) {
-      updateRadiusVisualsLive(slot);
+      updateRadiusVisualsLive(slot, false);
       return;
-    }
-
-    const selected = matchedForMap.find(p => p.id === enViewState.mapSelectedId) || matchedForMap[0] || mapPeople[0];
-    if (selected) {
-      enViewState.mapSelectedId = selected.id;
-      markDiscovered(selected.id);
     }
 
     const foundCount = mapPeople.filter(p => discoveredSet.has(p.id)).length;
@@ -759,12 +795,9 @@
         <span class="en-jpmap-privacy-tag">🛡️ 市町村エリア表示（詳細住所＆非掲載設定は保護）</span>
       </div>
 
-      ${hiddenMapCount > 0 ? `<div class="en-map-hidden-note">🔒 地図非掲載メンバー（${hiddenMapCount}名）はマップ非表示・<strong>「📋 リスト」</strong>の地域検索には表示されます</div>` : ''}
-      <div id="enFutaDetailSlot"></div>
+      <!-- ★検索範囲のメンバーをリストと同じフォトボックスで横スライド表示！ -->
+      <div id="enMapRailSlot" style="display:flex;flex-direction:column;gap:6px;"></div>
     `;
-
-    const detailSlot = slot.querySelector('#enFutaDetailSlot');
-    renderSelectedFutaDetailCard(detailSlot, selected);
 
     slot.querySelectorAll('[data-futacat]').forEach(btn => {
       btn.onclick = () => {
@@ -772,7 +805,7 @@
         saveMapCfg();
         slot.querySelectorAll('[data-futacat]').forEach(b => b.classList.toggle('active', b === btn));
         renderActiveFilterPills(barHost, () => renderPeopleResultsSlot(slot, barHost));
-        updateRadiusVisualsLive(slot);
+        updateRadiusVisualsLive(slot, false);
       };
     });
 
@@ -785,18 +818,14 @@
     });
 
     slot.querySelector('#enMapUseGpsBtn')?.addEventListener('click', () => {
-      if (!navigator.geolocation) return enToast('⚠️ この端末ではGPS位置情報を利用できません');
+      if (!navigator.geolocation) return enToast('⚠️ GPS位置情報を利用できません');
       enToast('📍 現在地を取得中...');
       navigator.geolocation.getCurrentPosition(pos => {
         mapCfg.baseLat = Math.round(pos.coords.latitude * 1000) / 1000;
         mapCfg.baseLng = Math.round(pos.coords.longitude * 1000) / 1000;
-        mapCfg.baseLabel = '現在地付近';
-        mapCfg.gpsLocked = true;
-        mapCfg.areaMode = 'radius';
-        saveMapCfg();
-        enToast('📍 現在地をマップ拠点に設定しました！');
-        destroyLeafletMap();
-        renderPeopleResultsSlot(slot, barHost);
+        mapCfg.baseLabel = '現在地付近'; mapCfg.gpsLocked = true; mapCfg.areaMode = 'radius';
+        saveMapCfg(); enToast('📍 現在地をマップ拠点に設定しました！');
+        destroyLeafletMap(); renderPeopleResultsSlot(slot, barHost);
       }, () => enToast('⚠️ 位置情報が許可されませんでした'), { timeout: 6000 });
     });
 
@@ -804,19 +833,16 @@
     const mapEl = slot.querySelector('#enJapanLeafletMap');
     if (typeof window.L === 'undefined' || !mapEl) {
       if (mapEl) mapEl.innerHTML = '<div style="padding:24px;text-align:center;">地図ライブラリを読み込み中です（リロードをお試しください）</div>';
+      renderMapBottomCarousel(slot, false);
       return;
     }
 
     leafletMap = L.map(mapEl, {
       center: curKm === 0 ? [36.5, 137.8] : [mapCfg.baseLat, mapCfg.baseLng],
       zoom: curKm === 0 ? 5 : 9,
-      minZoom: 5,
-      maxZoom: 17,
-      zoomControl: false,
-      attributionControl: true
+      minZoom: 5, maxZoom: 17, zoomControl: false, attributionControl: true
     });
 
-    // ★国土地理院（地理院地図・淡色）：APIキー完全不要・日本語表記
     let switchedToOsm = false;
     const gsiLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
       minZoom: 5, maxZoom: 18,
@@ -855,19 +881,15 @@
         const newlyFound = markDiscovered(p.id);
         if (newlyFound) {
           enToast(`✨ 新しいご当地職種「${p.shop}（${p.area}）」を発見！`);
-          const fNow = mapPeople.filter(x => discoveredSet.has(x.id)).length;
-          const cntEl = slot.querySelector('#enFutaDexCnt');
-          const fillEl = slot.querySelector('#enFutaDexFill');
-          if (cntEl) cntEl.textContent = `${fNow} / ${mapPeople.length} 発見`;
-          if (fillEl) fillEl.style.width = `${Math.round((fNow / Math.max(1, mapPeople.length)) * 100)}%`;
+          refreshDexProgressDom(slot);
         }
-        updateRadiusVisualsLive(slot);
-        renderSelectedFutaDetailCard(detailSlot, p);
+        // ピンを押したら下の横スライドカルーセルをその人のボックスへ自動スクロール！
+        updateRadiusVisualsLive(slot, true);
       });
       return { person: p, marker };
     });
 
-    updateRadiusVisualsLive(slot);
+    updateRadiusVisualsLive(slot, false);
 
     setTimeout(() => {
       if (!leafletMap) return;
@@ -880,7 +902,7 @@
       slider.addEventListener('input', e => {
         mapCfg.areaMode = 'radius';
         mapCfg.stepIdx = Number(e.target.value);
-        updateRadiusVisualsLive(slot);
+        updateRadiusVisualsLive(slot, false);
       });
       slider.addEventListener('change', () => {
         saveMapCfg();
@@ -895,28 +917,25 @@
       saveMapCfg();
       if (slider) slider.value = String(mapCfg.stepIdx);
       renderActiveFilterPills(barHost, () => renderPeopleResultsSlot(slot, barHost));
-      updateRadiusVisualsLive(slot);
+      updateRadiusVisualsLive(slot, false);
       fitMapToCurrentArea();
     });
 
     slot.querySelector('#enJpFitBaseBtn')?.addEventListener('click', () => {
       mapCfg.areaMode = 'radius';
       if (getCurrentRadiusKm() === 0) {
-        mapCfg.stepIdx = 4; // 50km
+        mapCfg.stepIdx = 4;
         saveMapCfg();
         if (slider) slider.value = '4';
       }
       renderActiveFilterPills(barHost, () => renderPeopleResultsSlot(slot, barHost));
-      updateRadiusVisualsLive(slot);
+      updateRadiusVisualsLive(slot, false);
       fitMapToCurrentArea();
     });
 
     if (typeof enSyncTheme === 'function') enSyncTheme();
   }
 
-  // =========================================================
-  // 🌟 おすすめ人材タブ全体を単独でクリーン描画（IME安全・衝突ゼロ）
-  // =========================================================
   function renderUnifiedPeopleSection() {
     const sec = document.getElementById('view-feed');
     if (!sec) return;
@@ -933,7 +952,6 @@
           <button class="en-subtab active" data-entab="people">👥 ${isBuyer ? '地域のつくり手' : 'おすすめ人材'}</button>
         </div>
 
-        <!-- 🔍 統合1行検索＆絞り込みバー（日本語IME対応） -->
         <div class="en-pf-bar">
           <div class="en-pf-search-wrap">
             <input id="enPfSearchInput" class="en-pf-search-in" type="search" value="${esc(curQ)}"
@@ -943,17 +961,14 @@
           <button type="button" class="en-pf-filter-btn" id="enPfFilterOpenBtn">⚙️ 絞り込み</button>
         </div>
 
-        <!-- 適用中フィルタピル（普段は空で非表示） -->
         <div class="en-pf-active-row" id="enActiveFilterRow"></div>
 
-        <!-- 表示モード切替 -->
         <div class="en-subtabs">
           <button class="en-subtab ${view==='list'?'active':''}" data-upview="list">📋 リスト</button>
           <button class="en-subtab ${view==='map'?'active':''}" data-upview="map">🗺️ マップ</button>
           <button class="en-subtab ${view==='swipe'?'active':''}" data-upview="swipe">🃏 スワイプ</button>
         </div>
 
-        <!-- 結果スロット（検索時はここだけ書き換えるのでIMEが切れない！） -->
         <div id="enPeopleResultsSlot" style="display:flex;flex-direction:column;gap:10px;"></div>
       </div>
     `;
@@ -966,15 +981,10 @@
       renderPeopleResultsSlot(slot, wrap);
     };
 
-    // つぶやきタブ切替
     sec.querySelectorAll('[data-entab]').forEach(btn => {
-      btn.onclick = () => {
-        enViewState.enSubTab = btn.getAttribute('data-entab');
-        window.renderEnFeed();
-      };
+      btn.onclick = () => { enViewState.enSubTab = btn.getAttribute('data-entab'); window.renderEnFeed(); };
     });
 
-    // リスト / マップ / スワイプ切替
     sec.querySelectorAll('[data-upview]').forEach(btn => {
       btn.onclick = () => {
         enViewState.peopleView = btn.getAttribute('data-upview');
@@ -984,7 +994,6 @@
       };
     });
 
-    // 日本語IME完全対応の検索ボックス
     const sInp = sec.querySelector('#enPfSearchInput');
     const clrBtn = sec.querySelector('#enPfClearQBtn');
     if (sInp) {
@@ -1007,12 +1016,8 @@
       };
     }
 
-    // 統合絞り込みシート
     sec.querySelector('#enPfFilterOpenBtn')?.addEventListener('click', () => {
-      openUnifiedPeopleFilterSheet(() => {
-        destroyLeafletMap();
-        refreshResults();
-      });
+      openUnifiedPeopleFilterSheet(() => { destroyLeafletMap(); refreshResults(); });
     });
 
     refreshResults();
@@ -1028,11 +1033,8 @@
       window.renderEnFeed = function () {
         normalizePeopleCoords();
         if (enViewState.enSubTab === 'people') {
-          try {
-            renderUnifiedPeopleSection();
-          } catch (err) {
-            console.error('EN•joy Unified People/Map error:', err);
-          }
+          try { renderUnifiedPeopleSection(); }
+          catch (err) { console.error('EN•joy Unified People/Map error:', err); }
           return;
         }
         destroyLeafletMap();
