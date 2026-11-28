@@ -1,0 +1,122 @@
+/* =========================================================
+   EN•joy STEP B 統合スタイル（patch_core_sync.css v1）
+   ・ホーム名刺の登録連動タグ帯（業種・兼業・Step 4診断精度）
+   ・PC版 進行中ラボ：オレンジ解放タブ / 左ペイン月間カレンダー / ロック表示
+   ========================================================= */
+
+/* --- 🪪 ホーム名刺：登録情報＆Step 4診断の連動ピル --- */
+.en-prof-reg-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 9px;
+}
+.en-prof-reg-pill {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2.5px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+  backdrop-filter: blur(6px);
+}
+.en-prof-reg-pill.diag {
+  background: rgba(255, 255, 255, 0.92);
+  color: #1c1917;
+  border-color: transparent;
+}
+
+/* --- 🍊 PC版ヘッダー：試作到達でオレンジ解放される「商品完成登録」タブ --- */
+html.en-pc-mode .en-ergo-seg.is-orange-unlocked {
+  background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 12px rgba(249, 115, 22, 0.38);
+}
+html.en-pc-mode .en-ergo-seg.is-orange-unlocked.active {
+  filter: brightness(1.06);
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.35), 0 4px 14px rgba(249, 115, 22, 0.45);
+}
+html.en-pc-mode .en-ergo-seg.is-locked-launch {
+  opacity: 0.72;
+}
+
+/* --- 📅 PC版左ペイン：月間カレンダー（スマホと同一データ＆操作） --- */
+.en-pc-cal-card {
+  background: var(--en-surface);
+  border: 1px solid var(--en-border);
+  border-radius: 16px;
+  padding: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: var(--en-shadow);
+}
+.en-pc-cal-card .en-gcal-grid {
+  min-height: 270px;
+}
+.en-pc-cal-card .en-gcal-cell {
+  min-height: 44px;
+  padding: 3px 2px;
+}
+.en-pc-cal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.en-pc-cal-ev-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: var(--en-surface-2);
+  border: 1px solid var(--en-border);
+  font-size: 12px;
+}
+.en-pc-cal-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--en-accent);
+}
+.en-pc-cal-dot.tone-2 { background: #10b981; }
+.en-pc-cal-dot.tone-3 { background: #8b5cf6; }
+
+/* --- 🗺️ PC版左ペイン用コンパクトロードマップ --- */
+.en-pc-pane-left .en-focus-rm {
+  padding: 11px;
+  gap: 8px;
+}
+.en-pc-pane-left .en-rm-dot {
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+}
+.en-pc-pane-left .en-rm-focus-title {
+  font-size: 13.5px;
+}
+
+/* --- 🔒 PC版：試作フェーズ前の巣立ちロック案内カード --- */
+.en-pc-launch-lock {
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--en-surface-2);
+  border: 1.5px dashed var(--en-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.en-pc-launch-lock strong {
+  font-size: 14.5px;
+}
+
+/* --- 📦 データ移行シート：ファイル書き出し・読込エリア --- */
+.en-mig-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
