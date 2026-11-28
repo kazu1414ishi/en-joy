@@ -1,0 +1,433 @@
+/* =========================================================
+   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.css v1）
+   ・初期画面＝「ルームホーム」（1×1横スワイプ＋2列タイル＋1列条件解放）
+   ・Googleカレンダー風 月間カレンダー（月切替・予定チップ・即追加）
+   ・進行トップ＝巣立ちロードマップ（試作到達で商品完成登録がオレンジ解放）
+   ========================================================= */
+
+/* PCモードでは一切干渉させない */
+html.en-pc-mode .en-mrm-only { display: none !important; }
+
+/* スマホ版ルームのヘッダー＆ナビをスッキリ最適化 */
+html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-ai-copilot {
+  display: none !important;
+}
+html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-room-head {
+  height: 52px;
+  padding: 0 12px !important;
+  gap: 8px;
+  background: var(--en-surface);
+  border-bottom: 1px solid var(--en-border);
+}
+html:not(.en-pc-mode) #en-room-modal.en-mrm-active #enRoomBody {
+  padding: 12px 12px 24px !important;
+}
+html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-room-nav {
+  grid-template-columns: repeat(5, 1fr);
+  padding: 5px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+}
+html:not(.en-pc-mode) #en-room-modal.en-mrm-active .en-room-tab {
+  font-size: 10px;
+  gap: 2px;
+  padding: 5px 2px;
+}
+
+/* =========================================================
+   🏠 1×1 横スワイプカルーセル（右端チラ見えで直感スワイプ）
+   ========================================================= */
+.en-mrm-carousel-wrap {
+  margin: 0 -12px 4px;
+}
+.en-mrm-carousel {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  gap: 10px;
+  padding: 2px 12px 6px;
+  scrollbar-width: none;
+}
+.en-mrm-carousel::-webkit-scrollbar { display: none; }
+
+.en-mrm-slide {
+  flex: 0 0 92%;
+  scroll-snap-align: center;
+  aspect-ratio: 1 / 1;
+  max-height: 390px;
+  min-height: 315px;
+  background: var(--en-surface);
+  border: 1px solid var(--en-border);
+  border-radius: 20px;
+  padding: 13px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.en-mrm-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 10px;
+}
+.en-mrm-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--en-border);
+  transition: width 0.2s ease, background 0.2s ease;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.en-mrm-dot.active {
+  width: 20px;
+  background: var(--en-accent);
+}
+
+/* --- 📅 Googleカレンダー風 月間カレンダー（1枚目） --- */
+.en-gcal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.en-gcal-month {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+.en-gcal-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.en-gcal-btn {
+  border: 1px solid var(--en-border);
+  background: var(--en-surface-2);
+  color: var(--en-text);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.en-gcal-btn.primary {
+  background: var(--en-accent);
+  color: #fff;
+  border-color: transparent;
+}
+
+.en-gcal-dow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--en-muted);
+}
+.en-gcal-dow span:first-child { color: #ef4444; }
+.en-gcal-dow span:last-child  { color: #3b82f6; }
+
+.en-gcal-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 2px;
+}
+.en-gcal-cell {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--en-text);
+  padding: 2px 1px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: background 0.14s, border-color 0.14s;
+}
+.en-gcal-cell.other { opacity: 0.3; }
+.en-gcal-cell.is-sun .en-gcal-num { color: #ef4444; }
+.en-gcal-cell.is-sat .en-gcal-num { color: #3b82f6; }
+.en-gcal-cell.selected {
+  background: var(--en-accent-soft);
+  border-color: var(--en-accent);
+}
+.en-gcal-num {
+  font-size: 11px;
+  font-weight: 800;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+  text-align: center;
+  border-radius: 50%;
+}
+.en-gcal-cell.is-today .en-gcal-num {
+  background: var(--en-accent);
+  color: #fff !important;
+}
+.en-gcal-chip {
+  width: 92%;
+  font-size: 8.5px;
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 1px 2px;
+  border-radius: 4px;
+  background: var(--en-accent);
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+.en-gcal-chip.tone-2 { background: #10b981; }
+.en-gcal-chip.tone-3 { background: #8b5cf6; }
+
+/* 選択日の予定ミニバー */
+.en-gcal-agenda {
+  border-top: 1px solid var(--en-border);
+  padding-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 26px;
+}
+.en-gcal-agenda-txt {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- 📊 2枚目・3枚目カード（サマリー＆最近の動き） --- */
+.en-mrm-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  flex: 1;
+}
+.en-mrm-stat-box {
+  background: var(--en-surface-2);
+  border: 1px solid var(--en-border);
+  border-radius: 13px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+}
+.en-mrm-stat-box small { font-size: 10.5px; color: var(--en-muted); font-weight: 700; }
+.en-mrm-stat-box strong { font-size: 18px; font-weight: 900; color: var(--en-text); }
+
+/* =========================================================
+   🧩 2列メニュータイル（トーク / 進行 / ボード / ルーム詳細）
+   ========================================================= */
+.en-mrm-tile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.en-mrm-tile {
+  background: var(--en-surface);
+  border: 1.5px solid var(--en-border);
+  border-radius: 17px;
+  padding: 13px 12px;
+  text-align: left;
+  color: var(--en-text);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 106px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+}
+.en-mrm-tile:active { transform: scale(0.97); }
+.en-mrm-tile:hover  { border-color: var(--en-accent); }
+
+.en-mrm-tile-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.en-mrm-tile-ico {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  background: var(--en-surface-2);
+}
+.en-mrm-tile-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--en-accent-soft);
+  color: var(--en-accent);
+}
+.en-mrm-tile-title {
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+.en-mrm-tile-sub {
+  font-size: 11px;
+  color: var(--en-muted);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* =========================================================
+   🍊 1列フル幅：商品完成登録（試作到達でオレンジ解放！）
+   ========================================================= */
+.en-mrm-complete-card {
+  width: 100%;
+  border-radius: 18px;
+  padding: 14px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.2s ease;
+}
+.en-mrm-complete-card:active { transform: scale(0.98); }
+
+/* ロック状態（試作フェーズ到達前） */
+.en-mrm-complete-card.locked {
+  background: var(--en-surface-2);
+  border: 1.5px dashed var(--en-border);
+  color: var(--en-muted);
+}
+.en-mrm-complete-card.locked strong { color: var(--en-text); font-size: 13.5px; }
+
+/* 解放状態（進捗が「試作」以降に到達 → 鮮やかなオレンジ解放！） */
+.en-mrm-complete-card.unlocked {
+  background: linear-gradient(135deg, #f97316 0%, #fb923c 55%, #f59e0b 100%);
+  border: none;
+  color: #ffffff;
+  box-shadow: 0 10px 26px rgba(249, 115, 22, 0.36);
+}
+.en-mrm-complete-card.unlocked small { color: rgba(255, 255, 255, 0.92); }
+.en-mrm-complete-ico {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.22);
+}
+.en-mrm-complete-card.locked .en-mrm-complete-ico {
+  background: var(--en-surface);
+  border: 1px solid var(--en-border);
+}
+.en-mrm-complete-txt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.en-mrm-complete-txt strong { font-size: 14.5px; font-weight: 900; }
+.en-mrm-complete-txt small  { font-size: 11px; line-height: 1.35; }
+.en-mrm-complete-pill {
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.95);
+  color: #ea580c;
+}
+.en-mrm-complete-card.locked .en-mrm-complete-pill {
+  background: var(--en-surface);
+  color: var(--en-muted);
+  border: 1px solid var(--en-border);
+}
+
+/* =========================================================
+   🗺️ 進行タブトップ：巣立ちロードマップ（タップで直感フェーズ更新）
+   ========================================================= */
+.en-roadmap-card {
+  background: var(--en-surface);
+  border: 1.5px solid var(--en-border);
+  border-radius: 18px;
+  padding: 13px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.en-roadmap-steps {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  position: relative;
+}
+.en-rm-step {
+  border: 1px solid var(--en-border);
+  background: var(--en-surface-2);
+  color: var(--en-muted);
+  border-radius: 12px;
+  padding: 7px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  transition: 0.16s;
+}
+.en-rm-step .rm-ico { font-size: 16px; line-height: 1; }
+.en-rm-step .rm-lbl { font-size: 9.5px; font-weight: 800; white-space: nowrap; }
+.en-rm-step.done {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #059669;
+}
+.en-rm-step.current {
+  background: var(--en-accent);
+  border-color: var(--en-accent);
+  color: #ffffff;
+  box-shadow: 0 4px 12px var(--en-accent-soft);
+  transform: translateY(-1px);
+}
+.en-rm-step.is-proto-gate:not(.done):not(.current) {
+  border-style: dashed;
+  border-color: #f97316;
+}
+.en-roadmap-note {
+  font-size: 11px;
+  line-height: 1.45;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: var(--en-surface-2);
+  color: var(--en-text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
