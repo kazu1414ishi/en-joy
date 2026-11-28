@@ -1,6 +1,6 @@
 /* =========================================================
-   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.css v4）
-   ・遮光カーテン＋裏スクロール固定でキーボード切替時の画像チラつき完全ゼロ化
+   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.css v5）
+   ・遮光カーテン自動消滅ガード追加（一覧に戻れないバグを完全解消）
    ・トーク入力中(en-kbd-open)は上部ヘッダー＆下タブを自動収納し会話エリア最大化
    ・カルーセル（左:やること / 真ん中:カレンダー / 右:ラボ現在地）
    ========================================================= */
@@ -8,20 +8,27 @@
 html.en-pc-mode .en-mrm-only,
 html.en-pc-mode #en-mrm-curtain { display: none !important; }
 
-/* ★チラつき防止：モーダル真裏の完全不透明カーテン＆裏ページスクロール固定 */
+/* ★チラつき防止カーテン（モーダルが閉じたらCSS側でも強制消滅させる2重安全設計） */
 #en-mrm-curtain {
   position: fixed;
   inset: -200px 0;
   background: var(--en-bg, #f7f4ec);
-  pointer-events: none;
+  pointer-events: none !important;
   opacity: 0;
   visibility: hidden;
+  display: none;
 }
 #en-mrm-curtain.active {
+  display: block;
   opacity: 1;
   visibility: visible;
-  pointer-events: auto;
 }
+body:not(:has(#en-room-modal.open)) #en-mrm-curtain {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
 html.en-mrm-locked,
 body.en-mrm-locked {
   overflow: hidden !important;
@@ -85,13 +92,11 @@ html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active {
   transition: none !important;
 }
 
-/* 入力中は下の5タブ＆非公開バナーを非表示 */
 html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-nav,
 html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-talk-private-bar {
   display: none !important;
 }
 
-/* ★トーク入力中は上部ヘッダーも自動収納して会話エリアを限界まで広げる（余白タップor閉じるで即復帰） */
 html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-talk .en-room-head {
   display: none !important;
 }
@@ -105,7 +110,6 @@ html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-talk .en-chat-bubble {
   line-height: 1.4 !important;
 }
 
-/* ボード・進行などの入力中はヘッダーを極薄(38px)に圧縮 */
 html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active:not(.en-mrm-talk) .en-room-head {
   height: 38px !important;
   padding: 0 10px !important;
@@ -115,7 +119,6 @@ html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active:not(.en-mrm-talk)
   font-size: 11px !important;
 }
 
-/* 入力バーをスリム化してトーク縦幅をさらに確保 */
 html:not(.en-pc-mode).en-kbd-open #en-room-modal.en-mrm-active .en-room-composer {
   padding: 5px 8px !important;
   gap: 6px !important;

@@ -1,6 +1,6 @@
 /* =========================================================
-   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.js v5）
-   ・遮光カーテン(#en-mrm-curtain)＆裏スクロール固定で画像チラつき完全ゼロ
+   EN•joy スマホ版 進行中ラボ専用ルームUI（patch_room_mobile.js v6）
+   ・一覧に戻れないバグ修正（closeMobileRoomModal統一＋カーテン監視の確実化）
    ・トーク入力中は上部ヘッダー＆下タブを自動収納し会話表示を最大化
    ・トーク余白タップでキーボードを閉じてヘッダー＆下タブ即復帰
    ========================================================= */
@@ -92,11 +92,20 @@
   }
 
   // =========================================================
-  // 🛡️ チラつき完全防止：モーダル真裏の遮光カーテン＆スクロールロック
+  // 🛡️ 遮光カーテン管理＆確実なルーム終了（一覧へ100%戻る）
   // =========================================================
-  function syncModalCurtain() {
+  function ensureModalObserver(modal) {
+    if (!modal || modal._enCurtainObserved) return;
+    modal._enCurtainObserved = true;
+    const mo = new MutationObserver(() => syncModalCurtain(false));
+    mo.observe(modal, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  function syncModalCurtain(forceOff) {
     const modal = document.getElementById('en-room-modal');
-    const isOpenMobile = !!(modal && modal.classList.contains('open') && isMobileRoomMode());
+    if (modal) ensureModalObserver(modal);
+
+    const isOpenMobile = !forceOff && !!(modal && modal.classList.contains('open') && isMobileRoomMode());
 
     let curtain = document.getElementById('en-mrm-curtain');
     if (isOpenMobile && !curtain) {
@@ -115,8 +124,31 @@
 
     document.documentElement.classList.toggle('en-mrm-locked', isOpenMobile);
     document.body.classList.toggle('en-mrm-locked', isOpenMobile);
+
     if (!isOpenMobile) {
       document.documentElement.classList.remove('en-kbd-open');
+      if (modal) {
+        modal.classList.remove('en-mrm-active', 'en-mrm-board-detail', 'en-mrm-talk');
+      }
+    }
+  }
+
+  function closeMobileRoomModal() {
+    document.activeElement?.blur();
+    setKeyboardOpen(false);
+    uiState.talkPlusOpen = false;
+    const modal = document.getElementById('en-room-modal');
+    if (modal) {
+      modal.classList.remove('open', 'en-mrm-active', 'en-mrm-board-detail', 'en-mrm-talk');
+    }
+    if (typeof enViewState !== 'undefined') {
+      enViewState.roomViewAsFan = false;
+    }
+    syncModalCurtain(true);
+    // もしEN•ラボ以外のタブから開いていた場合も確実に一覧へ戻す
+    const enSec = document.getElementById('view-en');
+    if (enSec && !enSec.classList.contains('active') && typeof window.enGoTab === 'function') {
+      window.enGoTab('en');
     }
   }
 
@@ -162,7 +194,7 @@
       return;
     }
     if (isOpen) {
-      syncModalCurtain();
+      syncModalCurtain(false);
       document.documentElement.classList.add('en-kbd-open');
       syncViewportVars();
       setTimeout(syncViewportVars, 180);
@@ -180,14 +212,11 @@
   }
 
   function installKeyboardObservers() {
+    const modal = document.getElementById('en-room-modal');
+    if (modal) ensureModalObserver(modal);
+
     if (window._enKbdObsInstalled) return;
     window._enKbdObsInstalled = true;
-
-    const modal = document.getElementById('en-room-modal');
-    if (modal) {
-      const mo = new MutationObserver(syncModalCurtain);
-      mo.observe(modal, { attributes: true, attributeFilter: ['class'] });
-    }
 
     document.addEventListener('focusin', e => {
       const t = e.target;
@@ -867,7 +896,7 @@
       }, { passive: true });
     }
 
-    document.getElementById('enMrmExitBtn').onclick = () => { setKeyboardOpen(false); modal.classList.remove('open'); };
+    document.getElementById('enMrmExitBtn').onclick = closeMobileRoomModal;
     document.getElementById('enMrmFanBtn').onclick = () => { enViewState.roomViewAsFan = true; window.renderEnRoomModal(); };
 
     modal.querySelectorAll('[data-mrmgo]').forEach(btn => {
@@ -974,7 +1003,7 @@
       ${buildMobileDock('detail')}
     `;
 
-    document.getElementById('enMrmCloseAll').onclick = () => { setKeyboardOpen(false); modal.classList.remove('open'); };
+    document.getElementById('enMrmCloseAll').onclick = closeMobileRoomModal;
     document.getElementById('enSetOpenRepBtn').onclick = () => openReportHistorySheet(lab, d);
     document.getElementById('enSetLabTitle').onchange = e => {
       const v = e.target.value.trim();
@@ -991,8 +1020,7 @@
     document.getElementById('enSetJoinPolicy').onchange = e => { d.roomMeta.joinPolicy = e.target.value; safeSave(); enToast('👥 参加ルールを更新しました'); };
     document.getElementById('enSetProBtn').onclick = () => { enAiProEnabled = !enAiProEnabled; window.renderEnRoomModal(); };
     document.getElementById('enSetOriginBtn').onclick = () => {
-      setKeyboardOpen(false);
-      modal.classList.remove('open');
+      closeMobileRoomModal();
       enViewState.enSubTab = 'tweet';
       if (typeof renderEnFeed === 'function') renderEnFeed();
       if (typeof enGoTab === 'function') enGoTab('feed');
@@ -1016,7 +1044,6 @@
       const lastMeta = body.querySelector('.en-meta:last-child');
       if (lastMeta) lastMeta.textContent = '💡 発言タップ → ルーム内メモ・やること・なぜなぜへ（完全非公開）';
 
-      // 入力中にトークの背景余白をタップしたらキーボードを閉じてヘッダー＆下タブを即復帰
       body.addEventListener('click', e => {
         if (!e.target.closest('.en-chat-bubble, button, a, input, textarea')) {
           if (document.documentElement.classList.contains('en-kbd-open')) {
@@ -1135,7 +1162,7 @@
         <button type="button" class="en-act-btn" id="enMrmCloseAll" title="ラボ一覧へ戻る">✕</button>
       `;
       document.getElementById('enMrmBackBtn').onclick = backFn || (() => { setKeyboardOpen(false); uiState._staySlide = 1; enViewState.roomTab = 'hub'; window.renderEnRoomModal(); });
-      document.getElementById('enMrmCloseAll').onclick = () => { setKeyboardOpen(false); modal.classList.remove('open'); };
+      document.getElementById('enMrmCloseAll').onclick = closeMobileRoomModal;
     }
     const oldNav = modal.querySelector('.en-room-nav');
     if (oldNav) {
@@ -1159,7 +1186,7 @@
         uiState._staySlide = 1;
         const targetTab = (isMobileRoomMode() && !asFan) ? 'hub' : initialTab;
         const res = origOpen.call(this, labId, targetTab, asFan);
-        syncModalCurtain();
+        syncModalCurtain(false);
         return res;
       };
       wrappedOpen._enMrmWrapped = true;
@@ -1175,7 +1202,7 @@
           if (!isMobileRoomMode() && (enViewState.roomTab === 'hub' || enViewState.roomTab === 'launch')) {
             enViewState.roomTab = enViewState.roomTab === 'launch' ? 'detail' : 'board';
           }
-          syncModalCurtain();
+          syncModalCurtain(false);
           return origRender.apply(this, arguments);
         }
 
@@ -1186,7 +1213,7 @@
 
         modal.classList.add('en-mrm-active');
         modal.classList.remove('en-mrm-board-detail', 'en-mrm-talk');
-        syncModalCurtain();
+        syncModalCurtain(false);
 
         if (rt === 'hub') { renderMobileRoomHub(modal, lab, d); return; }
         if (rt === 'detail') { renderMobileRoomSettings(modal, lab, d); return; }
